@@ -9,8 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth hook
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
@@ -26,8 +25,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export default function SignUpForm() {
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const { signUp, loading: authLoading } = useAuth(); // Use the auth hook
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -41,16 +39,9 @@ export default function SignUpForm() {
   });
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log("Sign Up Data:", data);
-    toast({
-      title: "Sign Up Attempted (Demo)",
-      description: `User: ${data.fullName}, Role: ${data.role}. Check console.`,
-    });
-    setIsLoading(false);
-    // form.reset();
+    // The signUp function from useAuth will handle loading state and toasts
+    await signUp(data.email, data.password, data.fullName, data.role);
+    // No need to call form.reset() here if redirecting on success
   };
 
   return (
@@ -142,8 +133,8 @@ export default function SignUpForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isLoading} className="w-full">
-          {isLoading ? (
+        <Button type="submit" disabled={authLoading} className="w-full">
+          {authLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Creating Account...

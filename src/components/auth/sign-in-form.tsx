@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
-import { useToast } from '@/hooks/use-toast'; // Assuming useToast is available
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth hook
 
 const formSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -19,8 +18,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export default function SignInForm() {
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const { signIn, loading: authLoading } = useAuth(); // Use the auth hook
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -31,18 +29,9 @@ export default function SignInForm() {
   });
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log("Sign In Data:", data);
-    toast({
-      title: "Sign In Attempted (Demo)",
-      description: `Email: ${data.email}. Check console for data.`,
-    });
-    setIsLoading(false);
-    // In a real app, you would redirect or update auth state here
-    // For now, just clear form or show success
-    // form.reset();
+    // The signIn function from useAuth will handle loading state and toasts
+    await signIn(data.email, data.password);
+    // No need to call form.reset() here if redirecting on success
   };
 
   return (
@@ -74,8 +63,8 @@ export default function SignInForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isLoading} className="w-full">
-          {isLoading ? (
+        <Button type="submit" disabled={authLoading} className="w-full">
+          {authLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Signing In...

@@ -2,42 +2,26 @@
 "use client";
 
 import Link from 'next/link';
-import { Home, Wrench, Users, LogIn, UserPlus, Sparkles, LayoutDashboard, LogOut, Briefcase } from 'lucide-react';
+import { Home, Wrench, Users, LogIn, UserPlus, Sparkles, LayoutDashboard, LogOut, Briefcase, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { useState, useEffect } from 'react'; // For mock auth state
-
-// Mock auth state - replace with actual auth context/hook
-interface User {
-  name: string;
-  role: 'customer' | 'handyman';
-}
+import { useAuth } from '@/hooks/useAuth'; // Import the real useAuth hook
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Skeleton } from '@/components/ui/skeleton'; // For loading state
 
 export default function Navbar() {
-  const [user, setUser] = useState<User | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const { user, signOutUser, loading: authLoading } = useAuth(); // Use the real auth hook
 
-  useEffect(() => {
-    setMounted(true);
-    // Mock user login after a delay for demonstration
-    // In a real app, this would come from an auth provider
-    // const mockUser = localStorage.getItem("mockUser");
-    // if (mockUser) setUser(JSON.parse(mockUser));
-  }, []);
-
-  // Mock login/logout for demo
-  const handleLogin = () => {
-    const demoUser = { name: 'Demo User', role: 'customer' as const };
-    setUser(demoUser);
-    // localStorage.setItem("mockUser", JSON.stringify(demoUser));
-  };
-  const handleLogout = () => {
-    setUser(null);
-    // localStorage.removeItem("mockUser");
-  };
-  
-  if (!mounted) {
-    return ( // Return a placeholder or skeleton navbar during SSR/initial client render to avoid hydration issues
+  // Display skeleton while auth state is loading to prevent hydration mismatches or UI flicker
+  if (authLoading) {
+    return (
       <header className="bg-card shadow-md sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
@@ -45,15 +29,17 @@ export default function Navbar() {
             <h1 className="text-2xl font-headline font-bold">Manitas Listas</h1>
           </Link>
           <nav className="flex items-center gap-2 md:gap-4">
-            <div className="h-6 w-16 bg-muted rounded-md animate-pulse"></div>
-            <div className="h-6 w-20 bg-muted rounded-md animate-pulse"></div>
-            <div className="h-6 w-24 bg-muted rounded-md animate-pulse"></div>
+            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-9 w-24" />
+            <Skeleton className="h-9 w-28" />
+            <Separator orientation="vertical" className="h-6 mx-2" />
+            <Skeleton className="h-9 w-24" />
+            <Skeleton className="h-9 w-24" />
           </nav>
         </div>
       </header>
     );
   }
-
 
   return (
     <header className="bg-card shadow-md sticky top-0 z-50">
@@ -62,56 +48,67 @@ export default function Navbar() {
           <Wrench className="h-8 w-8" />
           <h1 className="text-2xl font-headline font-bold">Manitas Listas</h1>
         </Link>
-        <nav className="flex items-center gap-2 md:gap-4">
-          <Button variant="ghost" asChild>
+        <nav className="flex items-center gap-2 md:gap-3">
+          <Button variant="ghost" asChild size="sm">
             <Link href="/" className="flex items-center gap-1">
-              <Home size={18} /> Home
+              <Home size={16} /> Home
             </Link>
           </Button>
-          <Button variant="ghost" asChild>
+          <Button variant="ghost" asChild size="sm">
             <Link href="/services" className="flex items-center gap-1">
-              <Briefcase size={18} /> Services
+              <Briefcase size={16} /> Services
             </Link>
           </Button>
-          <Button variant="ghost" asChild>
+          <Button variant="ghost" asChild size="sm">
             <Link href="/handymen" className="flex items-center gap-1">
-              <Users size={18} /> Handymen
+              <Users size={16} /> Handymen
             </Link>
           </Button>
-          <Button variant="ghost" asChild>
+          <Button variant="ghost" asChild size="sm">
             <Link href="/ai-assistant" className="flex items-center gap-1">
-              <Sparkles size={18} /> AI Assistant
+              <Sparkles size={16} /> AI Assistant
             </Link>
           </Button>
           
-          <Separator orientation="vertical" className="h-6 mx-2" />
+          <Separator orientation="vertical" className="h-6 mx-1 md:mx-2" />
 
           {user ? (
             <>
-              <Button variant="ghost" asChild>
+              <Button variant="ghost" asChild size="sm">
                 <Link href="/dashboard" className="flex items-center gap-1">
-                  <LayoutDashboard size={18} /> Dashboard
+                  <LayoutDashboard size={16} /> Dashboard
                 </Link>
               </Button>
-              <Button variant="outline" onClick={handleLogout} className="flex items-center gap-1">
-                <LogOut size={18} /> Logout
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center gap-1 px-2">
+                    <UserCircle size={20} /> 
+                    <span className="hidden md:inline text-sm">{user.displayName || user.email?.split('@')[0]}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                     <Link href="/dashboard/profile">Profile (Placeholder)</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={signOutUser} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                    <LogOut size={16} className="mr-2" /> Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             <>
-              <Button variant="ghost" asChild>
+              <Button variant="ghost" asChild size="sm">
                 <Link href="/sign-in" className="flex items-center gap-1">
-                  <LogIn size={18} /> Sign In
+                  <LogIn size={16} /> Sign In
                 </Link>
               </Button>
-              <Button variant="default" asChild>
+              <Button variant="default" asChild size="sm">
                 <Link href="/sign-up" className="flex items-center gap-1">
-                  <UserPlus size={18} /> Sign Up
+                  <UserPlus size={16} /> Sign Up
                 </Link>
-              </Button>
-               {/* Temporary button to simulate login */}
-              <Button variant="secondary" onClick={handleLogin} className="ml-2">
-                Login (Demo)
               </Button>
             </>
           )}

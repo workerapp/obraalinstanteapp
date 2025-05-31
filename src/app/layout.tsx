@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import Navbar from '@/components/layout/navbar';
 import Footer from '@/components/layout/footer';
 import Providers from '@/components/layout/providers';
+import { AuthProvider } from '@/hooks/useAuth'; // Import AuthProvider
 
 // Configure PT Sans font
 const ptSans = PT_Sans({
@@ -36,13 +37,15 @@ export default function RootLayout({
         */}
       </head>
       <body className="font-body antialiased flex flex-col min-h-screen">
-        <Providers>
-          <Navbar />
-          <main className="flex-grow container mx-auto px-4 py-8">
-            {children}
-          </main>
-          <Footer />
-          <Toaster />
+        <Providers> {/* QueryClientProvider is here */}
+          <AuthProvider> {/* AuthProvider wraps Navbar and children */}
+            <Navbar />
+            <main className="flex-grow container mx-auto px-4 py-8">
+              {children}
+            </main>
+            <Footer />
+            <Toaster />
+          </AuthProvider>
         </Providers>
       </body>
     </html>
