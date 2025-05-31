@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import type React from 'react';
+import { Button } from '@/components/ui/button'; // Added this import
 
 interface AuthCardProps {
   icon?: React.ReactNode;
