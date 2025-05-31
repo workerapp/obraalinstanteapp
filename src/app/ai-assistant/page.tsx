@@ -9,10 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Sparkles, Lightbulb, Tool } from 'lucide-react';
+import { Loader2, Sparkles, Lightbulb, Wrench } from 'lucide-react'; // Changed Tool to Wrench
 import { suggestSolutions, type SuggestSolutionsOutput } from '@/ai/flows/suggest-solutions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import Link from 'next/link';
 
 const formSchema = z.object({
   problemDescription: z.string().min(20, {
@@ -126,7 +127,7 @@ export default function AiAssistantPage() {
 
             {aiResponse.relevantSkills && aiResponse.relevantSkills.length > 0 && (
                <div className="w-full p-4 border rounded-md bg-background">
-                <h4 className="text-lg font-medium mb-2 flex items-center"><Tool className="text-gray-600 mr-2 h-5 w-5" />Relevant Handyman Skills:</h4>
+                <h4 className="text-lg font-medium mb-2 flex items-center"><Wrench className="text-gray-600 mr-2 h-5 w-5" />Relevant Handyman Skills:</h4>
                 <div className="flex flex-wrap gap-2">
                   {aiResponse.relevantSkills.map((skill, index) => (
                     <span key={`skill-${index}`} className="px-3 py-1 text-sm bg-accent/20 text-accent-foreground rounded-full border border-accent/50">

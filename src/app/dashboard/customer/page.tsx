@@ -1,9 +1,12 @@
 // src/app/dashboard/customer/page.tsx
+"use client";
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ListChecks, MessageSquarePlus, History, UserCircle } from 'lucide-react';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 // Mock data for customer dashboard
 const mockRequests = [
@@ -65,9 +68,9 @@ export default function CustomerDashboardPage() {
                   </Badge>
                 </div>
                 <div className="mt-3 flex gap-2">
-                    <Button variant="link" size="sm" className="p-0 h-auto text-accent">View Details</Button>
+                    <Button variant="link" size="sm" className="p-0 h-auto text-accent" onClick={() => console.log('View details for request:', req.id)}>View Details</Button>
                     {req.status !== 'Completed' && req.status !== 'Cancelled' && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-destructive">Cancel Request</Button>
+                        <Button variant="link" size="sm" className="p-0 h-auto text-destructive" onClick={() => console.log('Cancel request:', req.id)}>Cancel Request</Button>
                     }
                 </div>
               </div>
@@ -78,7 +81,7 @@ export default function CustomerDashboardPage() {
           )}
         </CardContent>
         <CardFooter className="justify-center">
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => console.log('View full history clicked')}>
                 <History className="mr-2 h-4 w-4"/> View Full History (Placeholder)
             </Button>
         </CardFooter>

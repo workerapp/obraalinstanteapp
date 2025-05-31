@@ -1,9 +1,12 @@
 // src/app/dashboard/handyman/page.tsx
+"use client";
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Briefcase, CalendarCheck, DollarSign, Settings2, UserCog } from 'lucide-react';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 // Mock data for handyman dashboard
 const mockAppointments = [
@@ -98,12 +101,12 @@ export default function HandymanDashboardPage() {
                   </div>
                 </div>
                  <div className="mt-3 flex gap-2">
-                    <Button variant="link" size="sm" className="p-0 h-auto text-accent">View Details</Button>
+                    <Button variant="link" size="sm" className="p-0 h-auto text-accent" onClick={() => console.log('View details for appointment:', apt.id)}>View Details</Button>
                     {apt.status === 'Pending Confirmation' && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-green-600">Confirm</Button>
+                        <Button variant="link" size="sm" className="p-0 h-auto text-green-600" onClick={() => console.log('Confirm appointment:', apt.id)}>Confirm</Button>
                     }
                      {apt.status !== 'Completed' && apt.status !== 'Cancelled' && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-destructive">Cancel/Decline</Button>
+                        <Button variant="link" size="sm" className="p-0 h-auto text-destructive" onClick={() => console.log('Cancel/Decline appointment:', apt.id)}>Cancel/Decline</Button>
                     }
                 </div>
               </div>
@@ -114,7 +117,7 @@ export default function HandymanDashboardPage() {
           )}
         </CardContent>
          <CardFooter className="justify-center">
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => console.log('View full schedule clicked')}>
                 <CalendarCheck className="mr-2 h-4 w-4"/> View Full Schedule (Placeholder)
             </Button>
         </CardFooter>

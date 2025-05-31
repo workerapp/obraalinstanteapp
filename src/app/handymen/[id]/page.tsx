@@ -1,12 +1,14 @@
 // src/app/handymen/[id]/page.tsx
+"use client";
+
 import { handymen } from '@/data/handymen';
 import type { Handyman } from '@/types/handyman';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Star, MapPin, CalendarDays, MessageSquare, Phone, CheckBadgeIcon } from 'lucide-react'; // CheckBadgeIcon might not exist, use CheckCircle
-import { CheckCircle } from 'lucide-react'; // Fallback for CheckBadgeIcon
+import { ArrowLeft, Star, MapPin, CalendarDays, MessageSquare, Phone } from 'lucide-react'; 
+import { CheckCircle } from 'lucide-react'; 
 
 interface HandymanDetailPageProps {
   params: { id: string };
@@ -63,10 +65,12 @@ export default function HandymanDetailPage({ params }: HandymanDetailPageProps) 
                 />
               </div>
             )}
-             <Button size="lg" className="w-full bg-primary hover:bg-primary/90 mb-2">
-              <MessageSquare size={18} className="mr-2" /> Request Service
+             <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 mb-2">
+              <Link href={`/request-quotation?handymanId=${handyman.id}`}>
+                <MessageSquare size={18} className="mr-2" /> Request Service
+              </Link>
             </Button>
-            <Button variant="outline" size="lg" className="w-full">
+            <Button variant="outline" size="lg" className="w-full" onClick={() => console.log('Contact handyman (mock):', handyman.id)}>
               <Phone size={18} className="mr-2" /> Contact (Mock)
             </Button>
           </div>
@@ -145,4 +149,3 @@ export async function generateMetadata({ params }: HandymanDetailPageProps) {
     description: `Profile for ${handyman.name}: ${handyman.tagline}. Skills: ${handyman.skills.join(', ')}.`,
   };
 }
-
