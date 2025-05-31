@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Star, MapPin, CalendarDays, MessageSquare, Phone, CheckCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface Review {
   id: number;
@@ -22,8 +23,8 @@ interface HandymanDetailClientContentProps {
 }
 
 export default function HandymanDetailClientContent({ handyman, reviews }: HandymanDetailClientContentProps) {
-  // The !handyman case is handled by notFound() in the server component,
-  // but as a safeguard or if props could be undefined for other reasons:
+  const { toast } = useToast();
+
   if (!handyman) {
     return (
       <div className="text-center py-10">
@@ -34,6 +35,22 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
       </div>
     );
   }
+
+  const handleWhatsAppContact = () => {
+    if (handyman.phone) {
+      const phoneNumber = handyman.phone.replace(/\D/g, ''); // Remove non-digit characters
+      const message = encodeURIComponent(`Hello ${handyman.name}, I'm interested in your services listed on Manitas Listas.`);
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
+      window.open(whatsappUrl, '_blank');
+    } else {
+      toast({
+        title: "Contact Info Missing",
+        description: "This handyman has not provided a WhatsApp contact number.",
+        variant: "destructive",
+      });
+      console.log('Contact handyman (no phone):', handyman.id);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto py-8 space-y-8">
@@ -64,8 +81,8 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
                 <MessageSquare size={18} className="mr-2" /> Request Service
               </Link>
             </Button>
-            <Button variant="outline" size="lg" className="w-full" onClick={() => console.log('Contact handyman (mock):', handyman.id)}>
-              <Phone size={18} className="mr-2" /> Contact (Mock)
+            <Button variant="outline" size="lg" className="w-full" onClick={handleWhatsAppContact}>
+              <Phone size={18} className="mr-2" /> Contactar por WhatsApp
             </Button>
           </div>
 

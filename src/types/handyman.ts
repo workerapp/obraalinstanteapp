@@ -10,4 +10,5 @@ export interface Handyman {
   location?: string; // e.g., "City, State" or general area
   memberSince: string; // e.g., "Joined Jan 2022"
   dataAiHint?: string;
+  phone?: string; // Phone number for WhatsApp contact
 }

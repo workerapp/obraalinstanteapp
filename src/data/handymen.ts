@@ -13,6 +13,7 @@ export const handymen: Handyman[] = [
     dataAiHint: 'man portrait',
     location: 'Springfield, IL',
     memberSince: 'Joined Mar 2021',
+    phone: '+15551230001', // Example phone number
   },
   {
     id: 'jane-smith',
@@ -25,6 +26,7 @@ export const handymen: Handyman[] = [
     dataAiHint: 'woman portrait',
     location: 'Shelbyville, IL',
     memberSince: 'Joined Jun 2020',
+    phone: '+15551230002', // Example phone number
   },
   {
     id: 'mike-brown',
@@ -37,6 +39,7 @@ export const handymen: Handyman[] = [
     dataAiHint: 'man smiling',
     location: 'Capital City, IL',
     memberSince: 'Joined Apr 2022',
+    phone: '+15551230003', // Example phone number
   },
   {
     id: 'sarah-wilson',
@@ -49,5 +52,6 @@ export const handymen: Handyman[] = [
     dataAiHint: 'woman professional',
     location: 'Springfield, IL',
     memberSince: 'Joined Nov 2019',
+    phone: '+15551230004', // Example phone number
   },
 ];
