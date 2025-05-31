@@ -55,6 +55,7 @@ export default function ServiceCard({ service }: ServiceCardProps) {
             ))}
             {service.commonTasks.length > 3 && <li>...and more</li>}
           </ul>
+          {/* Removed averagePrice display
           {service.averagePrice && (
             <div className="mt-3">
               <Badge variant="secondary" className="text-sm">
@@ -62,6 +63,7 @@ export default function ServiceCard({ service }: ServiceCardProps) {
               </Badge>
             </div>
           )}
+          */}
         </div>
       </CardContent>
       <CardFooter>
@@ -72,3 +74,4 @@ export default function ServiceCard({ service }: ServiceCardProps) {
     </Card>
   );
 }
+

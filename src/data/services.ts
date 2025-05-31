@@ -10,7 +10,7 @@ export const services: Service[] = [
     iconName: 'Wrench', // Lucide icon name
     imageUrl: 'https://placehold.co/600x400.png',
     dataAiHint: 'plumbing tools',
-    averagePrice: '$70 - $150 per hour',
+    averagePrice: null,
     commonTasks: ['Fix leaky faucets and toilets', 'Unclog drains', 'Water heater repair/install', 'Pipe repair'],
   },
   {
@@ -21,7 +21,7 @@ export const services: Service[] = [
     iconName: 'PlugZap',
     imageUrl: 'https://placehold.co/600x400.png',
     dataAiHint: 'electrical panel',
-    averagePrice: '$80 - $200 per hour',
+    averagePrice: null,
     commonTasks: ['Install light fixtures and ceiling fans', 'Outlet and switch repair/install', 'Electrical panel upgrades', 'Troubleshoot electrical issues'],
   },
   {
@@ -32,7 +32,7 @@ export const services: Service[] = [
     iconName: 'PaintRoller',
     imageUrl: 'https://placehold.co/600x400.png',
     dataAiHint: 'painting wall',
-    averagePrice: '$50 - $100 per hour',
+    averagePrice: null,
     commonTasks: ['Interior painting (walls, ceilings)', 'Exterior painting', 'Trim and door painting', 'Drywall repair and texturing'],
   },
   {
@@ -43,7 +43,7 @@ export const services: Service[] = [
     iconName: 'Hammer',
     imageUrl: 'https://placehold.co/600x400.png',
     dataAiHint: 'carpentry wood',
-    averagePrice: '$60 - $120 per hour',
+    averagePrice: null,
     commonTasks: ['Custom shelving and cabinets', 'Door and window frame repair', 'Deck and fence repair', 'Furniture assembly'],
   },
   {
@@ -54,7 +54,7 @@ export const services: Service[] = [
     iconName: 'Sparkles', // Using Sparkles as a general cleaning icon
     imageUrl: 'https://placehold.co/600x400.png',
     dataAiHint: 'cleaning supplies',
-    averagePrice: '$40 - $80 per hour',
+    averagePrice: null,
     commonTasks: ['Regular house cleaning', 'Deep cleaning', 'Move-in/move-out cleaning', 'Window cleaning'],
   },
   {
@@ -65,7 +65,8 @@ export const services: Service[] = [
     iconName: 'Leaf',
     imageUrl: 'https://placehold.co/600x400.png',
     dataAiHint: 'gardening tools',
-    averagePrice: '$55 - $110 per hour',
+    averagePrice: null,
     commonTasks: ['Lawn mowing and maintenance', 'Planting and weeding', 'Hedge trimming', 'Garden design'],
   },
 ];
+

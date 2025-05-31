@@ -77,9 +77,12 @@ export default function ServiceDetailPage({ params }: ServiceDetailPageProps) {
           <h2 className="text-2xl font-semibold font-headline mb-3">Service Details</h2>
           <div className="space-y-2 text-foreground/90">
             <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Category:</strong> {service.category}</p>
+            {/* Removed averagePrice display
             {service.averagePrice && (
               <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Average Price:</strong> <Badge variant="secondary">{service.averagePrice}</Badge></p>
             )}
+            */}
+            <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Pricing:</strong> Based on custom quotation</p>
           </div>
         </section>
 
@@ -122,3 +125,4 @@ export async function generateMetadata({ params }: ServiceDetailPageProps) {
     description: service.description,
   };
 }
+

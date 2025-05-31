@@ -8,7 +8,8 @@ export interface Service {
   category: string;
   iconName?: string; // For Lucide icon name string
   imageUrl?: string; // Optional image URL
-  averagePrice?: string; // e.g., "$50 - $100" or "Starting from $75/hr"
+  averagePrice?: string | null; // e.g., "$50 - $100" or "Starting from $75/hr" - Now optional
   commonTasks: string[];
   dataAiHint?: string; // For placeholder image search
 }
+
