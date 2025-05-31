@@ -1,0 +1,53 @@
+// src/data/handymen.ts
+import type { Handyman } from '@/types/handyman';
+
+export const handymen: Handyman[] = [
+  {
+    id: 'john-doe',
+    name: 'John Doe',
+    tagline: 'Reliable & Skilled All-rounder',
+    skills: ['Plumbing', 'Electrical', 'Carpentry'],
+    rating: 4.8,
+    reviewsCount: 120,
+    imageUrl: 'https://placehold.co/300x300.png',
+    dataAiHint: 'man portrait',
+    location: 'Springfield, IL',
+    memberSince: 'Joined Mar 2021',
+  },
+  {
+    id: 'jane-smith',
+    name: 'Jane Smith',
+    tagline: 'Expert Painter & Decorator',
+    skills: ['Painting', 'Drywall Repair', 'Interior Design Consultation'],
+    rating: 4.9,
+    reviewsCount: 85,
+    imageUrl: 'https://placehold.co/300x300.png',
+    dataAiHint: 'woman portrait',
+    location: 'Shelbyville, IL',
+    memberSince: 'Joined Jun 2020',
+  },
+  {
+    id: 'mike-brown',
+    name: 'Mike Brown',
+    tagline: 'Your Go-To for Outdoor & Garden Care',
+    skills: ['Gardening', 'Landscaping', 'Fence Repair', 'Pressure Washing'],
+    rating: 4.7,
+    reviewsCount: 95,
+    imageUrl: 'https://placehold.co/300x300.png',
+    dataAiHint: 'man smiling',
+    location: 'Capital City, IL',
+    memberSince: 'Joined Apr 2022',
+  },
+  {
+    id: 'sarah-wilson',
+    name: 'Sarah Wilson',
+    tagline: 'Quick & Efficient Cleaning Pro',
+    skills: ['Home Cleaning', 'Deep Cleaning', 'Office Cleaning'],
+    rating: 4.9,
+    reviewsCount: 210,
+    imageUrl: 'https://placehold.co/300x300.png',
+    dataAiHint: 'woman professional',
+    location: 'Springfield, IL',
+    memberSince: 'Joined Nov 2019',
+  },
+];

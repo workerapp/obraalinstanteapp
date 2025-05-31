@@ -1,0 +1,124 @@
+// src/app/services/[id]/page.tsx
+import { services } from '@/data/services';
+import type { Service } from '@/types/service';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, CheckCircle, Tag, Users } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+// Helper function to get Lucide icon component by name string
+const getIcon = (name?: string): LucideIcon | null => {
+  if (!name || !(name in LucideIcons)) return LucideIcons.Settings; // Default icon
+  return LucideIcons[name as keyof typeof LucideIcons] as LucideIcon;
+};
+
+interface ServiceDetailPageProps {
+  params: { id: string };
+}
+
+export async function generateStaticParams() {
+  return services.map((service) => ({
+    id: service.id,
+  }));
+}
+
+export default function ServiceDetailPage({ params }: ServiceDetailPageProps) {
+  const service = services.find(s => s.id === params.id);
+
+  if (!service) {
+    return (
+      <div className="text-center py-10">
+        <h1 className="text-2xl font-bold">Service not found</h1>
+        <p className="text-muted-foreground">The service you are looking for does not exist.</p>
+        <Button asChild className="mt-4">
+          <Link href="/services">Back to Services</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const IconComponent = getIcon(service.iconName);
+
+  return (
+    <div className="max-w-4xl mx-auto py-8 space-y-8">
+      <div>
+        <Button variant="outline" asChild className="mb-6">
+          <Link href="/services" className="flex items-center gap-2">
+            <ArrowLeft size={16} /> Back to Services
+          </Link>
+        </Button>
+      </div>
+
+      <article className="bg-card p-6 sm:p-8 rounded-xl shadow-xl">
+        {service.imageUrl && (
+          <div className="relative w-full h-64 sm:h-80 mb-6 rounded-lg overflow-hidden">
+            <Image
+              src={service.imageUrl}
+              alt={service.name}
+              layout="fill"
+              objectFit="cover"
+              data-ai-hint={service.dataAiHint || "service action"}
+            />
+          </div>
+        )}
+
+        <header className="mb-6">
+          <div className="flex items-center gap-3 mb-2">
+            {IconComponent && <IconComponent className="h-10 w-10 text-primary" />}
+            <h1 className="text-4xl font-headline font-bold text-primary">{service.name}</h1>
+          </div>
+          <p className="text-lg text-muted-foreground">{service.description}</p>
+        </header>
+
+        <section className="mb-6">
+          <h2 className="text-2xl font-semibold font-headline mb-3">Service Details</h2>
+          <div className="space-y-2 text-foreground/90">
+            <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Category:</strong> {service.category}</p>
+            {service.averagePrice && (
+              <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Average Price:</strong> <Badge variant="secondary">{service.averagePrice}</Badge></p>
+            )}
+          </div>
+        </section>
+
+        <section className="mb-6">
+          <h2 className="text-2xl font-semibold font-headline mb-3">Common Tasks</h2>
+          <ul className="space-y-2">
+            {service.commonTasks.map((task, index) => (
+              <li key={index} className="flex items-start gap-2">
+                <CheckCircle size={20} className="text-green-500 mt-1 shrink-0" />
+                <span>{task}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <footer className="mt-8 pt-6 border-t">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <Button size="lg" asChild className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground shadow-md">
+              <Link href={`/request-quotation?serviceId=${service.id}`}>Request a Quotation</Link>
+            </Button>
+            <Button variant="outline" size="lg" asChild className="w-full sm:w-auto shadow-md">
+              <Link href="/handymen" className="flex items-center gap-2">
+                <Users size={18} /> Find a Handyman for this Service
+              </Link>
+            </Button>
+          </div>
+        </footer>
+      </article>
+    </div>
+  );
+}
+
+export async function generateMetadata({ params }: ServiceDetailPageProps) {
+  const service = services.find(s => s.id === params.id);
+  if (!service) {
+    return { title: "Service Not Found" };
+  }
+  return {
+    title: `${service.name} - Manitas Listas`,
+    description: service.description,
+  };
+}
