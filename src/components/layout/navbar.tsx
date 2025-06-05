@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Home, Wrench, Users, LogIn, UserPlus, Sparkles, LayoutDashboard, LogOut, Briefcase, UserCircle, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, type AppUser } from '@/hooks/useAuth'; // Updated import for AppUser
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +20,7 @@ import { useState, useEffect } from 'react';
 
 export default function Navbar() {
   const { user, signOutUser, loading: authLoading } = useAuth();
+  const typedUser = user as AppUser | null; // Cast user to AppUser
   const isMobile = useIsMobile();
   const [hasMounted, setHasMounted] = useState(false);
 
@@ -53,7 +54,7 @@ export default function Navbar() {
   );
 
   const authLinksContent = (isSheetContext: boolean) => {
-    if (authLoading && !user) { 
+    if (authLoading && !typedUser) { 
        if (isSheetContext) {
         return (
           <>
@@ -70,17 +71,18 @@ export default function Navbar() {
       );
     }
 
-    if (user) {
+    if (typedUser) {
+      const dashboardLink = typedUser.role === 'handyman' ? '/dashboard/handyman' : '/dashboard/customer';
       if (isSheetContext) { // Mobile logged in
         return (
           <>
             <SheetClose asChild>
-              <Link href="/dashboard" className="flex items-center gap-2 p-2 hover:bg-accent rounded-md text-base">
+              <Link href={dashboardLink} className="flex items-center gap-2 p-2 hover:bg-accent rounded-md text-base">
                 <LayoutDashboard size={18} /> Dashboard
               </Link>
             </SheetClose>
             <Separator className="my-2" />
-            <div className="px-2 py-1 text-sm text-muted-foreground font-medium">{user.email}</div>
+            <div className="px-2 py-1 text-sm text-muted-foreground font-medium">{typedUser.displayName || typedUser.email}</div>
             <SheetClose asChild>
               <Link href="/dashboard/profile" className="flex items-center gap-2 p-2 hover:bg-accent rounded-md text-base">
                 <UserCircle size={18} /> Profile (Placeholder)
@@ -102,7 +104,7 @@ export default function Navbar() {
         return (
           <>
             <Button variant="ghost" asChild size="sm">
-              <Link href="/dashboard" className="flex items-center gap-1">
+              <Link href={dashboardLink} className="flex items-center gap-1">
                 <LayoutDashboard size={16} /> Dashboard
               </Link>
             </Button>
@@ -110,11 +112,11 @@ export default function Navbar() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-1 px-2">
                   <UserCircle size={20} />
-                  <span className="hidden md:inline text-sm">{user.displayName || user.email?.split('@')[0]}</span>
+                  <span className="hidden md:inline text-sm">{typedUser.displayName || typedUser.email?.split('@')[0]}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+                <DropdownMenuLabel>{typedUser.displayName || typedUser.email}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/profile">Profile (Placeholder)</Link>
