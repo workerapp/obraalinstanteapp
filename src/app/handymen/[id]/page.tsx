@@ -1,3 +1,4 @@
+
 // src/app/handymen/[id]/page.tsx
 import { handymen } from '@/data/handymen';
 import type { Handyman } from '@/types/handyman';
@@ -17,11 +18,11 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: HandymanDetailPageProps) {
   const handyman = handymen.find(h => h.id === params.id);
   if (!handyman) {
-    return { title: "Handyman Not Found" };
+    return { title: "Operario No Encontrado" };
   }
   return {
-    title: `${handyman.name} - Handyman Profile | Manitas Listas`,
-    description: `Profile for ${handyman.name}: ${handyman.tagline}. Skills: ${handyman.skills.join(', ')}.`,
+    title: `${handyman.name} - Perfil de Operario | Obra al Instante`,
+    description: `Perfil de ${handyman.name}: ${handyman.tagline}. Habilidades: ${handyman.skills.join(', ')}.`,
   };
 }
 
@@ -34,8 +35,8 @@ export default function HandymanDetailPage({ params }: HandymanDetailPageProps) 
 
   // Mock reviews - in a real app, these might be fetched or come from handyman data
   const reviews = [
-    { id: 1, author: "Alice B.", rating: 5, comment: "John was fantastic! Fixed my leaky faucet in no time. Highly recommend.", date: "2023-03-15" },
-    { id: 2, author: "Bob C.", rating: 4, comment: "Good work on the electrical wiring. Professional and tidy.", date: "2023-02-20" },
+    { id: 1, author: "Alicia B.", rating: 5, comment: "¡Juan fue fantástico! Arregló mi grifo que goteaba en poco tiempo. Altamente recomendado.", date: "2023-03-15" },
+    { id: 2, author: "Roberto C.", rating: 4, comment: "Buen trabajo en el cableado eléctrico. Profesional y ordenado.", date: "2023-02-20" },
   ];
 
   return <HandymanDetailClientContent handyman={handyman} reviews={reviews} />;

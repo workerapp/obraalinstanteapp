@@ -1,71 +1,72 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Sparkles, Users, Wrench } from 'lucide-react';
+import { CheckCircle, Sparkles, Users, Construction } from 'lucide-react'; // Changed Wrench to Construction
 
 export default function HomePage() {
   return (
     <div className="space-y-12">
       <section className="text-center py-12 bg-gradient-to-br from-primary/20 via-background to-background rounded-xl shadow-lg">
         <div className="container mx-auto">
-          <Wrench className="mx-auto h-24 w-24 text-primary mb-6 animate-bounce" />
+          <Construction className="mx-auto h-24 w-24 text-primary mb-6 animate-bounce" />
           <h1 className="text-5xl font-headline font-bold text-primary mb-4">
-            Welcome to Manitas Listas!
+            ¡Bienvenido a Obra al Instante!
           </h1>
           <p className="text-xl text-foreground/80 mb-8 max-w-2xl mx-auto">
-            Your one-stop solution for finding skilled handymen and getting expert advice for your home repair and maintenance needs.
+            Tu solución integral para encontrar operarios calificados y obtener asesoramiento experto para las reparaciones y mantenimiento de tu hogar.
           </p>
           <div className="space-x-4">
             <Button size="lg" asChild className="shadow-md hover:shadow-lg transition-shadow">
-              <Link href="/services">Browse Services</Link>
+              <Link href="/services">Explorar Servicios</Link>
             </Button>
             <Button size="lg" variant="outline" asChild className="shadow-md hover:shadow-lg transition-shadow">
-              <Link href="/handymen">Find a Handyman</Link>
+              <Link href="/handymen">Buscar un Operario</Link>
             </Button>
           </div>
         </div>
       </section>
 
       <section className="container mx-auto">
-        <h2 className="text-3xl font-headline font-semibold text-center mb-10">How It Works</h2>
+        <h2 className="text-3xl font-headline font-semibold text-center mb-10">Cómo Funciona</h2>
         <div className="grid md:grid-cols-3 gap-8">
           <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-headline">
-                <Sparkles className="text-accent" /> Describe Your Problem
+                <Sparkles className="text-accent" /> Describe tu Problema
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p>Use our AI Assistant to describe your issue and get instant solution suggestions, or browse services.</p>
+              <p>Usa nuestro Asistente IA para describir tu problema y obtener sugerencias de soluciones al instante, o explora nuestros servicios.</p>
               <Button variant="link" asChild className="px-0 mt-2 text-accent hover:text-accent/80">
-                <Link href="/ai-assistant">Try AI Assistant &rarr;</Link>
+                <Link href="/ai-assistant">Probar Asistente IA &rarr;</Link>
               </Button>
             </CardContent>
           </Card>
           <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-headline">
-                <Users className="text-accent" /> Find a Pro
+                <Users className="text-accent" /> Encuentra un Profesional
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p>Browse profiles of skilled handymen, check their ratings, and request a quote for your specific needs.</p>
+              <p>Explora perfiles de operarios calificados, revisa sus valoraciones y solicita una cotización para tus necesidades específicas.</p>
                <Button variant="link" asChild className="px-0 mt-2 text-accent hover:text-accent/80">
-                <Link href="/handymen">Find Handymen &rarr;</Link>
+                <Link href="/handymen">Buscar Operarios &rarr;</Link>
               </Button>
             </CardContent>
           </Card>
           <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-headline">
-                <CheckCircle className="text-accent" /> Get It Done
+                <CheckCircle className="text-accent" /> ¡Trabajo Hecho!
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p>Hire the right handyman, manage your appointments, and enjoy a hassle-free service experience.</p>
+              <p>Contrata al operario adecuado, gestiona tus citas y disfruta de una experiencia de servicio sin complicaciones.</p>
                <Button variant="link" asChild className="px-0 mt-2 text-accent hover:text-accent/80">
-                <Link href="/request-quotation">Request a Quote &rarr;</Link>
+                <Link href="/request-quotation">Solicitar Cotización &rarr;</Link>
               </Button>
             </CardContent>
           </Card>
@@ -75,22 +76,22 @@ export default function HomePage() {
       <section className="container mx-auto py-10">
          <Card className="bg-primary text-primary-foreground p-8 rounded-lg shadow-xl flex flex-col md:flex-row items-center gap-8">
             <div className="flex-1">
-              <h2 className="text-3xl font-headline font-bold mb-4">Are you a skilled Handyman?</h2>
+              <h2 className="text-3xl font-headline font-bold mb-4">¿Eres un Operario Calificado?</h2>
               <p className="mb-6">
-                Join our platform to connect with customers looking for your expertise. Manage your services, appointments, and grow your business with Manitas Listas.
+                Únete a nuestra plataforma para conectar con clientes que buscan tu experiencia. Gestiona tus servicios, citas y haz crecer tu negocio con Obra al Instante.
               </p>
               <Button variant="secondary" size="lg" asChild className="shadow-md hover:shadow-lg transition-shadow bg-primary-foreground text-primary hover:bg-primary-foreground/90">
-                <Link href="/sign-up?role=handyman">Register as Handyman</Link>
+                <Link href="/sign-up?role=handyman">Registrarse como Operario</Link>
               </Button>
             </div>
             <div className="flex-shrink-0">
               <Image 
                 src="https://placehold.co/300x250.png" 
-                alt="Handyman tools" 
+                alt="Herramientas de operario" 
                 width={300} 
                 height={250} 
                 className="rounded-lg shadow-md"
-                data-ai-hint="tools construction" 
+                data-ai-hint="herramientas construccion" 
               />
             </div>
           </Card>

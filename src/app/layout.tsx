@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PT_Sans } from 'next/font/google'; // Using next/font for PT Sans
@@ -16,9 +17,9 @@ const ptSans = PT_Sans({
 });
 
 export const metadata: Metadata = {
-  title: 'Manitas Listas - Your Home Services Solution',
-  description: 'Find reliable handyman services or offer your skills. Get AI-powered solutions for your home problems.',
-  icons: [{ rel: "icon", url: "/favicon.ico" }] // Assuming a favicon might be added later
+  title: 'Obra al Instante - Tu Solución de Servicios para el Hogar',
+  description: 'Encuentra operarios calificados u ofrece tus servicios. Obtén soluciones impulsadas por IA para los problemas de tu hogar.',
+  icons: [{ rel: "icon", url: "/favicon.ico" }]
 };
 
 export default function RootLayout({
@@ -27,14 +28,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${ptSans.variable} h-full`}>
+    <html lang="es" className={`${ptSans.variable} h-full`}>
       <head>
-        {/* Keep existing Google Font links if any, but PT Sans is now managed by next/font */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* Example: if Inter was also used for fallback or specific elements 
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet" />
-        */}
       </head>
       <body className="font-body antialiased flex flex-col min-h-screen">
         <Providers> {/* QueryClientProvider is here */}

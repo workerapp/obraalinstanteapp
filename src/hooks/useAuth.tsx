@@ -1,17 +1,17 @@
+
 // src/hooks/useAuth.tsx
 "use client";
 
 import type React from 'react';
 import { useState, useEffect, createContext, useContext, type PropsWithChildren } from 'react';
 import { type User as FirebaseUser, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
-import { auth, firestore } from '@/firebase/clientApp'; // Using auth and firestore instance from clientApp
+import { auth, firestore } from '@/firebase/clientApp';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
 export interface AppUser extends FirebaseUser {
   role?: string;
-  // displayName is already part of FirebaseUser, but we ensure it's populated from Firestore if needed
 }
 
 interface AuthContextType {
@@ -39,12 +39,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
           const userData = userDocSnap.data();
           setUser({
             ...firebaseUser,
-            displayName: userData.displayName || firebaseUser.displayName, // Prioritize Firestore data
+            displayName: userData.displayName || firebaseUser.displayName,
             role: userData.role,
           });
         } else {
-          // User exists in Auth but not in Firestore (e.g., imported users, or if Firestore write failed during signup)
-          // We could create a Firestore entry here if needed, or just use Auth data
           setUser(firebaseUser); 
         }
       } else {
@@ -59,22 +57,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-      
-      // Update Firebase Auth profile (optional, but good practice)
       await updateProfile(userCredential.user, { displayName: fullName });
 
-      // Save additional user info (including role) to Firestore
       const userDocRef = doc(firestore, "users", userCredential.user.uid);
       await setDoc(userDocRef, {
         uid: userCredential.user.uid,
         email: userCredential.user.email,
         displayName: fullName,
         role: role,
-        createdAt: new Date().toISOString(), // Good practice to store creation date
+        createdAt: new Date().toISOString(),
       });
       
-      console.log('User signed up and data stored in Firestore:', userCredential.user.uid, 'Name:', fullName, 'Role:', role);
-      toast({ title: "Account Created!", description: "Welcome! You have successfully signed up." });
+      console.log('Usuario registrado y datos guardados en Firestore:', userCredential.user.uid, 'Nombre:', fullName, 'Rol:', role);
+      toast({ title: "¡Cuenta Creada!", description: "¡Bienvenido/a! Te has registrado con éxito." });
       
       const appUser: AppUser = {
         ...userCredential.user,
@@ -85,8 +80,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       router.push(role === 'handyman' ? '/dashboard/handyman' : '/dashboard/customer'); 
       return appUser;
     } catch (error: any) {
-      console.error("Sign up error:", error);
-      toast({ title: "Sign Up Failed", description: error.message || "Please try again.", variant: "destructive" });
+      console.error("Error al registrarse:", error);
+      toast({ title: "Falló el Registro", description: error.message || "Por favor, inténtalo de nuevo.", variant: "destructive" });
       return null;
     } finally {
       setLoading(false);
@@ -97,13 +92,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-      // User data including role will be fetched by onAuthStateChanged listener
-      toast({ title: "Signed In!", description: "Welcome back!" });
+      toast({ title: "¡Sesión Iniciada!", description: "¡Bienvenido/a de nuevo!" });
       
-      // We need to fetch role to redirect correctly immediately after sign-in
       const userDocRef = doc(firestore, "users", userCredential.user.uid);
       const userDocSnap = await getDoc(userDocRef);
-      let role = 'customer'; // Default role
+      let role = 'customer'; 
       let displayName = userCredential.user.displayName;
 
       if (userDocSnap.exists()) {
@@ -121,8 +114,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       router.push(role === 'handyman' ? '/dashboard/handyman' : '/dashboard/customer');
       return appUser;
     } catch (error: any) {
-      console.error("Sign in error:", error);
-      toast({ title: "Sign In Failed", description: error.message || "Invalid credentials. Please try again.", variant: "destructive" });
+      console.error("Error al iniciar sesión:", error);
+      toast({ title: "Falló el Inicio de Sesión", description: error.message || "Credenciales inválidas. Por favor, inténtalo de nuevo.", variant: "destructive" });
       return null;
     } finally {
       setLoading(false);
@@ -133,12 +126,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setLoading(true);
     try {
       await signOut(auth);
-      toast({ title: "Signed Out", description: "You have been successfully signed out." });
+      toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
       setUser(null);
       router.push('/'); 
     } catch (error: any) {
-      console.error("Sign out error:", error);
-      toast({ title: "Sign Out Failed", description: error.message || "Please try again.", variant: "destructive" });
+      console.error("Error al cerrar sesión:", error);
+      toast({ title: "Falló el Cierre de Sesión", description: error.message || "Por favor, inténtalo de nuevo.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -152,7 +145,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
   }
   return context;
 }

@@ -1,3 +1,4 @@
+
 // src/components/handymen/handyman-detail-client-content.tsx
 "use client";
 
@@ -28,9 +29,9 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
   if (!handyman) {
     return (
       <div className="text-center py-10">
-        <h1 className="text-2xl font-bold">Handyman data is unavailable.</h1>
+        <h1 className="text-2xl font-bold">Datos del operario no disponibles.</h1>
         <Button asChild className="mt-4">
-          <Link href="/handymen">Back to Directory</Link>
+          <Link href="/handymen">Volver al Directorio</Link>
         </Button>
       </div>
     );
@@ -39,16 +40,16 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
   const handleWhatsAppContact = () => {
     if (handyman.phone) {
       const phoneNumber = handyman.phone.replace(/\D/g, ''); // Remove non-digit characters
-      const message = encodeURIComponent(`Hello ${handyman.name}, I'm interested in your services listed on Manitas Listas.`);
+      const message = encodeURIComponent(`Hola ${handyman.name}, estoy interesado/a en tus servicios listados en Obra al Instante.`);
       const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
       window.open(whatsappUrl, '_blank');
     } else {
       toast({
-        title: "Contact Info Missing",
-        description: "This handyman has not provided a WhatsApp contact number.",
+        title: "Información de Contacto Faltante",
+        description: "Este operario no ha proporcionado un número de WhatsApp.",
         variant: "destructive",
       });
-      console.log('Contact handyman (no phone):', handyman.id);
+      console.log('Contactar operario (sin teléfono):', handyman.id);
     }
   };
 
@@ -57,7 +58,7 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
       <div>
         <Button variant="outline" asChild className="mb-6">
           <Link href="/handymen" className="flex items-center gap-2">
-            <ArrowLeft size={16} /> Back to Directory
+            <ArrowLeft size={16} /> Volver al Directorio
           </Link>
         </Button>
       </div>
@@ -72,13 +73,13 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
                   alt={handyman.name}
                   layout="fill"
                   objectFit="cover"
-                  data-ai-hint={handyman.dataAiHint || "person professional"}
+                  data-ai-hint={handyman.dataAiHint || "persona profesional"}
                 />
               </div>
             )}
              <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 mb-2">
               <Link href={`/request-quotation?handymanId=${handyman.id}`}>
-                <MessageSquare size={18} className="mr-2" /> Request Service
+                <MessageSquare size={18} className="mr-2" /> Solicitar Servicio
               </Link>
             </Button>
             <Button variant="outline" size="lg" className="w-full" onClick={handleWhatsAppContact}>
@@ -93,7 +94,7 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
             <div className="flex items-center gap-2 mb-4">
               <Star className="h-6 w-6 text-yellow-400 fill-yellow-400" />
               <span className="text-xl font-semibold">{handyman.rating.toFixed(1)}</span>
-              <span className="text-sm text-muted-foreground">({handyman.reviewsCount} reviews)</span>
+              <span className="text-sm text-muted-foreground">({handyman.reviewsCount} reseñas)</span>
             </div>
 
             <div className="space-y-2 text-foreground/90 mb-6">
@@ -104,7 +105,7 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
             </div>
 
             <section className="mb-6">
-              <h2 className="text-2xl font-semibold font-headline mb-3">Skills</h2>
+              <h2 className="text-2xl font-semibold font-headline mb-3">Habilidades</h2>
               <div className="flex flex-wrap gap-2">
                 {handyman.skills.map((skill) => (
                   <Badge key={skill} variant="secondary" className="px-3 py-1 text-sm">
@@ -115,17 +116,16 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
             </section>
             
             <section>
-              <h2 className="text-2xl font-semibold font-headline mb-3">About Me (Placeholder)</h2>
+              <h2 className="text-2xl font-semibold font-headline mb-3">Sobre Mí (Ejemplo)</h2>
               <p className="text-foreground/80 leading-relaxed">
-                With over 10 years of experience in the field, I am dedicated to providing high-quality workmanship and excellent customer service. I specialize in a variety of home repair and improvement tasks, ensuring every job is done right the first time. My goal is to help you maintain and enhance your home with reliable and efficient service.
+                Con más de 10 años de experiencia en el campo, me dedico a proporcionar mano de obra de alta calidad y un excelente servicio al cliente. Me especializo en una variedad de tareas de reparación y mejora del hogar, asegurando que cada trabajo se haga bien a la primera. Mi objetivo es ayudarte a mantener y mejorar tu hogar con un servicio confiable y eficiente.
               </p>
             </section>
           </div>
         </div>
         
-        {/* Reviews Section - Mockup */}
         <section className="mt-10 pt-6 border-t">
-          <h2 className="text-2xl font-semibold font-headline mb-4">Customer Reviews ({reviews.length})</h2>
+          <h2 className="text-2xl font-semibold font-headline mb-4">Reseñas de Clientes ({reviews.length})</h2>
           <div className="space-y-6">
             {reviews.map(review => (
               <div key={review.id} className="p-4 border rounded-md bg-background">
@@ -141,7 +141,7 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
                 <p className="text-sm text-foreground/90">{review.comment}</p>
               </div>
             ))}
-            {reviews.length === 0 && <p className="text-muted-foreground">No reviews yet for this handyman.</p>}
+            {reviews.length === 0 && <p className="text-muted-foreground">Aún no hay reseñas para este operario.</p>}
           </div>
         </section>
       </div>

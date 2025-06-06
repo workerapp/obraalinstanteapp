@@ -1,3 +1,4 @@
+
 // src/components/handymen/handyman-profile-card.tsx
 import Image from 'next/image';
 import Link from 'next/link';
@@ -23,7 +24,7 @@ export default function HandymanProfileCard({ handyman }: HandymanProfileCardPro
               layout="fill"
               objectFit="cover"
               className="rounded-t-md"
-              data-ai-hint={handyman.dataAiHint || "person portrait"}
+              data-ai-hint={handyman.dataAiHint || "persona retrato"}
             />
           </div>
         )}
@@ -35,7 +36,7 @@ export default function HandymanProfileCard({ handyman }: HandymanProfileCardPro
         <div className="flex items-center gap-2 mb-3">
           <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
           <span className="font-semibold">{handyman.rating.toFixed(1)}</span>
-          <span className="text-xs text-muted-foreground">({handyman.reviewsCount} reviews)</span>
+          <span className="text-xs text-muted-foreground">({handyman.reviewsCount} reseñas)</span>
         </div>
 
         {handyman.location && (
@@ -48,18 +49,18 @@ export default function HandymanProfileCard({ handyman }: HandymanProfileCardPro
         </div>
 
         <div className="mb-3">
-          <p className="text-sm font-medium mb-1">Top Skills:</p>
+          <p className="text-sm font-medium mb-1">Habilidades Principales:</p>
           <div className="flex flex-wrap gap-2">
             {handyman.skills.slice(0, 3).map((skill) => (
               <Badge key={skill} variant="outline" className="text-xs">{skill}</Badge>
             ))}
-            {handyman.skills.length > 3 && <Badge variant="outline" className="text-xs">+{handyman.skills.length - 3} more</Badge>}
+            {handyman.skills.length > 3 && <Badge variant="outline" className="text-xs">+{handyman.skills.length - 3} más</Badge>}
           </div>
         </div>
       </CardContent>
       <CardFooter>
         <Button asChild className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-          <Link href={`/handymen/${handyman.id}`}>View Profile & Contact</Link>
+          <Link href={`/handymen/${handyman.id}`}>Ver Perfil y Contactar</Link>
         </Button>
       </CardFooter>
     </Card>

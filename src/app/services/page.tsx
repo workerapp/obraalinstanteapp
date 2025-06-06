@@ -1,3 +1,4 @@
+
 // src/app/services/page.tsx
 import { services } from '@/data/services';
 import ServiceCard from '@/components/services/service-card';
@@ -12,9 +13,9 @@ export default function ServicesPage() {
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-accent/10 via-background to-background rounded-lg shadow-md">
         <Briefcase className="mx-auto h-16 w-16 text-accent mb-4" />
-        <h1 className="text-4xl font-headline font-bold text-accent mb-2">Our Services</h1>
+        <h1 className="text-4xl font-headline font-bold text-accent mb-2">Nuestros Servicios</h1>
         <p className="text-lg text-foreground/80 max-w-xl mx-auto">
-          Explore a wide range of handyman services to keep your home in top condition.
+          Explora una amplia gama de servicios de operarios para mantener tu hogar en óptimas condiciones.
         </p>
       </section>
       
@@ -23,7 +24,7 @@ export default function ServicesPage() {
       <div className="mb-8">
         <Input 
           type="search" 
-          placeholder="Search for services (e.g., plumbing, painting)..." 
+          placeholder="Buscar servicios (ej: plomería, pintura)..." 
           className="max-w-lg mx-auto shadow-sm"
         />
       </div>
@@ -37,7 +38,7 @@ export default function ServicesPage() {
         </div>
       ) : (
         <p className="text-center text-muted-foreground text-lg">
-          No services available at the moment. Please check back later.
+          No hay servicios disponibles en este momento. Por favor, vuelve más tarde.
         </p>
       )}
     </div>

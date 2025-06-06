@@ -1,3 +1,4 @@
+
 // src/components/auth/sign-up-form.tsx
 "use client";
 
@@ -9,23 +10,23 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth hook
+import { useAuth } from '@/hooks/useAuth';
 
 const formSchema = z.object({
-  fullName: z.string().min(2, { message: "Full name must be at least 2 characters." }),
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  confirmPassword: z.string().min(6, { message: "Password must be at least 6 characters." }),
-  role: z.enum(["customer", "handyman"], { required_error: "Please select a role." }),
+  fullName: z.string().min(2, { message: "El nombre completo debe tener al menos 2 caracteres." }),
+  email: z.string().email({ message: "Dirección de correo electrónico inválida." }),
+  password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
+  confirmPassword: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
+  role: z.enum(["customer", "handyman"], { required_error: "Por favor, selecciona un rol." }),
 }).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"], // path of error
+  message: "Las contraseñas no coinciden",
+  path: ["confirmPassword"], 
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 export default function SignUpForm() {
-  const { signUp, loading: authLoading } = useAuth(); // Use the auth hook
+  const { signUp, loading: authLoading } = useAuth();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -39,9 +40,7 @@ export default function SignUpForm() {
   });
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
-    // The signUp function from useAuth will handle loading state and toasts
     await signUp(data.email, data.password, data.fullName, data.role);
-    // No need to call form.reset() here if redirecting on success
   };
 
   return (
@@ -52,9 +51,9 @@ export default function SignUpForm() {
           name="fullName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full Name</FormLabel>
+              <FormLabel>Nombre Completo</FormLabel>
               <FormControl>
-                <Input placeholder="John Doe" {...field} />
+                <Input placeholder="Juan Pérez" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -65,9 +64,9 @@ export default function SignUpForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email Address</FormLabel>
+              <FormLabel>Correo Electrónico</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="you@example.com" {...field} />
+                <Input type="email" placeholder="tu@ejemplo.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -78,7 +77,7 @@ export default function SignUpForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Contraseña</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
@@ -91,7 +90,7 @@ export default function SignUpForm() {
           name="confirmPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Confirm Password</FormLabel>
+              <FormLabel>Confirmar Contraseña</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
@@ -104,7 +103,7 @@ export default function SignUpForm() {
           name="role"
           render={({ field }) => (
             <FormItem className="space-y-3">
-              <FormLabel>Register as a:</FormLabel>
+              <FormLabel>Registrarse como:</FormLabel>
               <FormControl>
                 <RadioGroup
                   onValueChange={field.onChange}
@@ -116,7 +115,7 @@ export default function SignUpForm() {
                       <RadioGroupItem value="customer" />
                     </FormControl>
                     <FormLabel className="font-normal">
-                      Customer (Looking for services)
+                      Cliente (Buscando servicios)
                     </FormLabel>
                   </FormItem>
                   <FormItem className="flex items-center space-x-3 space-y-0">
@@ -124,7 +123,7 @@ export default function SignUpForm() {
                       <RadioGroupItem value="handyman" />
                     </FormControl>
                     <FormLabel className="font-normal">
-                      Handyman (Offering services)
+                      Operario (Ofreciendo servicios)
                     </FormLabel>
                   </FormItem>
                 </RadioGroup>
@@ -137,10 +136,10 @@ export default function SignUpForm() {
           {authLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Creating Account...
+              Creando Cuenta...
             </>
           ) : (
-            "Create Account"
+            "Crear Cuenta"
           )}
         </Button>
       </form>

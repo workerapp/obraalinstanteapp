@@ -1,3 +1,4 @@
+
 // src/app/ai-assistant/page.tsx
 "use client";
 
@@ -9,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Sparkles, Lightbulb, Wrench } from 'lucide-react'; // Changed Tool to Wrench
+import { Loader2, Sparkles, Lightbulb, Wrench } from 'lucide-react';
 import { suggestSolutions, type SuggestSolutionsOutput } from '@/ai/flows/suggest-solutions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
@@ -17,9 +18,9 @@ import Link from 'next/link';
 
 const formSchema = z.object({
   problemDescription: z.string().min(20, {
-    message: "Please describe your problem in at least 20 characters.",
+    message: "Por favor, describe tu problema en al menos 20 caracteres.",
   }).max(1000, {
-    message: "Problem description must not exceed 1000 characters.",
+    message: "La descripción del problema no debe exceder los 1000 caracteres.",
   }),
 });
 
@@ -45,8 +46,8 @@ export default function AiAssistantPage() {
       const response = await suggestSolutions({ problemDescription: data.problemDescription });
       setAiResponse(response);
     } catch (err) {
-      console.error("AI Assistant Error:", err);
-      setError("Sorry, something went wrong while getting suggestions. Please try again.");
+      console.error("Error del Asistente IA:", err);
+      setError("Lo sentimos, algo salió mal al obtener sugerencias. Por favor, inténtalo de nuevo.");
     } finally {
       setIsLoading(false);
     }
@@ -57,9 +58,9 @@ export default function AiAssistantPage() {
       <Card className="shadow-xl">
         <CardHeader className="text-center">
           <Sparkles className="mx-auto h-16 w-16 text-accent mb-4" />
-          <CardTitle className="text-3xl font-headline">AI Solution Assistant</CardTitle>
+          <CardTitle className="text-3xl font-headline">Asistente de Soluciones IA</CardTitle>
           <CardDescription>
-            Describe your home maintenance problem, and our AI will suggest potential solutions and relevant handyman skills.
+            Describe el problema de mantenimiento de tu hogar y nuestra IA sugerirá posibles soluciones y habilidades de operario relevantes.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -70,10 +71,10 @@ export default function AiAssistantPage() {
                 name="problemDescription"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-lg">Your Problem Description</FormLabel>
+                    <FormLabel className="text-lg">Describe tu Problema</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="e.g., My kitchen sink is leaking, or I need to install a new ceiling fan..."
+                        placeholder="Ej: El grifo de mi cocina gotea, o necesito instalar un nuevo ventilador de techo..."
                         rows={5}
                         className="resize-none"
                         {...field}
@@ -87,12 +88,12 @@ export default function AiAssistantPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Getting Suggestions...
+                    Obteniendo Sugerencias...
                   </>
                 ) : (
                   <>
                     <Lightbulb className="mr-2 h-4 w-4" />
-                    Get Suggestions
+                    Obtener Sugerencias
                   </>
                 )}
               </Button>
@@ -112,11 +113,11 @@ export default function AiAssistantPage() {
         {aiResponse && (
           <CardFooter className="flex flex-col items-start gap-4 pt-6">
             <Separator />
-            <h3 className="text-xl font-semibold font-headline text-primary">AI Suggestions:</h3>
+            <h3 className="text-xl font-semibold font-headline text-primary">Sugerencias de la IA:</h3>
             
             {aiResponse.suggestedSolutions && aiResponse.suggestedSolutions.length > 0 && (
               <div className="w-full p-4 border rounded-md bg-background">
-                <h4 className="text-lg font-medium mb-2 flex items-center"><Lightbulb className="text-yellow-500 mr-2 h-5 w-5" />Potential Solutions:</h4>
+                <h4 className="text-lg font-medium mb-2 flex items-center"><Lightbulb className="text-yellow-500 mr-2 h-5 w-5" />Posibles Soluciones:</h4>
                 <ul className="list-disc list-inside space-y-1 text-foreground/90">
                   {aiResponse.suggestedSolutions.map((solution, index) => (
                     <li key={`sol-${index}`}>{solution}</li>
@@ -127,7 +128,7 @@ export default function AiAssistantPage() {
 
             {aiResponse.relevantSkills && aiResponse.relevantSkills.length > 0 && (
                <div className="w-full p-4 border rounded-md bg-background">
-                <h4 className="text-lg font-medium mb-2 flex items-center"><Wrench className="text-gray-600 mr-2 h-5 w-5" />Relevant Handyman Skills:</h4>
+                <h4 className="text-lg font-medium mb-2 flex items-center"><Wrench className="text-gray-600 mr-2 h-5 w-5" />Habilidades de Operario Relevantes:</h4>
                 <div className="flex flex-wrap gap-2">
                   {aiResponse.relevantSkills.map((skill, index) => (
                     <span key={`skill-${index}`} className="px-3 py-1 text-sm bg-accent/20 text-accent-foreground rounded-full border border-accent/50">
@@ -138,7 +139,7 @@ export default function AiAssistantPage() {
               </div>
             )}
              <Button variant="link" asChild className="mt-4 self-center">
-                <Link href="/handymen">Find a Handyman with these skills &rarr;</Link>
+                <Link href="/handymen">Encuentra un Operario con estas habilidades &rarr;</Link>
             </Button>
           </CardFooter>
         )}

@@ -1,3 +1,4 @@
+
 // src/app/services/[id]/page.tsx
 import { services } from '@/data/services';
 import type { Service } from '@/types/service';
@@ -31,10 +32,10 @@ export default function ServiceDetailPage({ params }: ServiceDetailPageProps) {
   if (!service) {
     return (
       <div className="text-center py-10">
-        <h1 className="text-2xl font-bold">Service not found</h1>
-        <p className="text-muted-foreground">The service you are looking for does not exist.</p>
+        <h1 className="text-2xl font-bold">Servicio no encontrado</h1>
+        <p className="text-muted-foreground">El servicio que estás buscando no existe.</p>
         <Button asChild className="mt-4">
-          <Link href="/services">Back to Services</Link>
+          <Link href="/services">Volver a Servicios</Link>
         </Button>
       </div>
     );
@@ -47,7 +48,7 @@ export default function ServiceDetailPage({ params }: ServiceDetailPageProps) {
       <div>
         <Button variant="outline" asChild className="mb-6">
           <Link href="/services" className="flex items-center gap-2">
-            <ArrowLeft size={16} /> Back to Services
+            <ArrowLeft size={16} /> Volver a Servicios
           </Link>
         </Button>
       </div>
@@ -60,7 +61,7 @@ export default function ServiceDetailPage({ params }: ServiceDetailPageProps) {
               alt={service.name}
               layout="fill"
               objectFit="cover"
-              data-ai-hint={service.dataAiHint || "service action"}
+              data-ai-hint={service.dataAiHint || "acción servicio"}
             />
           </div>
         )}
@@ -74,20 +75,15 @@ export default function ServiceDetailPage({ params }: ServiceDetailPageProps) {
         </header>
 
         <section className="mb-6">
-          <h2 className="text-2xl font-semibold font-headline mb-3">Service Details</h2>
+          <h2 className="text-2xl font-semibold font-headline mb-3">Detalles del Servicio</h2>
           <div className="space-y-2 text-foreground/90">
-            <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Category:</strong> {service.category}</p>
-            {/* Removed averagePrice display
-            {service.averagePrice && (
-              <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Average Price:</strong> <Badge variant="secondary">{service.averagePrice}</Badge></p>
-            )}
-            */}
-            <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Pricing:</strong> Based on custom quotation</p>
+            <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Categoría:</strong> {service.category}</p>
+            <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Precio:</strong> Basado en cotización personalizada</p>
           </div>
         </section>
 
         <section className="mb-6">
-          <h2 className="text-2xl font-semibold font-headline mb-3">Common Tasks</h2>
+          <h2 className="text-2xl font-semibold font-headline mb-3">Tareas Comunes</h2>
           <ul className="space-y-2">
             {service.commonTasks.map((task, index) => (
               <li key={index} className="flex items-start gap-2">
@@ -101,11 +97,11 @@ export default function ServiceDetailPage({ params }: ServiceDetailPageProps) {
         <footer className="mt-8 pt-6 border-t">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <Button size="lg" asChild className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground shadow-md">
-              <Link href={`/request-quotation?serviceId=${service.id}`}>Request a Quotation</Link>
+              <Link href={`/request-quotation?serviceId=${service.id}`}>Solicitar Cotización</Link>
             </Button>
             <Button variant="outline" size="lg" asChild className="w-full sm:w-auto shadow-md">
               <Link href="/handymen" className="flex items-center gap-2">
-                <Users size={18} /> Find a Handyman for this Service
+                <Users size={18} /> Buscar un Operario para este Servicio
               </Link>
             </Button>
           </div>
@@ -118,11 +114,10 @@ export default function ServiceDetailPage({ params }: ServiceDetailPageProps) {
 export async function generateMetadata({ params }: ServiceDetailPageProps) {
   const service = services.find(s => s.id === params.id);
   if (!service) {
-    return { title: "Service Not Found" };
+    return { title: "Servicio No Encontrado" };
   }
   return {
-    title: `${service.name} - Manitas Listas`,
+    title: `${service.name} - Obra al Instante`,
     description: service.description,
   };
 }
-

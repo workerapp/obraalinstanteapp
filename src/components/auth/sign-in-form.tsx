@@ -1,3 +1,4 @@
+
 // src/components/auth/sign-in-form.tsx
 "use client";
 
@@ -8,17 +9,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth hook
+import { useAuth } from '@/hooks/useAuth';
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+  email: z.string().email({ message: "Dirección de correo electrónico inválida." }),
+  password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 export default function SignInForm() {
-  const { signIn, loading: authLoading } = useAuth(); // Use the auth hook
+  const { signIn, loading: authLoading } = useAuth();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -29,9 +30,7 @@ export default function SignInForm() {
   });
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
-    // The signIn function from useAuth will handle loading state and toasts
     await signIn(data.email, data.password);
-    // No need to call form.reset() here if redirecting on success
   };
 
   return (
@@ -42,9 +41,9 @@ export default function SignInForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email Address</FormLabel>
+              <FormLabel>Correo Electrónico</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="you@example.com" {...field} />
+                <Input type="email" placeholder="tu@ejemplo.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -55,7 +54,7 @@ export default function SignInForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Contraseña</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="••••••••" {...field} />
               </FormControl>
@@ -67,10 +66,10 @@ export default function SignInForm() {
           {authLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Signing In...
+              Iniciando Sesión...
             </>
           ) : (
-            "Sign In"
+            "Iniciar Sesión"
           )}
         </Button>
       </form>

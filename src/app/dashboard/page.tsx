@@ -1,3 +1,4 @@
+
 // src/app/dashboard/page.tsx
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,9 +13,9 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-primary/10 via-background to-background rounded-lg shadow-md">
         <LayoutDashboard className="mx-auto h-16 w-16 text-primary mb-4" />
-        <h1 className="text-4xl font-headline font-bold text-primary mb-2">Your Dashboard</h1>
+        <h1 className="text-4xl font-headline font-bold text-primary mb-2">Tu Panel</h1>
         <p className="text-lg text-foreground/80 max-w-xl mx-auto">
-          Manage your services, requests, and account settings.
+          Gestiona tus servicios, solicitudes y configuración de cuenta.
         </p>
       </section>
 
@@ -22,13 +23,13 @@ export default function DashboardPage() {
         <Card className="shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-headline">
-              <User className="text-accent" /> My Profile (Placeholder)
+              <User className="text-accent" /> Mi Perfil (Ejemplo)
             </CardTitle>
-            <CardDescription>View and update your profile information.</CardDescription>
+            <CardDescription>Ver y actualizar tu información de perfil.</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline">
-              <Link href="/dashboard/profile">Go to Profile</Link>
+              <Link href="/dashboard/profile">Ir a Perfil</Link>
             </Button>
           </CardContent>
         </Card>
@@ -36,48 +37,47 @@ export default function DashboardPage() {
         <Card className="shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-headline">
-              <Settings className="text-accent" /> Account Settings (Placeholder)
+              <Settings className="text-accent" /> Configuración de Cuenta (Ejemplo)
             </CardTitle>
-            <CardDescription>Manage your account preferences and security.</CardDescription>
+            <CardDescription>Gestiona tus preferencias de cuenta y seguridad.</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline">
-              <Link href="/dashboard/settings">Go to Settings</Link>
+              <Link href="/dashboard/settings">Ir a Configuración</Link>
             </Button>
           </CardContent>
         </Card>
         
-        {/* Example role-specific navigation (would be conditional in real app) */}
         <Card className="shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-headline">
-             Customer Dashboard (Placeholder)
+             Panel de Cliente (Ejemplo)
             </CardTitle>
-            <CardDescription>View your service requests and history.</CardDescription>
+            <CardDescription>Ver tus solicitudes de servicio e historial.</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline">
-              <Link href="/dashboard/customer">Customer View</Link>
+              <Link href="/dashboard/customer">Vista de Cliente</Link>
             </Button>
           </CardContent>
         </Card>
          <Card className="shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-headline">
-              Handyman Dashboard (Placeholder)
+              Panel de Operario (Ejemplo)
             </CardTitle>
-            <CardDescription>Manage your offered services and appointments.</CardDescription>
+            <CardDescription>Gestiona tus servicios ofrecidos y citas.</CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild variant="outline">
-              <Link href="/dashboard/handyman">Handyman View</Link>
+              <Link href="/dashboard/handyman">Vista de Operario</Link>
             </Button>
           </CardContent>
         </Card>
 
       </div>
        <p className="text-center text-muted-foreground mt-8">
-        Note: This is a generic dashboard. In a real application, content would be tailored to your role (Customer or Handyman).
+        Nota: Este es un panel genérico. En una aplicación real, el contenido se adaptaría a tu rol (Cliente u Operario).
       </p>
     </div>
   );

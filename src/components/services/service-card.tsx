@@ -1,3 +1,4 @@
+
 // src/components/services/service-card.tsx
 "use client";
 import Image from 'next/image';
@@ -34,7 +35,7 @@ export default function ServiceCard({ service }: ServiceCardProps) {
               layout="fill"
               objectFit="cover"
               className="rounded-t-md"
-              data-ai-hint={service.dataAiHint || "service handyman"}
+              data-ai-hint={service.dataAiHint || "servicio operario"}
             />
           </div>
         )}
@@ -48,30 +49,20 @@ export default function ServiceCard({ service }: ServiceCardProps) {
       </CardHeader>
       <CardContent className="flex-grow">
         <div className="space-y-2">
-          <p className="text-sm font-medium">Common Tasks:</p>
+          <p className="text-sm font-medium">Tareas Comunes:</p>
           <ul className="list-disc list-inside text-sm text-foreground/80 space-y-1">
             {service.commonTasks.slice(0, 3).map((task, index) => (
               <li key={index}>{task}</li>
             ))}
-            {service.commonTasks.length > 3 && <li>...and more</li>}
+            {service.commonTasks.length > 3 && <li>...y más</li>}
           </ul>
-          {/* Removed averagePrice display
-          {service.averagePrice && (
-            <div className="mt-3">
-              <Badge variant="secondary" className="text-sm">
-                Avg. Price: {service.averagePrice}
-              </Badge>
-            </div>
-          )}
-          */}
         </div>
       </CardContent>
       <CardFooter>
         <Button asChild className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-          <Link href={`/services/${service.id}`}>View Details & Request Quote</Link>
+          <Link href={`/services/${service.id}`}>Ver Detalles y Solicitar Cotización</Link>
         </Button>
       </CardFooter>
     </Card>
   );
 }
-

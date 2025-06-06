@@ -1,3 +1,4 @@
+
 // src/app/request-quotation/page.tsx
 "use client";
 
@@ -13,18 +14,18 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Loader2, Send, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { services as availableServices } from '@/data/services'; // Assuming services data is available
+import { services as availableServices } from '@/data/services';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 const formSchema = z.object({
-  fullName: z.string().min(2, "Full name is required."),
-  email: z.string().email("Invalid email address."),
-  phone: z.string().min(10, "Valid phone number is required.").optional().or(z.literal('')),
-  address: z.string().min(5, "Address is required."),
-  serviceId: z.string({ required_error: "Please select a service." }),
-  problemDescription: z.string().min(20, "Please describe your problem in at least 20 characters.").max(1000),
-  preferredDate: z.string().optional(), // Could use a date picker later
+  fullName: z.string().min(2, "El nombre completo es requerido."),
+  email: z.string().email("Dirección de correo inválida."),
+  phone: z.string().min(10, "Se requiere un número de teléfono válido.").optional().or(z.literal('')),
+  address: z.string().min(5, "La dirección es requerida."),
+  serviceId: z.string({ required_error: "Por favor, selecciona un servicio." }),
+  problemDescription: z.string().min(20, "Por favor, describe tu problema en al menos 20 caracteres.").max(1000),
+  preferredDate: z.string().optional(), 
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -52,18 +53,18 @@ export default function RequestQuotationPage() {
     setIsLoading(true);
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log("Quotation Request Data:", data);
+    console.log("Datos de Solicitud de Cotización:", data);
     toast({
-      title: "Quotation Request Submitted (Demo)",
-      description: `Service: ${availableServices.find(s => s.id === data.serviceId)?.name || 'N/A'}. Check console.`,
+      title: "Solicitud de Cotización Enviada (Demo)",
+      description: `Servicio: ${availableServices.find(s => s.id === data.serviceId)?.name || 'N/A'}. Revisa la consola.`,
       action: (
         <Button variant="outline" size="sm" asChild>
-          <Link href="/dashboard">View Dashboard</Link>
+          <Link href="/dashboard">Ver Panel</Link>
         </Button>
       ),
     });
     setIsLoading(false);
-    form.reset({ serviceId: serviceIdFromQuery || "" }); // Reset form but keep serviceId if from query
+    form.reset({ serviceId: serviceIdFromQuery || "" }); 
   };
 
   return (
@@ -71,9 +72,9 @@ export default function RequestQuotationPage() {
       <Card className="shadow-xl">
         <CardHeader className="text-center">
           <FileText className="mx-auto h-16 w-16 text-accent mb-4" />
-          <CardTitle className="text-3xl font-headline">Request a Quotation</CardTitle>
+          <CardTitle className="text-3xl font-headline">Solicitar una Cotización</CardTitle>
           <CardDescription>
-            Fill out the form below to get a quote for the service you need.
+            Completa el formulario a continuación para obtener una cotización para el servicio que necesitas.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -85,8 +86,8 @@ export default function RequestQuotationPage() {
                   name="fullName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                      <FormLabel>Nombre Completo</FormLabel>
+                      <FormControl><Input placeholder="Juan Pérez" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -96,8 +97,8 @@ export default function RequestQuotationPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl>
+                      <FormLabel>Correo Electrónico</FormLabel>
+                      <FormControl><Input type="email" placeholder="tu@ejemplo.com" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -108,8 +109,8 @@ export default function RequestQuotationPage() {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone Number (Optional)</FormLabel>
-                      <FormControl><Input type="tel" placeholder="Your phone number" {...field} /></FormControl>
+                      <FormLabel>Número de Teléfono (Opcional)</FormLabel>
+                      <FormControl><Input type="tel" placeholder="Tu número de teléfono" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -119,8 +120,8 @@ export default function RequestQuotationPage() {
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Service Address</FormLabel>
-                    <FormControl><Input placeholder="123 Main St, City, State" {...field} /></FormControl>
+                    <FormLabel>Dirección del Servicio</FormLabel>
+                    <FormControl><Input placeholder="Calle 123, Ciudad, Provincia" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -130,11 +131,11 @@ export default function RequestQuotationPage() {
                 name="serviceId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Service Needed</FormLabel>
+                    <FormLabel>Servicio Requerido</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a service" />
+                          <SelectValue placeholder="Selecciona un servicio" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -154,10 +155,10 @@ export default function RequestQuotationPage() {
                 name="problemDescription"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Problem Description</FormLabel>
+                    <FormLabel>Descripción del Problema</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Describe the issue in detail..."
+                        placeholder="Describe el problema en detalle..."
                         rows={5}
                         className="resize-none"
                         {...field}
@@ -172,18 +173,18 @@ export default function RequestQuotationPage() {
                 name="preferredDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Preferred Date (Optional)</FormLabel>
+                    <FormLabel>Fecha Preferida (Opcional)</FormLabel>
                     <FormControl><Input type="date" {...field} /></FormControl>
-                    <FormDescription>Let us know if you have a preferred date for the service.</FormDescription>
+                    <FormDescription>Indícanos si tienes una fecha preferida para el servicio.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting Request...</>
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando Solicitud...</>
                 ) : (
-                  <><Send className="mr-2 h-4 w-4" /> Submit Request</>
+                  <><Send className="mr-2 h-4 w-4" /> Enviar Solicitud</>
                 )}
               </Button>
             </form>
