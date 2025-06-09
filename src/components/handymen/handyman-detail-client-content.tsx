@@ -23,7 +23,7 @@ interface HandymanDetailClientContentProps {
   reviews: Review[];
 }
 
-const ADMIN_WHATSAPP_NUMBER = "+573017412292";
+const ADMIN_WHATSAPP_NUMBER = "+573017412292"; // Admin's WhatsApp
 
 export default function HandymanDetailClientContent({ handyman, reviews }: HandymanDetailClientContentProps) {
   const { toast } = useToast();
@@ -50,7 +50,22 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
       return;
     }
     const adminPhoneNumber = ADMIN_WHATSAPP_NUMBER.replace(/\D/g, ''); // Remove non-digit characters
-    const message = encodeURIComponent(`Hola, estoy interesado/a en los servicios de ${handyman.name} (${handyman.id}) que vi en Obra al Instante. Podrías ponerme en contacto?`);
+    
+    let skillsText = "";
+    if (handyman.skills && handyman.skills.length > 0) {
+      if (handyman.skills.length <= 2) {
+        skillsText = handyman.skills.join(', ');
+      } else {
+        skillsText = `${handyman.skills.slice(0, 2).join(', ')}, entre otros`;
+      }
+    }
+
+    const messageIntro = `Hola, estoy interesado/a en los servicios de ${handyman.name} (${handyman.id})`;
+    const skillsMention = skillsText ? `, quien ofrece ${skillsText},` : ",";
+    const platformMention = ` que vi en Obra al Instante.`;
+    const callToAction = ` Por favor, describe detalladamente el servicio que necesitas:`;
+
+    const message = encodeURIComponent(`${messageIntro}${skillsMention}${platformMention}${callToAction}`);
     const whatsappUrl = `https://wa.me/${adminPhoneNumber}?text=${message}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -150,3 +165,4 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
     </div>
   );
 }
+
