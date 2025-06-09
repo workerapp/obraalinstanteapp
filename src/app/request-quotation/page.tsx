@@ -17,17 +17,20 @@ import { useToast } from '@/hooks/use-toast';
 import { services as availableServices } from '@/data/services';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth, type AppUser } from '@/hooks/useAuth';
+import { firestore } from '@/firebase/clientApp';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const formSchema = z.object({
-  fullName: z.string().min(2, "El nombre completo es requerido."),
-  email: z.string().email("Dirección de correo inválida."),
-  phone: z.string().min(10, "Se requiere un número de teléfono válido.").optional().or(z.literal('')),
+  contactFullName: z.string().min(2, "El nombre completo es requerido."),
+  contactEmail: z.string().email("Dirección de correo inválida."),
+  contactPhone: z.string().min(7, "Se requiere un número de teléfono válido.").optional().or(z.literal('')),
   address: z.string().min(5, "La dirección es requerida."),
   serviceId: z.string({ required_error: "Por favor, selecciona un servicio." }),
   problemDescription: z.string().min(20, "Por favor, describe tu problema en al menos 20 caracteres.").max(1000),
   preferredDate: z.string().optional(),
-  handymanId: z.string().optional(), // To store handyman ID if coming from their profile
-  handymanName: z.string().optional(), // To store handyman name for the toast
+  handymanId: z.string().optional(),
+  handymanName: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -35,18 +38,19 @@ type FormData = z.infer<typeof formSchema>;
 export default function RequestQuotationPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth(); // Obtener usuario autenticado
+  const typedUser = user as AppUser | null;
   const searchParams = useSearchParams();
   const serviceIdFromQuery = searchParams.get('serviceId');
   const handymanIdFromQuery = searchParams.get('handymanId');
   const handymanNameFromQuery = searchParams.get('handymanName');
 
-
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: "",
-      email: "",
-      phone: "",
+      contactFullName: typedUser?.displayName || "",
+      contactEmail: typedUser?.email || "",
+      contactPhone: "",
       address: "",
       serviceId: serviceIdFromQuery || "",
       problemDescription: "",
@@ -57,50 +61,92 @@ export default function RequestQuotationPage() {
   });
 
   useEffect(() => {
-    // Update default values if query params change after initial load
-    form.reset({
-      ...form.getValues(), // keep existing values
-      serviceId: serviceIdFromQuery || form.getValues("serviceId") || "",
-      handymanId: handymanIdFromQuery || form.getValues("handymanId") || "",
-      handymanName: handymanNameFromQuery || form.getValues("handymanName") || "",
-    });
-  }, [serviceIdFromQuery, handymanIdFromQuery, handymanNameFromQuery, form]);
+    if (typedUser) {
+      form.reset({
+        ...form.getValues(),
+        contactFullName: typedUser.displayName || form.getValues("contactFullName") || "",
+        contactEmail: typedUser.email || form.getValues("contactEmail") || "",
+        serviceId: serviceIdFromQuery || form.getValues("serviceId") || "",
+        handymanId: handymanIdFromQuery || form.getValues("handymanId") || "",
+        handymanName: handymanNameFromQuery || form.getValues("handymanName") || "",
+      });
+    } else {
+       form.reset({
+        ...form.getValues(),
+        serviceId: serviceIdFromQuery || form.getValues("serviceId") || "",
+        handymanId: handymanIdFromQuery || form.getValues("handymanId") || "",
+        handymanName: handymanNameFromQuery || form.getValues("handymanName") || "",
+      });
+    }
+  }, [typedUser, serviceIdFromQuery, handymanIdFromQuery, handymanNameFromQuery, form]);
 
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log("Datos de Solicitud de Cotización:", data);
+    
+    const selectedService = availableServices.find(s => s.id === data.serviceId);
 
-    let description = `Servicio: ${availableServices.find(s => s.id === data.serviceId)?.name || 'N/A'}.`;
-    if (data.handymanName) {
-      description += ` Solicitud para ${data.handymanName}.`;
+    const quotationData = {
+      userId: typedUser?.uid || null,
+      userFullName: typedUser?.displayName || null,
+      userEmail: typedUser?.email || null,
+      contactFullName: data.contactFullName,
+      contactEmail: data.contactEmail,
+      contactPhone: data.contactPhone || null,
+      address: data.address,
+      serviceId: data.serviceId,
+      serviceName: selectedService?.name || 'N/A',
+      problemDescription: data.problemDescription,
+      preferredDate: data.preferredDate || null,
+      handymanId: data.handymanId || null,
+      handymanName: data.handymanName || null,
+      status: "Enviada" as const,
+      requestedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    try {
+      const docRef = await addDoc(collection(firestore, "quotationRequests"), quotationData);
+      console.log("Solicitud de cotización guardada con ID: ", docRef.id);
+
+      let description = `Servicio: ${quotationData.serviceName}.`;
+      if (data.handymanName) {
+        description += ` Solicitud para ${data.handymanName}.`;
+      }
+      description += " Hemos recibido tu solicitud y nos pondremos en contacto pronto.";
+
+      toast({
+        title: "Solicitud de Cotización Enviada",
+        description: description,
+        action: typedUser ? (
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/dashboard/customer">Ver Mis Solicitudes</Link>
+          </Button>
+        ) : undefined,
+      });
+
+      form.reset({ 
+        contactFullName: typedUser?.displayName || "",
+        contactEmail: typedUser?.email || "",
+        contactPhone: "",
+        address: "",
+        problemDescription: "",
+        preferredDate: "",
+        serviceId: serviceIdFromQuery || "",
+        handymanId: handymanIdFromQuery || "",
+        handymanName: handymanNameFromQuery || "",
+      });
+
+    } catch (e) {
+      console.error("Error al añadir documento: ", e);
+      toast({
+        title: "Error al Enviar Solicitud",
+        description: "Hubo un problema al guardar tu solicitud. Por favor, inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    description += " Un administrador se pondrá en contacto pronto (revisa la consola para ver los datos).";
-
-
-    toast({
-      title: "Solicitud de Cotización Enviada (Demo)",
-      description: description,
-      action: (
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/dashboard/customer">Ver Panel</Link>
-        </Button>
-      ),
-    });
-    setIsLoading(false);
-    form.reset({ 
-      fullName: "",
-      email: "",
-      phone: "",
-      address: "",
-      problemDescription: "",
-      preferredDate: "",
-      serviceId: serviceIdFromQuery || "", // Keep serviceId if it came from query
-      handymanId: handymanIdFromQuery || "", // Keep handymanId if it came from query
-      handymanName: handymanNameFromQuery || "", // Keep handymanName if it came from query
-    }); 
   };
 
   return (
@@ -111,7 +157,7 @@ export default function RequestQuotationPage() {
           <CardTitle className="text-3xl font-headline">Solicitar una Cotización</CardTitle>
           <CardDescription>
             Completa el formulario a continuación para obtener una cotización para el servicio que necesitas.
-            {handymanNameFromQuery && ` Estás solicitando una cotización específicamente a ${handymanNameFromQuery}.`}
+            {handymanNameFromQuery && ` Estás solicitando una cotización específicamente a ${decodeURIComponent(handymanNameFromQuery)}.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -120,18 +166,18 @@ export default function RequestQuotationPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="fullName"
+                  name="contactFullName"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Nombre Completo</FormLabel>
-                      <FormControl><Input placeholder="Juan Pérez" {...field} /></FormControl>
+                      <FormControl><Input placeholder="Tu nombre completo" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={form.control}
-                  name="email"
+                  name="contactEmail"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Correo Electrónico</FormLabel>
@@ -143,7 +189,7 @@ export default function RequestQuotationPage() {
               </div>
               <FormField
                   control={form.control}
-                  name="phone"
+                  name="contactPhone"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Número de Teléfono (Opcional)</FormLabel>
@@ -211,13 +257,12 @@ export default function RequestQuotationPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Fecha Preferida (Opcional)</FormLabel>
-                    <FormControl><Input type="date" {...field} /></FormControl>
+                    <FormControl><Input type="date" {...field} min={new Date().toISOString().split("T")[0]} /></FormControl>
                     <FormDescription>Indícanos si tienes una fecha preferida para el servicio.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              {/* Hidden fields for handymanId and handymanName if they came from query params */}
               <FormField control={form.control} name="handymanId" render={({ field }) => <FormItem><FormControl><Input type="hidden" {...field} /></FormControl></FormItem>} />
               <FormField control={form.control} name="handymanName" render={({ field }) => <FormItem><FormControl><Input type="hidden" {...field} /></FormControl></FormItem>} />
               
@@ -235,4 +280,3 @@ export default function RequestQuotationPage() {
     </div>
   );
 }
-

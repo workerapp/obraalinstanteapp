@@ -5,18 +5,101 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ListChecks, MessageSquarePlus, History, UserCircle } from 'lucide-react';
+import { ListChecks, MessageSquarePlus, History, UserCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { useAuth, type AppUser } from '@/hooks/useAuth';
+import { firestore } from '@/firebase/clientApp';
+import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+import { useQuery } from '@tanstack/react-query';
+import type { QuotationRequest } from '@/types/quotationRequest';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-// Mock data for customer dashboard
-const mockRequests = [
-  { id: 'req1', service: 'Plomería - Grifo con Fugas', status: 'Cotización Pendiente', date: '2023-10-25' },
-  { id: 'req2', service: 'Electricidad - Instalar Ventilador de Techo', status: 'Programado', date: '2023-10-28', handyman: 'Juan Pérez' },
-  { id: 'req3', service: 'Pintura - Sala de Estar', status: 'Completado', date: '2023-09-15', handyman: 'Ana García' },
-];
+const fetchQuotationRequests = async (userId: string | undefined): Promise<QuotationRequest[]> => {
+  if (!userId) return [];
+  
+  const requestsRef = collection(firestore, "quotationRequests");
+  const q = query(requestsRef, where("userId", "==", userId), orderBy("requestedAt", "desc"));
+  
+  const querySnapshot = await getDocs(q);
+  const requests: QuotationRequest[] = [];
+  querySnapshot.forEach((doc) => {
+    requests.push({ id: doc.id, ...doc.data() } as QuotationRequest);
+  });
+  return requests;
+};
 
 export default function CustomerDashboardPage() {
+  const { user, loading: authLoading } = useAuth();
+  const typedUser = user as AppUser | null;
+
+  const { data: quotationRequests, isLoading: requestsLoading, error: requestsError } = useQuery<QuotationRequest[], Error>(
+    ['quotationRequests', typedUser?.uid],
+    () => fetchQuotationRequests(typedUser?.uid),
+    {
+      enabled: !!typedUser?.uid, // Solo ejecutar la query si tenemos un userId
+    }
+  );
+
+  const getStatusVariant = (status: QuotationRequest['status']): "default" | "secondary" | "outline" | "destructive" => {
+    switch (status) {
+      case 'Completada':
+        return 'default'; // Verde o color primario sólido
+      case 'Programada':
+        return 'secondary'; // Un color secundario
+      case 'Enviada':
+      case 'Revisando':
+      case 'Cotizada':
+        return 'outline'; // Con borde, menos prominente
+      case 'Cancelada':
+        return 'destructive'; // Rojo
+      default:
+        return 'outline';
+    }
+  };
+
+  const getStatusColorClass = (status: QuotationRequest['status']): string => {
+     switch (status) {
+      case 'Completada':
+        return 'bg-green-600 text-white';
+      case 'Programada':
+        return 'bg-blue-500 text-white';
+      case 'Enviada':
+        return 'bg-yellow-500 text-black';
+      case 'Revisando':
+        return 'bg-orange-500 text-white';
+      case 'Cotizada':
+        return 'bg-purple-500 text-white';
+      case 'Cancelada':
+        return 'bg-red-600 text-white';
+      default:
+        return 'bg-gray-500 text-white';
+    }
+  }
+
+
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!typedUser) {
+     return (
+      <div className="text-center py-10">
+        <h1 className="text-2xl font-bold">Acceso Denegado</h1>
+        <p className="text-muted-foreground">Debes iniciar sesión para ver tu panel de cliente.</p>
+        <Button asChild className="mt-4">
+          <Link href="/sign-in">Iniciar Sesión</Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-accent/10 via-background to-background rounded-lg shadow-md">
@@ -42,9 +125,7 @@ export default function CustomerDashboardPage() {
                 </Button>
             </CardFooter>
         </Card>
-        {/* More cards can be added here like Profile, Settings etc. */}
       </div>
-
 
       <Card className="shadow-xl">
         <CardHeader>
@@ -52,38 +133,56 @@ export default function CustomerDashboardPage() {
           <CardDescription>Resumen de tus solicitudes de servicio activas y pasadas.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {mockRequests.length > 0 ? mockRequests.map((req, index) => (
+          {requestsLoading && (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          )}
+          {requestsError && (
+            <Alert variant="destructive">
+              <AlertTitle>Error al Cargar Solicitudes</AlertTitle>
+              <AlertDescription>
+                No pudimos cargar tus solicitudes en este momento. Por favor, intenta de nuevo más tarde.
+                <br />
+                <small>{requestsError.message}</small>
+              </AlertDescription>
+            </Alert>
+          )}
+          {!requestsLoading && !requestsError && quotationRequests && quotationRequests.length > 0 ? quotationRequests.map((req, index) => (
             <div key={req.id}>
               <div className="p-4 border rounded-md hover:shadow-md transition-shadow bg-background">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                   <div>
-                    <h3 className="font-semibold">{req.service}</h3>
-                    <p className="text-sm text-muted-foreground">Fecha: {req.date} {req.handyman && `| Operario: ${req.handyman}`}</p>
+                    <h3 className="font-semibold">{req.serviceName}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Solicitado: {req.requestedAt ? format(req.requestedAt.toDate(), 'PPPp', { locale: es }) : 'Fecha no disponible'}
+                      {req.handymanName && ` | Operario Solicitado: ${req.handymanName}`}
+                    </p>
+                    <p className="text-sm text-muted-foreground truncate max-w-md" title={req.problemDescription}>Problema: {req.problemDescription}</p>
                   </div>
-                  <Badge variant={
-                    req.status === 'Completado' ? 'default' : 
-                    req.status === 'Programado' ? 'secondary' : 
-                    'outline'
-                  } className="mt-2 sm:mt-0 self-start sm:self-center bg-primary text-primary-foreground">
+                  <Badge 
+                    // variant={getStatusVariant(req.status)}
+                    className={`mt-2 sm:mt-0 self-start sm:self-center ${getStatusColorClass(req.status)}`}
+                  >
                     {req.status}
                   </Badge>
                 </div>
                 <div className="mt-3 flex gap-2">
-                    <Button variant="link" size="sm" className="p-0 h-auto text-accent" onClick={() => console.log('Ver detalles de la solicitud:', req.id)}>Ver Detalles</Button>
-                    {req.status !== 'Completado' && req.status !== 'Cancelado' && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-destructive" onClick={() => console.log('Cancelar solicitud:', req.id)}>Cancelar Solicitud</Button>
+                    <Button variant="link" size="sm" className="p-0 h-auto text-accent" onClick={() => console.log('Ver detalles de la solicitud:', req.id)} disabled>Ver Detalles (Próximamente)</Button>
+                    {(req.status === 'Enviada' || req.status === 'Cotizada') && 
+                        <Button variant="link" size="sm" className="p-0 h-auto text-destructive" onClick={() => console.log('Cancelar solicitud:', req.id)} disabled>Cancelar Solicitud (Próximamente)</Button>
                     }
                 </div>
               </div>
-              {index < mockRequests.length - 1 && <Separator className="my-4" />}
+              {index < quotationRequests.length - 1 && <Separator className="my-4" />}
             </div>
           )) : (
-            <p className="text-muted-foreground">Aún no tienes solicitudes de servicio.</p>
+            !requestsLoading && !requestsError && <p className="text-muted-foreground text-center py-4">Aún no tienes solicitudes de servicio.</p>
           )}
         </CardContent>
         <CardFooter className="justify-center">
-            <Button variant="outline" onClick={() => console.log('Ver historial completo clickeado')}>
-                <History className="mr-2 h-4 w-4"/> Ver Historial Completo (Ejemplo)
+            <Button variant="outline" onClick={() => console.log('Ver historial completo clickeado')} disabled>
+                <History className="mr-2 h-4 w-4"/> Ver Historial Completo (Próximamente)
             </Button>
         </CardFooter>
       </Card>
