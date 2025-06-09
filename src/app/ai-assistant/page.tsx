@@ -140,7 +140,7 @@ export default function AiAssistantPage() {
                 <h4 className="text-lg font-medium mb-2 flex items-center"><Wrench className="text-gray-600 mr-2 h-5 w-5" />Habilidades de Operario Relevantes:</h4>
                 <div className="flex flex-wrap gap-2">
                   {aiResponse.relevantSkills.map((skill, index) => (
-                    <span key={`skill-${index}`} className="px-3 py-1 text-sm bg-accent/20 text-accent-foreground rounded-full border border-accent/50">
+                    <span key={`skill-${index}`} className="px-3 py-1 text-sm bg-secondary text-secondary-foreground rounded-full">
                       {skill}
                     </span>
                   ))}
