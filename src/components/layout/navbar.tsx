@@ -3,7 +3,8 @@
 "use client";
 
 import Link from 'next/link';
-import { Home, Briefcase, Users, LogIn, UserPlus, Sparkles, LayoutDashboard, LogOut, UserCircle, Menu, Construction } from 'lucide-react';
+import Image from 'next/image'; // Import next/image
+import { Home, Briefcase, Users, LogIn, UserPlus, Sparkles, LayoutDashboard, LogOut, UserCircle, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
@@ -174,13 +175,15 @@ export default function Navbar() {
       <header className="bg-card shadow-md sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
-            <Construction className="h-8 w-8" />
+            <Image src="/images/icon.png" alt="Obra al Instante Placeholder Logo" width={32} height={32} priority />
             <h1 className="text-2xl font-headline font-bold">Obra al Instante</h1>
           </Link>
           <div className="flex items-center gap-2 md:gap-3">
+            {/* Skeleton loaders for auth links */}
             <div className="h-9 w-20 bg-muted/50 rounded-md animate-pulse hidden md:block" />
             <div className="h-9 w-24 bg-muted/50 rounded-md animate-pulse hidden md:block" />
-            <div className="h-9 w-9 bg-muted/50 rounded-md animate-pulse md:hidden" /> {/* Mobile menu placeholder */}
+            {/* Mobile menu placeholder */}
+            <div className="h-9 w-9 bg-muted/50 rounded-md animate-pulse md:hidden" />
           </div>
         </div>
       </header>
@@ -191,7 +194,7 @@ export default function Navbar() {
     <header className="bg-card shadow-md sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <Link href="/" className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
-          <Construction className="h-8 w-8" />
+          <Image src="/images/icon.png" alt="Obra al Instante Logo" width={32} height={32} priority />
           <h1 className="text-2xl font-headline font-bold">Obra al Instante</h1>
         </Link>
 
