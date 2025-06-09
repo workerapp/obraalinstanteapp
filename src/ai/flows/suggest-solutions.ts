@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -30,13 +31,14 @@ const prompt = ai.definePrompt({
   name: 'suggestSolutionsPrompt',
   input: {schema: SuggestSolutionsInputSchema},
   output: {schema: SuggestSolutionsOutputSchema},
+  model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
   prompt: `You are an AI assistant helping customers find solutions to their home maintenance problems.
 
   Based on the problem description provided by the customer, suggest potential solutions and identify the relevant handyman skills required to implement those solutions.
 
   Problem Description: {{{problemDescription}}}
 
-  Format the output as a JSON object with \"suggestedSolutions\" and \"relevantSkills\" arrays.
+  Format the output as a JSON object with "suggestedSolutions" and "relevantSkills" arrays.
   `,
 });
 
@@ -47,7 +49,18 @@ const suggestSolutionsFlow = ai.defineFlow(
     outputSchema: SuggestSolutionsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+      const {output} = await prompt(input);
+      if (!output) {
+        console.error('AI prompt returned undefined or null output');
+        throw new Error('La IA no pudo generar una respuesta.');
+      }
+      return output;
+    } catch (flowError) {
+      console.error('Error within suggestSolutionsFlow:', flowError);
+      // Re-throw the error to be caught by the calling component
+      // Or transform it into a more user-friendly error object if needed
+      throw flowError; 
+    }
   }
 );
