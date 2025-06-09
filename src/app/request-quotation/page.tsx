@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2, Send, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { services as availableServices } from '@/data/services';
 import { useSearchParams } from 'next/navigation';
@@ -25,7 +25,9 @@ const formSchema = z.object({
   address: z.string().min(5, "La dirección es requerida."),
   serviceId: z.string({ required_error: "Por favor, selecciona un servicio." }),
   problemDescription: z.string().min(20, "Por favor, describe tu problema en al menos 20 caracteres.").max(1000),
-  preferredDate: z.string().optional(), 
+  preferredDate: z.string().optional(),
+  handymanId: z.string().optional(), // To store handyman ID if coming from their profile
+  handymanName: z.string().optional(), // To store handyman name for the toast
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -35,6 +37,9 @@ export default function RequestQuotationPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const serviceIdFromQuery = searchParams.get('serviceId');
+  const handymanIdFromQuery = searchParams.get('handymanId');
+  const handymanNameFromQuery = searchParams.get('handymanName');
+
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -46,25 +51,56 @@ export default function RequestQuotationPage() {
       serviceId: serviceIdFromQuery || "",
       problemDescription: "",
       preferredDate: "",
+      handymanId: handymanIdFromQuery || "",
+      handymanName: handymanNameFromQuery || "",
     },
   });
+
+  useEffect(() => {
+    // Update default values if query params change after initial load
+    form.reset({
+      ...form.getValues(), // keep existing values
+      serviceId: serviceIdFromQuery || form.getValues("serviceId") || "",
+      handymanId: handymanIdFromQuery || form.getValues("handymanId") || "",
+      handymanName: handymanNameFromQuery || form.getValues("handymanName") || "",
+    });
+  }, [serviceIdFromQuery, handymanIdFromQuery, handymanNameFromQuery, form]);
+
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     setIsLoading(true);
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     console.log("Datos de Solicitud de Cotización:", data);
+
+    let description = `Servicio: ${availableServices.find(s => s.id === data.serviceId)?.name || 'N/A'}.`;
+    if (data.handymanName) {
+      description += ` Solicitud para ${data.handymanName}.`;
+    }
+    description += " Un administrador se pondrá en contacto pronto (revisa la consola para ver los datos).";
+
+
     toast({
       title: "Solicitud de Cotización Enviada (Demo)",
-      description: `Servicio: ${availableServices.find(s => s.id === data.serviceId)?.name || 'N/A'}. Revisa la consola.`,
+      description: description,
       action: (
         <Button variant="outline" size="sm" asChild>
-          <Link href="/dashboard">Ver Panel</Link>
+          <Link href="/dashboard/customer">Ver Panel</Link>
         </Button>
       ),
     });
     setIsLoading(false);
-    form.reset({ serviceId: serviceIdFromQuery || "" }); 
+    form.reset({ 
+      fullName: "",
+      email: "",
+      phone: "",
+      address: "",
+      problemDescription: "",
+      preferredDate: "",
+      serviceId: serviceIdFromQuery || "", // Keep serviceId if it came from query
+      handymanId: handymanIdFromQuery || "", // Keep handymanId if it came from query
+      handymanName: handymanNameFromQuery || "", // Keep handymanName if it came from query
+    }); 
   };
 
   return (
@@ -75,6 +111,7 @@ export default function RequestQuotationPage() {
           <CardTitle className="text-3xl font-headline">Solicitar una Cotización</CardTitle>
           <CardDescription>
             Completa el formulario a continuación para obtener una cotización para el servicio que necesitas.
+            {handymanNameFromQuery && ` Estás solicitando una cotización específicamente a ${handymanNameFromQuery}.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -132,7 +169,7 @@ export default function RequestQuotationPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Servicio Requerido</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || ""} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecciona un servicio" />
@@ -180,6 +217,10 @@ export default function RequestQuotationPage() {
                   </FormItem>
                 )}
               />
+              {/* Hidden fields for handymanId and handymanName if they came from query params */}
+              <FormField control={form.control} name="handymanId" render={({ field }) => <FormItem><FormControl><Input type="hidden" {...field} /></FormControl></FormItem>} />
+              <FormField control={form.control} name="handymanName" render={({ field }) => <FormItem><FormControl><Input type="hidden" {...field} /></FormControl></FormItem>} />
+              
               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando Solicitud...</>
@@ -194,3 +235,4 @@ export default function RequestQuotationPage() {
     </div>
   );
 }
+
