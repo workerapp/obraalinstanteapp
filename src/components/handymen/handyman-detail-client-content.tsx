@@ -23,6 +23,9 @@ interface HandymanDetailClientContentProps {
   reviews: Review[];
 }
 
+// TODO: Reemplaza este número con tu número de WhatsApp de administrador, incluyendo el código de país.
+const ADMIN_WHATSAPP_NUMBER = "TU_NUMERO_DE_WHATSAPP_AQUI"; // Ejemplo: "+573001234567"
+
 export default function HandymanDetailClientContent({ handyman, reviews }: HandymanDetailClientContentProps) {
   const { toast } = useToast();
 
@@ -38,19 +41,19 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
   }
 
   const handleWhatsAppContact = () => {
-    if (handyman.phone) {
-      const phoneNumber = handyman.phone.replace(/\D/g, ''); // Remove non-digit characters
-      const message = encodeURIComponent(`Hola ${handyman.name}, estoy interesado/a en tus servicios listados en Obra al Instante.`);
-      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
-      window.open(whatsappUrl, '_blank');
-    } else {
-      toast({
-        title: "Información de Contacto Faltante",
-        description: "Este operario no ha proporcionado un número de WhatsApp.",
+    if (ADMIN_WHATSAPP_NUMBER === "TU_NUMERO_DE_WHATSAPP_AQUI" || !ADMIN_WHATSAPP_NUMBER) {
+       toast({
+        title: "Configuración Requerida",
+        description: "El número de WhatsApp del administrador no ha sido configurado.",
         variant: "destructive",
       });
-      console.log('Contactar operario (sin teléfono):', handyman.id);
+      console.warn('El número de WhatsApp del administrador no está configurado en HandymanDetailClientContent.tsx');
+      return;
     }
+    const adminPhoneNumber = ADMIN_WHATSAPP_NUMBER.replace(/\D/g, ''); // Remove non-digit characters
+    const message = encodeURIComponent(`Hola, estoy interesado/a en los servicios de ${handyman.name} que vi en Obra al Instante.`);
+    const whatsappUrl = `https://wa.me/${adminPhoneNumber}?text=${message}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   return (
@@ -79,7 +82,7 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
             )}
              <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 mb-2">
               <Link href={`/request-quotation?handymanId=${handyman.id}`}>
-                <MessageSquare size={18} className="mr-2" /> Solicitar Servicio
+                <MessageSquare size={18} className="mr-2" /> Solicitar Cotización
               </Link>
             </Button>
             <Button variant="outline" size="lg" className="w-full" onClick={handleWhatsAppContact}>
@@ -102,6 +105,8 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
                 <p className="flex items-center gap-2"><MapPin size={18} className="text-accent" /> {handyman.location}</p>
               )}
               <p className="flex items-center gap-2"><CalendarDays size={18} className="text-accent" /> {handyman.memberSince}</p>
+              {/* Se podría mostrar el teléfono del operario aquí si se desea, pero el botón de contacto va al admin */}
+              {/* handyman.phone && <p className="flex items-center gap-2"><Phone size={18} className="text-accent" /> {handyman.phone} (Solo visible, contacto vía admin)</p> */}
             </div>
 
             <section className="mb-6">
