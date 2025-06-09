@@ -3,14 +3,21 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Sparkles, Users, Construction } from 'lucide-react'; // Changed Wrench to Construction
+import { CheckCircle, Sparkles, Users } from 'lucide-react';
 
 export default function HomePage() {
   return (
     <div className="space-y-12">
       <section className="text-center py-12 bg-gradient-to-br from-primary/20 via-background to-background rounded-xl shadow-lg">
         <div className="container mx-auto">
-          <Construction className="mx-auto h-24 w-24 text-primary mb-6 animate-bounce" />
+          <div className="mx-auto mb-6 animate-bounce flex justify-center">
+            <Image 
+              src="/images/icon.png" 
+              alt="Obra al Instante Logo" 
+              width={96} 
+              height={96}
+            />
+          </div>
           <h1 className="text-5xl font-headline font-bold text-primary mb-4">
             ¡Bienvenido a Obra al Instante!
           </h1>
