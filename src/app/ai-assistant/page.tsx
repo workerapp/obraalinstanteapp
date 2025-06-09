@@ -2,7 +2,7 @@
 // src/app/ai-assistant/page.tsx
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,6 +15,7 @@ import { suggestSolutions, type SuggestSolutionsOutput } from '@/ai/flows/sugges
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 const formSchema = z.object({
   problemDescription: z.string().min(20, {
@@ -30,6 +31,7 @@ export default function AiAssistantPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiResponse, setAiResponse] = useState<SuggestSolutionsOutput | null>(null);
+  const searchParams = useSearchParams();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -37,6 +39,13 @@ export default function AiAssistantPage() {
       problemDescription: "",
     },
   });
+
+  useEffect(() => {
+    const problemFromQuery = searchParams.get('problem');
+    if (problemFromQuery) {
+      form.setValue('problemDescription', decodeURIComponent(problemFromQuery));
+    }
+  }, [searchParams, form]);
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     setIsLoading(true);

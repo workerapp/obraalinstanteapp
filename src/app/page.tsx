@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, Sparkles, Users } from 'lucide-react';
+import AiAssistantHomeWidget from '@/components/home/ai-assistant-home-widget'; // Importado
 
 export default function HomePage() {
   return (
@@ -35,8 +36,13 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Nuevo widget del Asistente IA aquí */}
       <section className="container mx-auto">
-        <h2 className="text-3xl font-headline font-semibold text-center mb-10">Cómo Funciona</h2>
+        <AiAssistantHomeWidget />
+      </section>
+
+      <section className="container mx-auto">
+        <h2 className="text-3xl font-headline font-semibold text-center mb-10 pt-12">Cómo Funciona</h2>
         <div className="grid md:grid-cols-3 gap-8">
           <Card className="shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
@@ -47,7 +53,7 @@ export default function HomePage() {
             <CardContent>
               <p>Usa nuestro Asistente IA para describir tu problema y obtener sugerencias de soluciones al instante, o explora nuestros servicios.</p>
               <Button variant="link" asChild className="px-0 mt-2 text-accent hover:text-accent/80">
-                <Link href="/ai-assistant">Probar Asistente IA &rarr;</Link>
+                <Link href="/ai-assistant">Ir al Asistente IA &rarr;</Link>
               </Button>
             </CardContent>
           </Card>
