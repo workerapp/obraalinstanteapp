@@ -18,8 +18,8 @@ const SuggestSolutionsInputSchema = z.object({
 export type SuggestSolutionsInput = z.infer<typeof SuggestSolutionsInputSchema>;
 
 const SuggestSolutionsOutputSchema = z.object({
-  suggestedSolutions: z.array(z.string()).describe('List of potential solutions to the problem.'),
-  relevantSkills: z.array(z.string()).describe('List of relevant handyman skills for the solutions.'),
+  suggestedSolutions: z.array(z.string()).describe('Lista de posibles soluciones al problema, en ESPAÑOL.'),
+  relevantSkills: z.array(z.string()).describe('Lista de habilidades de operario relevantes para las soluciones, en ESPAÑOL.'),
 });
 export type SuggestSolutionsOutput = z.infer<typeof SuggestSolutionsOutputSchema>;
 
@@ -31,14 +31,15 @@ const prompt = ai.definePrompt({
   name: 'suggestSolutionsPrompt',
   input: {schema: SuggestSolutionsInputSchema},
   output: {schema: SuggestSolutionsOutputSchema},
-  model: 'googleai/gemini-1.5-flash-latest', // Explicitly specify the model
-  prompt: `You are an AI assistant helping customers find solutions to their home maintenance problems.
+  model: 'googleai/gemini-1.5-flash-latest',
+  prompt: `Eres un asistente de IA que ayuda a los clientes a encontrar soluciones a sus problemas de mantenimiento del hogar.
 
-  Based on the problem description provided by the customer, suggest potential solutions and identify the relevant handyman skills required to implement those solutions.
+  Basándote en la descripción del problema proporcionada por el cliente, sugiere posibles soluciones e identifica las habilidades de operario relevantes necesarias para implementar esas soluciones.
 
-  Problem Description: {{{problemDescription}}}
+  La descripción del problema es: {{{problemDescription}}}
 
-  Format the output as a JSON object with "suggestedSolutions" and "relevantSkills" arrays.
+  IMPORTANTE: El contenido de las listas "suggestedSolutions" y "relevantSkills" DEBE estar en ESPAÑOL.
+  Asegúrate de que el formato de salida sea un objeto JSON que coincida con el esquema de salida proporcionado.
   `,
 });
 
@@ -55,12 +56,14 @@ const suggestSolutionsFlow = ai.defineFlow(
         console.error('AI prompt returned undefined or null output');
         throw new Error('La IA no pudo generar una respuesta.');
       }
+      // Ensure the arrays exist, even if empty, as per schema
+      output.suggestedSolutions = output.suggestedSolutions || [];
+      output.relevantSkills = output.relevantSkills || [];
       return output;
     } catch (flowError) {
       console.error('Error within suggestSolutionsFlow:', flowError);
-      // Re-throw the error to be caught by the calling component
-      // Or transform it into a more user-friendly error object if needed
       throw flowError; 
     }
   }
 );
+
