@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Star, MapPin, CalendarDays, MessageSquare, Phone, CheckCircle, Briefcase, Tag, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; // Import Card components
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; // Import Card components, ADDED CardFooter
 import { Separator } from '@/components/ui/separator'; // Import Separator
 
 interface Review {
@@ -178,32 +178,34 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
 
             <div className="flex items-center gap-2 mb-4">
               <Star className="h-6 w-6 text-yellow-400 fill-yellow-400" />
-              <span className="text-xl font-semibold">{handyman.rating.toFixed(1)}</span>
-              <span className="text-sm text-muted-foreground">({handyman.reviewsCount} reseñas)</span>
+              <span className="text-xl font-semibold">{handyman.rating?.toFixed(1) || 'N/A'}</span>
+              <span className="text-sm text-muted-foreground">({handyman.reviewsCount || 0} reseñas)</span>
             </div>
 
             <div className="space-y-2 text-foreground/90 mb-6">
               {handyman.location && (
                 <p className="flex items-center gap-2"><MapPin size={18} className="text-accent" /> {handyman.location}</p>
               )}
-              <p className="flex items-center gap-2"><CalendarDays size={18} className="text-accent" /> {handyman.memberSince}</p>
+              {handyman.memberSince && (
+                <p className="flex items-center gap-2"><CalendarDays size={18} className="text-accent" /> {handyman.memberSince}</p>
+              )}
             </div>
 
             <section className="mb-6">
               <h2 className="text-xl font-semibold font-headline mb-3">Habilidades Generales (Ejemplo)</h2>
               <div className="flex flex-wrap gap-2">
-                {handyman.skills.map((skill) => (
+                {(handyman.skills && handyman.skills.length > 0) ? handyman.skills.map((skill) => (
                   <Badge key={skill} variant="secondary" className="px-3 py-1 text-sm bg-secondary/20 text-secondary-foreground border border-secondary/50">
                      {skill}
                   </Badge>
-                ))}
+                )) : <p className="text-sm text-muted-foreground">No hay habilidades especificadas.</p>}
               </div>
             </section>
             
             <section>
               <h2 className="text-xl font-semibold font-headline mb-3">Sobre Mí (Ejemplo)</h2>
               <p className="text-foreground/80 leading-relaxed">
-                Con más de 10 años de experiencia en el campo, me dedico a proporcionar mano de obra de alta calidad y un excelente servicio al cliente. Me especializo en una variedad de tareas de reparación y mejora del hogar, asegurando que cada trabajo se haga bien a la primera. Mi objetivo es ayudarte a mantener y mejorar tu hogar con un servicio confiable y eficiente.
+                {handyman.tagline || 'Con experiencia en el campo, me dedico a proporcionar mano de obra de alta calidad y un excelente servicio al cliente. Me especializo en una variedad de tareas de reparación y mejora del hogar, asegurando que cada trabajo se haga bien a la primera. Mi objetivo es ayudarte a mantener y mejorar tu hogar con un servicio confiable y eficiente.'}
               </p>
             </section>
           </div>
@@ -292,3 +294,4 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
     </div>
   );
 }
+
