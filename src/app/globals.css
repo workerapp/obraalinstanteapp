@@ -2,10 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: var(--font-pt-sans), sans-serif;
-}
-
 @layer base {
   :root {
     --background: 180 100% 97%; /* HSL for #E0FFFF (Light Cyan) */
@@ -56,60 +52,13 @@ body {
     --chart-5: 180 20% 55%;  /* Muted text color */
   }
 
-  .dark {
-    --background: 200 15% 10%; /* Dark blue-gray for dark mode background */
-    --foreground: 180 20% 90%; /* Light cyan-ish text for dark mode */
-
-    --card: 200 15% 15%;
-    --card-foreground: 180 20% 90%;
-
-    --popover: 200 15% 12%;
-    --popover-foreground: 180 20% 90%;
-
-    --primary: 195 100% 50%; /* Deep Sky Blue */
-    --primary-foreground: 200 10% 95%;
-
-    --secondary: 180 100% 30%; /* Teal - Accent */
-    --secondary-foreground: 180 10% 95%;
-
-    --muted: 200 15% 25%;
-    --muted-foreground: 180 15% 65%;
-
-    --accent: 180 100% 30%; /* Teal - Accent */
-    --accent-foreground: 180 10% 95%;
-
-    --destructive: 0 63% 50%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 200 15% 30%;
-    --input: 200 15% 20%;
-    --ring: 195 100% 50%;
-
-    /* Sidebar specific colors - dark theme */
-    --sidebar-background: 200 15% 12%;
-    --sidebar-foreground: 180 20% 90%;
-    --sidebar-primary: 195 100% 50%;
-    --sidebar-primary-foreground: 200 10% 95%;
-    --sidebar-accent: 180 100% 30%;
-    --sidebar-accent-foreground: 180 10% 95%;
-    --sidebar-border: 200 15% 28%;
-    --sidebar-ring: 195 100% 50%;
-    
-    /* Chart colors for dark theme */
-    --chart-1: 195 100% 50%;
-    --chart-2: 180 100% 35%;
-    --chart-3: 195 80% 55%;
-    --chart-4: 180 80% 40%;
-    --chart-5: 180 15% 65%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
   body {
+    font-family: var(--font-pt-sans), sans-serif;
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  * {
+    @apply border-border;
   }
 }
