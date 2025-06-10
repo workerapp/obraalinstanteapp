@@ -2,7 +2,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PT_Sans } from 'next/font/google'; // Using next/font for PT Sans
-import './globals.css';
+// import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Navbar from '@/components/layout/navbar';
 import Footer from '@/components/layout/footer';
