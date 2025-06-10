@@ -23,7 +23,7 @@ import { z } from 'zod';
 import type { HandymanService, PriceType } from '@/types/handymanService';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Importado
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const serviceFormSchema = z.object({
@@ -110,8 +110,10 @@ export default function HandymanServicesPage() {
   }, [typedUser, toast]);
 
   useEffect(() => {
-    if (!isDialogOpen) { // Solo resetear si el diálogo se cierra
-      setEditingServiceId(null);
+    // Only reset if dialog is closed AND we are not in the middle of an API call (isLoading is false)
+    // And ensure we are not just closing after a successful edit (editingServiceId might still be set briefly)
+    if (!isDialogOpen && !isLoading) { 
+      setEditingServiceId(null); // Clear editing state
       form.reset({
         name: "",
         category: "",
@@ -121,7 +123,7 @@ export default function HandymanServicesPage() {
         isActive: true,
       });
     }
-  }, [isDialogOpen, form]);
+  }, [isDialogOpen, form, isLoading]);
 
   const handleEdit = (service: HandymanService) => {
     if (!service.id) {
@@ -141,11 +143,19 @@ export default function HandymanServicesPage() {
   };
 
   const onSubmit: SubmitHandler<ServiceFormData> = async (data) => {
+    console.log("onSubmit triggered. EditingServiceId:", editingServiceId, "User UID:", typedUser?.uid);
+    console.log("Form data:", data);
+
+
     if (!typedUser?.uid) {
       toast({ title: "Error", description: "Debes iniciar sesión para gestionar servicios.", variant: "destructive"});
+      console.error("onSubmit: Aborting, User not logged in.");
       return;
     }
+
+    console.log("onSubmit: Setting isLoading to true.");
     setIsLoading(true);
+
     try {
       const serviceDataForFirestore: Omit<HandymanService, 'id' | 'createdAt' | 'updatedAt'> & { handymanUid: string; updatedAt: Timestamp; createdAt?: Timestamp } = {
         handymanUid: typedUser.uid,
@@ -160,6 +170,7 @@ export default function HandymanServicesPage() {
       };
 
       if (editingServiceId) {
+        console.log(`onSubmit: Attempting to update service with ID: ${editingServiceId}`);
         const serviceDocRef = doc(firestore, "handymanServices", editingServiceId);
         await updateDoc(serviceDocRef, serviceDataForFirestore);
         
@@ -167,16 +178,19 @@ export default function HandymanServicesPage() {
           title: "Servicio Actualizado",
           description: `El servicio "${data.name}" ha sido actualizado exitosamente.`,
         });
+        console.log(`onSubmit: Service "${data.name}" (ID: ${editingServiceId}) updated successfully.`);
         
         setOfferedServices(prev => prev.map(s => s.id === editingServiceId ? { ...s, ...serviceDataForFirestore, id: editingServiceId, updatedAt: Timestamp.now() } as HandymanService : s));
         
       } else {
+        console.log("onSubmit: Attempting to add new service.");
         serviceDataForFirestore.createdAt = serverTimestamp() as Timestamp;
         const docRef = await addDoc(collection(firestore, "handymanServices"), serviceDataForFirestore);
         toast({
           title: "Servicio Añadido",
           description: `El servicio "${data.name}" ha sido añadido exitosamente.`,
         });
+        console.log(`onSubmit: New service "${data.name}" added successfully with ID: ${docRef.id}.`);
         
         const newService: HandymanService = {
             id: docRef.id,
@@ -188,10 +202,12 @@ export default function HandymanServicesPage() {
         setOfferedServices(prev => [newService, ...prev]);
       }
       
-      setIsDialogOpen(false); // Esto activará el useEffect para resetear el formulario y editingServiceId
+      console.log("onSubmit: Setting isDialogOpen to false.");
+      setIsDialogOpen(false); 
+      // setEditingServiceId(null); // This will be handled by the useEffect for isDialogOpen
 
     } catch (error: any) {
-      console.error("Error saving service:", error);
+      console.error("onSubmit: Error saving service:", error);
       let description = "Hubo un problema al guardar el servicio. Revisa la consola del navegador para más detalles.";
        if (error.message) {
             if (error.message.toLowerCase().includes('permission-denied') || error.message.toLowerCase().includes('missing or insufficient permissions')) {
@@ -202,6 +218,7 @@ export default function HandymanServicesPage() {
        }
       toast({ title: `Error al ${editingServiceId ? 'Actualizar' : 'Añadir'} Servicio`, description, variant: "destructive", duration: 10000 });
     } finally {
+      console.log("onSubmit: Setting isLoading to false in finally block.");
       setIsLoading(false);
     }
   };
@@ -257,9 +274,9 @@ export default function HandymanServicesPage() {
               {editingServiceId ? "Modifica los detalles de tu servicio." : "Completa los detalles del servicio que ofreces."}
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="max-h-[calc(80vh-160px)] pr-5"> {/* Ajuste de altura y padding-right */}
+          <ScrollArea className="max-h-[calc(80vh-160px)] pr-5">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 pr-1"> {/* Se quita pr-1 si no es necesario */}
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 pr-1">
                 <FormField
                   control={form.control}
                   name="name"
@@ -342,29 +359,26 @@ export default function HandymanServicesPage() {
                     </FormItem>
                   )}
                 />
-                {/* El DialogFooter se moverá fuera del ScrollArea */}
               </form>
             </Form>
           </ScrollArea>
           <DialogFooter className="pt-4">
             <DialogClose asChild>
-              <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); /* useEffect se encargará del reset */ }}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); }}>Cancelar</Button>
             </DialogClose>
-            {/* El botón de submit ahora está conectado al form a través de su ID o se puede dejar aquí y el form se someterá por el botón tipo submit */}
-            <Button type="submit" form="serviceForm" disabled={isLoading}>
+            <Button 
+              onClick={() => {
+                console.log("Save button in DialogFooter clicked. Attempting to submit form. isLoading:", isLoading);
+                if (!isLoading) { // Adicional: Prevenir múltiples submits si isLoading es true
+                   form.handleSubmit(onSubmit)();
+                }
+              }}
+              disabled={isLoading}
+            >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isLoading ? "Guardando..." : (editingServiceId ? "Guardar Cambios" : "Guardar Servicio")}
             </Button>
           </DialogFooter>
-          {/* Asignar un ID al form para que el botón de submit externo funcione */}
-          <script dangerouslySetInnerHTML={{ __html: `
-            (function() {
-              const formElement = document.querySelector('form.space-y-4');
-              if (formElement && !formElement.id) {
-                formElement.id = 'serviceForm';
-              }
-            })();
-          `}} />
         </DialogContent>
       </Dialog>
 
@@ -426,6 +440,4 @@ export default function HandymanServicesPage() {
     </div>
   );
 }
-    
-
     
