@@ -2,7 +2,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PT_Sans } from 'next/font/google'; // Using next/font for PT Sans
-// import './globals.css';
+import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Navbar from '@/components/layout/navbar';
 import Footer from '@/components/layout/footer';
@@ -19,7 +19,7 @@ const ptSans = PT_Sans({
 export const metadata: Metadata = {
   title: 'Obra al Instante - Tu Solución de Servicios para el Hogar',
   description: 'Encuentra operarios calificados u ofrece tus servicios. Obtén soluciones impulsadas por IA para los problemas de tu hogar.',
-  icons: [{ rel: "icon", url: "/favicon.ico" }]
+  icons: [{ rel: "icon", url: "/images/icon.png" }]
 };
 
 export default function RootLayout({

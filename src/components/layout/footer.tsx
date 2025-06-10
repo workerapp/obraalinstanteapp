@@ -9,7 +9,7 @@ export default function Footer() {
       <div className="container mx-auto px-4 text-center">
         <div className="flex justify-center items-center mb-4">
           <Image 
-            src="https://placehold.co/24x24.png" 
+            src="/images/icon.png" 
             alt="Obra al Instante Logo" 
             width={24} 
             height={24} 

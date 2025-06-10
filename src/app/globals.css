@@ -1,122 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* @tailwind base; */
-/* @tailwind components; */
-/* @tailwind utilities; */
-
-/*
 body {
   font-family: var(--font-pt-sans), sans-serif;
 }
-*/
 
-/*
 @layer base {
   :root {
-    --background: 0 0% 100%; /* White */
-    --foreground: 197 100% 12%; /* #002C3B - User's Very Dark Blue */
+    --background: 180 100% 97%; /* HSL for #E0FFFF (Light Cyan) */
+    --foreground: 200 12% 20%; /* HSL for a dark gray, good contrast on light cyan */
 
-    --card: 0 0% 98%; /* Very light gray, almost white */
-    --card-foreground: 197 100% 12%; /* #002C3B */
+    --card: 180 50% 93%; /* Lighter tint of Light Cyan */
+    --card-foreground: 200 12% 20%;
 
-    --popover: 0 0% 100%; /* White */
-    --popover-foreground: 197 100% 12%; /* #002C3B */
+    --popover: 180 50% 93%;
+    --popover-foreground: 200 12% 20%;
 
-    --primary: 196 100% 31%; /* #00799E - User's Vibrant Teal Blue */
-    --primary-foreground: 0 0% 100%; /* White - for text on primary */
+    --primary: 195 100% 50%; /* HSL for #00BFFF (Deep Sky Blue) */
+    --primary-foreground: 210 40% 98%; /* White/very light color for text on primary */
 
-    --secondary: 193 100% 23%; /* #006375 - User's Medium Dark Teal */
-    --secondary-foreground: 0 0% 100%; /* White - for text on secondary */
+    --secondary: 180 100% 25%; /* HSL for #008080 (Teal - Accent) */
+    --secondary-foreground: 210 40% 98%; /* White/very light color for text on secondary */
 
-    --muted: 197 30% 94%; /* Lightened version of #002C3B base */
-    --muted-foreground: 197 20% 55%; /* Darkened version of lightened base for muted text */
+    --muted: 180 25% 85%; /* Muted version of Light Cyan */
+    --muted-foreground: 180 10% 40%; /* Darker muted text */
 
-    --accent: 196 100% 31%; /* #00799E - Same as primary for now */
-    --accent-foreground: 0 0% 100%; /* White */
+    --accent: 180 100% 25%; /* HSL for #008080 (Teal - Accent, same as secondary for now) */
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 84.2% 60.2%; /* Standard ShadCN Red */
-    --destructive-foreground: 0 0% 98%; /* Standard Light Red */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 197 30% 88%; /* Lightened version of #002C3B base for borders */
-    --input: 197 30% 96%; /* Very lightened version of #002C3B base for input backgrounds */
-    --ring: 196 100% 31%; /* #00799E - Primary color for focus rings */
+    --border: 180 30% 80%;
+    --input: 180 30% 88%;
+    --ring: 195 100% 50%; /* Deep Sky Blue for focus rings */
 
     --radius: 0.5rem;
 
     /* Sidebar specific colors - themed consistently */
-    --sidebar-background: 197 40% 97%; /* Very light version of #002C3B base, distinct from main bg */
-    --sidebar-foreground: 197 100% 12%;  /* #002C3B */
-    --sidebar-primary: 196 100% 31%; /* #00799E */
-    --sidebar-primary-foreground: 0 0% 100%; /* White */
-    --sidebar-accent: 193 100% 23%; /* #006375 */
-    --sidebar-accent-foreground: 0 0% 100%; /* White */
-    --sidebar-border: 197 30% 85%;
-    --sidebar-ring: 196 100% 31%;
+    --sidebar-background: 180 60% 95%; /* Slightly different light cyan for sidebar */
+    --sidebar-foreground: 200 12% 20%;
+    --sidebar-primary: 195 100% 50%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 180 100% 25%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 180 30% 75%;
+    --sidebar-ring: 195 100% 50%;
 
-    /* Chart colors derived from the new palette */
-    --chart-1: 196 100% 31%; /* #00799E */
-    --chart-2: 193 100% 23%; /* #006375 */
-    --chart-3: 196 100% 50%; /* Lighter shade of #00799E */
-    --chart-4: 193 100% 40%; /* Lighter shade of #006375 */
-    --chart-5: 197 20% 55%;  /* Muted foreground color */
+    /* Chart colors derived from the palette */
+    --chart-1: 195 100% 50%; /* Deep Sky Blue */
+    --chart-2: 180 100% 30%; /* Darker Teal */
+    --chart-3: 195 80% 60%;  /* Lighter Deep Sky Blue */
+    --chart-4: 180 80% 40%;  /* Lighter Teal */
+    --chart-5: 180 20% 55%;  /* Muted text color */
   }
-*/
-/*
+
   .dark {
-    --background: 197 100% 12%; 
-    --foreground: 197 20% 85%; 
+    --background: 200 15% 10%; /* Dark blue-gray for dark mode background */
+    --foreground: 180 20% 90%; /* Light cyan-ish text for dark mode */
 
-    --card: 198 100% 14%; 
-    --card-foreground: 197 20% 85%; 
+    --card: 200 15% 15%;
+    --card-foreground: 180 20% 90%;
 
-    --popover: 198 100% 14%; 
-    --popover-foreground: 197 20% 85%;
+    --popover: 200 15% 12%;
+    --popover-foreground: 180 20% 90%;
 
-    --primary: 196 100% 41%; 
-    --primary-foreground: 197 100% 8%; 
+    --primary: 195 100% 50%; /* Deep Sky Blue */
+    --primary-foreground: 200 10% 95%;
 
-    --secondary: 193 100% 33%; 
-    --secondary-foreground: 197 100% 8%; 
+    --secondary: 180 100% 30%; /* Teal - Accent */
+    --secondary-foreground: 180 10% 95%;
 
-    --muted: 197 60% 18%; 
-    --muted-foreground: 197 20% 65%; 
+    --muted: 200 15% 25%;
+    --muted-foreground: 180 15% 65%;
 
-    --accent: 196 100% 41%; 
-    --accent-foreground: 197 100% 8%; 
+    --accent: 180 100% 30%; /* Teal - Accent */
+    --accent-foreground: 180 10% 95%;
 
-    --destructive: 0 70% 50%; 
+    --destructive: 0 63% 50%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 198 50% 25%; 
-    --input: 198 50% 22%; 
-    --ring: 196 100% 41%; 
+    --border: 200 15% 30%;
+    --input: 200 15% 20%;
+    --ring: 195 100% 50%;
 
-    --sidebar-background: 197 80% 15%; 
-    --sidebar-foreground: 197 20% 85%;
-    --sidebar-primary: 196 100% 41%;
-    --sidebar-primary-foreground: 197 100% 8%;
-    --sidebar-accent: 193 100% 33%;
-    --sidebar-accent-foreground: 197 100% 8%;
-    --sidebar-border: 198 50% 28%;
-    --sidebar-ring: 196 100% 41%;
+    /* Sidebar specific colors - dark theme */
+    --sidebar-background: 200 15% 12%;
+    --sidebar-foreground: 180 20% 90%;
+    --sidebar-primary: 195 100% 50%;
+    --sidebar-primary-foreground: 200 10% 95%;
+    --sidebar-accent: 180 100% 30%;
+    --sidebar-accent-foreground: 180 10% 95%;
+    --sidebar-border: 200 15% 28%;
+    --sidebar-ring: 195 100% 50%;
     
-    --chart-1: 196 100% 41%; 
-    --chart-2: 193 100% 33%; 
-    --chart-3: 196 100% 60%; 
-    --chart-4: 193 100% 50%; 
-    --chart-5: 197 20% 65%;  
-  }
-*/
-/* } */ /* This closing brace was for the original @layer base */
-
-/*
-@layer base {
-  * {
-    /* @apply border-border; */ /*
-  }
-  body {
-    /* @apply bg-background text-foreground; */ /* Commented out as vars are removed */
-    /* font-feature-settings: "rlig" 1, "calt" 1; */ /*
+    /* Chart colors for dark theme */
+    --chart-1: 195 100% 50%;
+    --chart-2: 180 100% 35%;
+    --chart-3: 195 80% 55%;
+    --chart-4: 180 80% 40%;
+    --chart-5: 180 15% 65%;
   }
 }
-*/
 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}

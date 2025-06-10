@@ -13,7 +13,7 @@ export default function HomePage() {
         <div className="container mx-auto">
           <div className="mx-auto mb-6 animate-bounce flex justify-center">
             <Image 
-              src="https://placehold.co/96x96.png" 
+              src="/images/icon.png" 
               alt="Obra al Instante Logo" 
               width={96} 
               height={96}
