@@ -5,53 +5,51 @@ import HandymanDetailClientContent from '@/components/handymen/handyman-detail-c
 import { firestore } from '@/firebase/clientApp';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import type { Handyman } from '@/types/handyman';
-// import type { AppUser } from '@/hooks/useAuth'; // Not directly used here but good for reference
 
 interface HandymanDetailPageProps {
-  params: { id: string }; // id here is the handyman's UID
+  params: { id: string }; // id here is the handyman's UID or static ID
 }
 
 // Helper to convert Firestore user data to Handyman type
 const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null => {
   if (!userData) {
-    console.warn(`mapFirestoreUserToHandyman: No userData provided for UID: ${uid}`);
+    console.warn(`mapFirestoreUserToHandyman: [UID: ${uid}] No userData provided. Returning null.`);
     return null;
   }
 
-  console.log(`mapFirestoreUserToHandyman: Mapping Firestore user data for UID: ${uid}`, JSON.stringify(userData, null, 2));
+  console.log(`mapFirestoreUserToHandyman: [UID: ${uid}] Attempting to map. Raw userData:`, JSON.stringify(userData, null, 2));
 
   if (userData.role !== 'handyman') {
-    console.warn(`mapFirestoreUserToHandyman: User ${uid} is not a handyman. Role found: '${userData.role}'`);
+    console.warn(`mapFirestoreUserToHandyman: [UID: ${uid}] User is not a handyman. Role found: '${userData.role}'. Expected 'handyman'. Returning null.`);
     return null;
   }
 
   let memberSince = 'Fecha de registro no disponible';
   if (userData.createdAt) {
     try {
-      let createdAtDate: Date;
+      let createdAtDate: Date | null = null;
       if (userData.createdAt instanceof Timestamp) {
         createdAtDate = userData.createdAt.toDate();
-      } else if (typeof userData.createdAt === 'string') { // ISO string
+      } else if (typeof userData.createdAt === 'string') {
         createdAtDate = new Date(userData.createdAt);
       } else if (typeof userData.createdAt === 'number') { // Milliseconds since epoch
         createdAtDate = new Date(userData.createdAt);
-      } else if (userData.createdAt.seconds && typeof userData.createdAt.seconds === 'number') { // Firestore-like object from server but not Timestamp instance
+      } else if (userData.createdAt.seconds && typeof userData.createdAt.seconds === 'number') { // Firestore-like object
         createdAtDate = new Date(userData.createdAt.seconds * 1000);
-      }
-      else {
-        throw new Error('Unsupported createdAt format');
+      } else {
+        console.warn(`mapFirestoreUserToHandyman: [UID: ${uid}] Unsupported 'createdAt' format. Raw:`, userData.createdAt);
       }
       
-      if (isNaN(createdAtDate.getTime())) { // Check if date is valid
-          console.error(`mapFirestoreUserToHandyman: Invalid date parsed from createdAt for UID ${uid}. Raw:`, userData.createdAt);
-          throw new Error('Invalid date from createdAt field');
+      if (createdAtDate && !isNaN(createdAtDate.getTime())) {
+          memberSince = `Se unió en ${createdAtDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}`;
+      } else if (createdAtDate) { // If date object was created but invalid
+          console.error(`mapFirestoreUserToHandyman: [UID: ${uid}] Invalid date parsed from 'createdAt'. Raw:`, userData.createdAt);
       }
-      memberSince = `Se unió en ${createdAtDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}`;
     } catch (e: any) {
-      console.error(`mapFirestoreUserToHandyman: Error formatting createdAt date for handyman UID ${uid}. Error: ${e.message}. Raw createdAt:`, userData.createdAt);
+      console.error(`mapFirestoreUserToHandyman: [UID: ${uid}] Error formatting 'createdAt' date. Error: ${e.message}. Raw:`, userData.createdAt);
     }
   } else {
-      console.warn(`mapFirestoreUserToHandyman: No 'createdAt' field found for handyman UID ${uid}. This field is usually set during user registration.`);
+      console.warn(`mapFirestoreUserToHandyman: [UID: ${uid}] No 'createdAt' field found.`);
   }
 
   const handymanProfile: Handyman = {
@@ -67,13 +65,18 @@ const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null
     memberSince: memberSince,
     phone: userData.phone || undefined,
   };
-  console.log(`mapFirestoreUserToHandyman: Successfully mapped UID ${uid} to handyman object:`, handymanProfile);
+  console.log(`mapFirestoreUserToHandyman: [UID: ${uid}] Successfully mapped to handyman object:`, handymanProfile);
   return handymanProfile;
 };
 
 
 export async function generateMetadata({ params }: HandymanDetailPageProps) {
   try {
+    // Check if params.id is a valid non-empty string before fetching
+    if (!params.id || typeof params.id !== 'string' || params.id.trim() === '') {
+        console.warn("generateMetadata: Invalid or empty handyman ID provided in params.");
+        return { title: "Operario No Encontrado" };
+    }
     const userDocRef = doc(firestore, "users", params.id);
     const userDocSnap = await getDoc(userDocRef);
 
@@ -87,7 +90,7 @@ export async function generateMetadata({ params }: HandymanDetailPageProps) {
       }
     }
   } catch (error) {
-    console.error("Error fetching handyman metadata for /handymen/[id]:", error);
+    console.error(`generateMetadata: Error fetching handyman metadata for ID '${params.id}':`, error);
   }
   return { title: "Operario No Encontrado" };
 }
@@ -95,30 +98,29 @@ export async function generateMetadata({ params }: HandymanDetailPageProps) {
 export default async function HandymanDetailPage({ params }: HandymanDetailPageProps) {
   const handymanId = params.id;
 
-  if (!handymanId) {
-    console.warn("HandymanDetailPage: No handyman ID (UID) provided in params. This should not happen if the route is matched correctly.");
+  if (!handymanId || typeof handymanId !== 'string' || handymanId.trim() === '') {
+    console.warn("HandymanDetailPage: Invalid or empty handyman ID in params. Calling notFound().");
     notFound();
   }
 
-  console.log(`HandymanDetailPage: Attempting to fetch profile for handyman ID (UID): ${handymanId}`);
+  console.log(`HandymanDetailPage: [ID: ${handymanId}] Attempting to fetch profile.`);
 
   try {
     const userDocRef = doc(firestore, "users", handymanId);
     const userDocSnap = await getDoc(userDocRef);
 
     if (!userDocSnap.exists()) {
-      console.warn(`HandymanDetailPage: No user document found in 'users' collection for ID: '${handymanId}'. Please verify this UID exists in your Firestore 'users' collection and that Firestore rules allow reading it.`);
+      console.warn(`HandymanDetailPage: [ID: ${handymanId}] No user document found in 'users' collection. This ID might be from static data or does not exist in Firestore. Calling notFound().`);
       notFound();
     }
 
     const userData = userDocSnap.data();
-    // Log a stringified version for better inspection of nested objects like Timestamps
-    console.log(`HandymanDetailPage: Raw user data from Firestore for '${handymanId}':`, JSON.stringify(userData, null, 2));
+    console.log(`HandymanDetailPage: [ID: ${handymanId}] Raw user data from Firestore:`, JSON.stringify(userData, null, 2));
 
     const handyman = mapFirestoreUserToHandyman(handymanId, userData);
 
     if (!handyman) {
-      console.warn(`HandymanDetailPage: Failed to map Firestore data to Handyman object for '${handymanId}'. This typically means the user document does not have 'role: "handyman"', or essential data is missing. Check the 'role' field and other user data in Firestore.`);
+      console.warn(`HandymanDetailPage: [ID: ${handymanId}] Failed to map Firestore data to Handyman object (e.g., role might not be 'handyman' or data is insufficient). Calling notFound().`);
       notFound();
     }
     
@@ -128,11 +130,11 @@ export default async function HandymanDetailPage({ params }: HandymanDetailPageP
       { id: 2, author: "Roberto C.", rating: 4, comment: "Buen trabajo en el cableado eléctrico. Profesional y ordenado.", date: "2023-02-20" },
     ];
 
-    console.log(`HandymanDetailPage: Successfully fetched and mapped handyman '${handymanId}'. Rendering HandymanDetailClientContent.`);
+    console.log(`HandymanDetailPage: [ID: ${handymanId}] Successfully fetched and mapped. Rendering HandymanDetailClientContent.`);
     return <HandymanDetailClientContent handyman={handyman} reviews={reviews} />;
 
   } catch (error: any) {
-    console.error(`HandymanDetailPage: Critical error fetching handyman profile for ID '${handymanId}'. This could be Firestore security rules, a network issue, or an unhandled problem in data processing. Error:`, error.message, "\nStack:", error.stack);
+    console.error(`HandymanDetailPage: [ID: ${handymanId}] EXCEPTION CAUGHT. This could be Firestore security rules (PERMISSION_DENIED), a network issue, or an unhandled problem in data processing. Error:`, error.message, "\nStack:", error.stack, "Calling notFound().");
     notFound();
   }
 }
