@@ -5,18 +5,37 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger, 
+  DialogFooter, 
+  DialogClose 
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { PlusCircle, ListChecks, ArrowLeft, Loader2 } from 'lucide-react';
+import { PlusCircle, ListChecks, ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore } from '@/firebase/clientApp';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -66,10 +85,14 @@ export default function HandymanServicesPage() {
   const typedUser = user as AppUser | null;
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // For add/edit
   const [offeredServices, setOfferedServices] = useState<HandymanService[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+
+  const [serviceToDeleteId, setServiceToDeleteId] = useState<string | null>(null);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [isDeletingService, setIsDeletingService] = useState(false);
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceFormSchema),
@@ -110,10 +133,8 @@ export default function HandymanServicesPage() {
   }, [typedUser, toast]);
 
   useEffect(() => {
-    // Only reset if dialog is closed AND we are not in the middle of an API call (isLoading is false)
-    // And ensure we are not just closing after a successful edit (editingServiceId might still be set briefly)
     if (!isDialogOpen && !isLoading) { 
-      setEditingServiceId(null); // Clear editing state
+      setEditingServiceId(null); 
       form.reset({
         name: "",
         category: "",
@@ -146,7 +167,6 @@ export default function HandymanServicesPage() {
     console.log("onSubmit triggered. EditingServiceId:", editingServiceId, "User UID:", typedUser?.uid);
     console.log("Form data:", data);
 
-
     if (!typedUser?.uid) {
       toast({ title: "Error", description: "Debes iniciar sesión para gestionar servicios.", variant: "destructive"});
       console.error("onSubmit: Aborting, User not logged in.");
@@ -165,7 +185,7 @@ export default function HandymanServicesPage() {
         priceType: data.priceType as PriceType,
         priceValue: data.priceType !== 'consultar' ? (data.priceValue || null) : null,
         isActive: data.isActive,
-        currency: "COP",
+        currency: "COP", // Assuming COP, adjust if needed
         updatedAt: serverTimestamp() as Timestamp,
       };
 
@@ -204,8 +224,6 @@ export default function HandymanServicesPage() {
       
       console.log("onSubmit: Setting isDialogOpen to false.");
       setIsDialogOpen(false); 
-      // setEditingServiceId(null); // This will be handled by the useEffect for isDialogOpen
-
     } catch (error: any) {
       console.error("onSubmit: Error saving service:", error);
       let description = "Hubo un problema al guardar el servicio. Revisa la consola del navegador para más detalles.";
@@ -222,8 +240,48 @@ export default function HandymanServicesPage() {
       setIsLoading(false);
     }
   };
+
+  const openDeleteConfirmDialog = (serviceId: string) => {
+    setServiceToDeleteId(serviceId);
+    setIsDeleteAlertOpen(true);
+  };
+
+  const confirmDeleteService = async () => {
+    if (!serviceToDeleteId) return;
+    if (!typedUser?.uid) {
+      toast({ title: "Error", description: "Debes iniciar sesión para eliminar servicios.", variant: "destructive"});
+      return;
+    }
+
+    setIsDeletingService(true);
+    try {
+      const serviceDocRef = doc(firestore, "handymanServices", serviceToDeleteId);
+      await deleteDoc(serviceDocRef);
+
+      const deletedServiceName = offeredServices.find(s => s.id === serviceToDeleteId)?.name || "El servicio";
+      toast({
+        title: "Servicio Eliminado",
+        description: `${deletedServiceName} ha sido eliminado exitosamente.`,
+      });
+
+      setOfferedServices(prev => prev.filter(s => s.id !== serviceToDeleteId));
+      setServiceToDeleteId(null);
+      setIsDeleteAlertOpen(false);
+    } catch (error: any) {
+      console.error("Error deleting service:", error);
+      let description = "Hubo un problema al eliminar el servicio.";
+      if (error.message && (error.message.toLowerCase().includes('permission-denied') || error.message.toLowerCase().includes('missing or insufficient permissions'))) {
+        description = "Error de permisos al eliminar el servicio. Asegúrate de que tus reglas de seguridad de Firestore permitan eliminar de 'handymanServices'.";
+      } else {
+        description = `Error: ${error.message}`;
+      }
+      toast({ title: "Error al Eliminar Servicio", description, variant: "destructive", duration: 7000 });
+    } finally {
+      setIsDeletingService(false);
+    }
+  };
   
-  if (!typedUser && !isLoading) {
+  if (!typedUser && !isLoading && !isLoadingServices) {
      return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
@@ -369,7 +427,7 @@ export default function HandymanServicesPage() {
             <Button 
               onClick={() => {
                 console.log("Save button in DialogFooter clicked. Attempting to submit form. isLoading:", isLoading);
-                if (!isLoading) { // Adicional: Prevenir múltiples submits si isLoading es true
+                if (!isLoading) {
                    form.handleSubmit(onSubmit)();
                 }
               }}
@@ -381,6 +439,33 @@ export default function HandymanServicesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Esto eliminará permanentemente el servicio 
+              "{offeredServices.find(s => s.id === serviceToDeleteId)?.name || 'seleccionado'}" 
+              de nuestros servidores.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsDeleteAlertOpen(false)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteService} 
+              disabled={isDeletingService}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingService ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Eliminando...</>
+              ) : (
+                <><Trash2 className="mr-2 h-4 w-4" /> Confirmar Eliminación</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
 
       <Card className="shadow-xl">
@@ -421,7 +506,15 @@ export default function HandymanServicesPage() {
                   </CardContent>
                   <CardFooter className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleEdit(service)}>Editar</Button>
-                    <Button variant="destructive" size="sm" onClick={() => toast({ title: "Próximamente", description: "Eliminar servicio estará disponible pronto."})} disabled>Eliminar</Button>
+                    <Button 
+                      variant="destructive" 
+                      size="sm" 
+                      onClick={() => openDeleteConfirmDialog(service.id!)} // service.id debería existir aquí
+                      disabled={!service.id} // Deshabilitar si no hay ID, aunque no debería pasar
+                    >
+                      <Trash2 className="mr-1.5 h-4 w-4" />
+                      Eliminar
+                    </Button>
                   </CardFooter>
                 </Card>
               ))}
