@@ -23,6 +23,7 @@ import { z } from 'zod';
 import type { HandymanService, PriceType } from '@/types/handymanService';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { ScrollArea } from '@/components/ui/scroll-area'; // Importado
 
 
 const serviceFormSchema = z.object({
@@ -109,8 +110,7 @@ export default function HandymanServicesPage() {
   }, [typedUser, toast]);
 
   useEffect(() => {
-    // Reset form and editing state when dialog closes, unless we are in edit mode and just opened it.
-    if (!isDialogOpen && editingServiceId) {
+    if (!isDialogOpen) { // Solo resetear si el diálogo se cierra
       setEditingServiceId(null);
       form.reset({
         name: "",
@@ -121,7 +121,7 @@ export default function HandymanServicesPage() {
         isActive: true,
       });
     }
-  }, [isDialogOpen, editingServiceId, form]);
+  }, [isDialogOpen, form]);
 
   const handleEdit = (service: HandymanService) => {
     if (!service.id) {
@@ -156,11 +156,10 @@ export default function HandymanServicesPage() {
         priceValue: data.priceType !== 'consultar' ? (data.priceValue || null) : null,
         isActive: data.isActive,
         currency: "COP",
-        updatedAt: serverTimestamp() as Timestamp, // Type assertion for serverTimestamp
+        updatedAt: serverTimestamp() as Timestamp,
       };
 
       if (editingServiceId) {
-        // Editing existing service
         const serviceDocRef = doc(firestore, "handymanServices", editingServiceId);
         await updateDoc(serviceDocRef, serviceDataForFirestore);
         
@@ -170,11 +169,9 @@ export default function HandymanServicesPage() {
         });
         
         setOfferedServices(prev => prev.map(s => s.id === editingServiceId ? { ...s, ...serviceDataForFirestore, id: editingServiceId, updatedAt: Timestamp.now() } as HandymanService : s));
-        setEditingServiceId(null);
-
+        
       } else {
-        // Adding new service
-        serviceDataForFirestore.createdAt = serverTimestamp() as Timestamp; // Type assertion
+        serviceDataForFirestore.createdAt = serverTimestamp() as Timestamp;
         const docRef = await addDoc(collection(firestore, "handymanServices"), serviceDataForFirestore);
         toast({
           title: "Servicio Añadido",
@@ -184,22 +181,14 @@ export default function HandymanServicesPage() {
         const newService: HandymanService = {
             id: docRef.id,
             ...serviceDataForFirestore,
-            priceValue: serviceDataForFirestore.priceValue, // Ensure it's string or null
+            priceValue: serviceDataForFirestore.priceValue,
             createdAt: Timestamp.now(), 
             updatedAt: Timestamp.now(),
         };
         setOfferedServices(prev => [newService, ...prev]);
       }
       
-      form.reset({ // Reset to default values after add or edit
-        name: "",
-        category: "",
-        description: "",
-        priceType: "consultar",
-        priceValue: "",
-        isActive: true,
-      });
-      setIsDialogOpen(false);
+      setIsDialogOpen(false); // Esto activará el useEffect para resetear el formulario y editingServiceId
 
     } catch (error: any) {
       console.error("Error saving service:", error);
@@ -230,8 +219,8 @@ export default function HandymanServicesPage() {
   }
 
   const handleOpenDialogForNewService = () => {
-    setEditingServiceId(null); // Asegurarse de que no estamos en modo edición
-    form.reset({ // Restablecer el formulario a valores predeterminados
+    setEditingServiceId(null); 
+    form.reset({ 
         name: "",
         category: "",
         description: "",
@@ -268,101 +257,114 @@ export default function HandymanServicesPage() {
               {editingServiceId ? "Modifica los detalles de tu servicio." : "Completa los detalles del servicio que ofreces."}
             </DialogDescription>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nombre del Servicio</FormLabel>
-                    <FormControl><Input placeholder="Ej: Reparación de Grifos" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Categoría</FormLabel>
-                    <FormControl><Input placeholder="Ej: Plomería" {...field} /></FormControl>
-                    <FormDescription>Una categoría general para tu servicio.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Descripción</FormLabel>
-                    <FormControl><Textarea placeholder="Describe brevemente el servicio..." rows={3} {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-4">
+          <ScrollArea className="max-h-[calc(80vh-160px)] pr-5"> {/* Ajuste de altura y padding-right */}
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 pr-1"> {/* Se quita pr-1 si no es necesario */}
                 <FormField
                   control={form.control}
-                  name="priceType"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tipo de Precio</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un tipo" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          {Object.entries(priceTypeTranslations).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Nombre del Servicio</FormLabel>
+                      <FormControl><Input placeholder="Ej: Reparación de Grifos" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                {form.watch("priceType") !== "consultar" && (
-                   <FormField
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoría</FormLabel>
+                      <FormControl><Input placeholder="Ej: Plomería" {...field} /></FormControl>
+                      <FormDescription>Una categoría general para tu servicio.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descripción</FormLabel>
+                      <FormControl><Textarea placeholder="Describe brevemente el servicio..." rows={3} {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
                     control={form.control}
-                    name="priceValue"
+                    name="priceType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Valor (COP)</FormLabel>
-                        <FormControl><Input type="number" placeholder="Ej: 50000" {...field} value={field.value || ''} /></FormControl>
+                        <FormLabel>Tipo de Precio</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un tipo" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {Object.entries(priceTypeTranslations).map(([value, label]) => (
+                              <SelectItem key={value} value={value}>{label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                )}
-              </div>
-              <FormField
-                control={form.control}
-                name="isActive"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                    <div className="space-y-0.5">
-                      <FormLabel>Servicio Activo</FormLabel>
-                      <FormDescription>
-                        Los clientes podrán ver y solicitar este servicio.
-                      </FormDescription>
-                    </div>
-                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                  </FormItem>
-                )}
-              />
-              <DialogFooter className="pt-4">
-                <DialogClose asChild>
-                  <Button type="button" variant="outline" onClick={() => {setEditingServiceId(null); setIsDialogOpen(false);}}>Cancelar</Button>
-                </DialogClose>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isLoading ? "Guardando..." : (editingServiceId ? "Guardar Cambios" : "Guardar Servicio")}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+                  {form.watch("priceType") !== "consultar" && (
+                     <FormField
+                      control={form.control}
+                      name="priceValue"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Valor (COP)</FormLabel>
+                          <FormControl><Input type="number" placeholder="Ej: 50000" {...field} value={field.value || ''} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel>Servicio Activo</FormLabel>
+                        <FormDescription>
+                          Los clientes podrán ver y solicitar este servicio.
+                        </FormDescription>
+                      </div>
+                      <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                {/* El DialogFooter se moverá fuera del ScrollArea */}
+              </form>
+            </Form>
+          </ScrollArea>
+          <DialogFooter className="pt-4">
+            <DialogClose asChild>
+              <Button type="button" variant="outline" onClick={() => { setIsDialogOpen(false); /* useEffect se encargará del reset */ }}>Cancelar</Button>
+            </DialogClose>
+            {/* El botón de submit ahora está conectado al form a través de su ID o se puede dejar aquí y el form se someterá por el botón tipo submit */}
+            <Button type="submit" form="serviceForm" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading ? "Guardando..." : (editingServiceId ? "Guardar Cambios" : "Guardar Servicio")}
+            </Button>
+          </DialogFooter>
+          {/* Asignar un ID al form para que el botón de submit externo funcione */}
+          <script dangerouslySetInnerHTML={{ __html: `
+            (function() {
+              const formElement = document.querySelector('form.space-y-4');
+              if (formElement && !formElement.id) {
+                formElement.id = 'serviceForm';
+              }
+            })();
+          `}} />
         </DialogContent>
       </Dialog>
 
@@ -424,4 +426,6 @@ export default function HandymanServicesPage() {
     </div>
   );
 }
+    
+
     
