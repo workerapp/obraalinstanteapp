@@ -88,7 +88,13 @@ export default function HandymanServicesPage() {
         .then(setOfferedServices)
         .catch(err => {
           console.error("Detailed error fetching services:", err);
-          toast({ title: "Error", description: "No se pudieron cargar tus servicios. Revisa la consola del navegador para más detalles.", variant: "destructive" });
+          let description = "No se pudieron cargar tus servicios. Revisa la consola del navegador para más detalles (busca errores de Firestore sobre permisos o índices faltantes).";
+          if (err.message && (err.message.toLowerCase().includes('permission-denied') || err.message.toLowerCase().includes('missing or insufficient permissions'))) {
+            description = "Error de permisos al cargar servicios. Asegúrate de que tus reglas de seguridad de Firestore permitan leer 'handymanServices' para tu usuario.";
+          } else if (err.message && err.message.toLowerCase().includes('failed-precondition') && err.message.toLowerCase().includes('index')) {
+            description = "Error al cargar servicios: Firestore necesita un índice. Revisa la consola del navegador, usualmente hay un enlace para crearlo directamente.";
+          }
+          toast({ title: "Error al Cargar Servicios", description, variant: "destructive", duration: 10000 });
         })
         .finally(() => setIsLoadingServices(false));
     } else {
@@ -130,17 +136,21 @@ export default function HandymanServicesPage() {
       const serviceForState: HandymanService = {
         id: docRef.id,
         ...serviceDataForFirestore,
-        createdAt: Timestamp.now(), // Use Firestore Timestamp for local state consistency
-        updatedAt: Timestamp.now(), // Use Firestore Timestamp for local state consistency
+        createdAt: Timestamp.now(), 
+        updatedAt: Timestamp.now(), 
       };
       
       setOfferedServices(prev => [serviceForState, ...prev]);
       form.reset();
       setIsDialogOpen(false);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding service:", error);
-      toast({ title: "Error al Añadir Servicio", description: "Hubo un problema al guardar el servicio. Revisa la consola para más detalles.", variant: "destructive" });
+      let description = "Hubo un problema al guardar el servicio. Revisa la consola del navegador para más detalles (busca errores de Firestore sobre permisos).";
+      if (error.message && (error.message.toLowerCase().includes('permission-denied') || error.message.toLowerCase().includes('missing or insufficient permissions'))) {
+            description = "Error de permisos al guardar el servicio. Asegúrate de que tus reglas de seguridad de Firestore permitan escribir en 'handymanServices' para tu usuario.";
+      }
+      toast({ title: "Error al Añadir Servicio", description, variant: "destructive", duration: 10000 });
     } finally {
       setIsLoading(false);
     }
@@ -338,6 +348,4 @@ export default function HandymanServicesPage() {
     </div>
   );
 }
-
-
     
