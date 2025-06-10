@@ -4,95 +4,53 @@
 
 @layer base {
   :root {
-    --background: 180 100% 94.1%; /* #E0FFFF - Light Cyan */
-    --foreground: 196 100% 12%;   /* #002C3B - Dark Blue for text, good contrast on Light Cyan */
+    --background: 200 100% 98%;   /* Very Light Blue/Cyan - for high contrast */
+    --foreground: 201 100% 11%;   /* #002C3B - Dark Blue for text */
 
-    --card: 180 80% 92%;           /* Slightly darker/muted cyan for cards */
-    --card-foreground: 196 100% 12%; /* Dark Blue for card text */
+    --card: 200 85% 95%;           /* Slightly darker/muted light blue for cards */
+    --card-foreground: 201 100% 11%; /* Dark Blue for card text */
 
-    --popover: 180 80% 92%;        /* Same as card */
-    --popover-foreground: 196 100% 12%;
+    --popover: 200 85% 95%;        /* Same as card */
+    --popover-foreground: 201 100% 11%;
 
-    --primary: 195 100% 50%;      /* #00BFFF - Deep Sky Blue */
+    --primary: 193 100% 31%;      /* #00799E - Vibrant Teal/Blue */
     --primary-foreground: 0 0% 100%; /* White for text on primary */
 
-    --secondary: 195 70% 60%;     /* A muted/lighter version of Deep Sky Blue */
+    --secondary: 190 100% 23%;     /* #006375 - Darker Teal */
     --secondary-foreground: 0 0% 100%; /* White for text on secondary */
 
-    --muted: 180 60% 88%;          /* Very light, desaturated cyan for muted backgrounds */
-    --muted-foreground: 180 30% 50%; /* Muted text color */
+    --muted: 200 70% 92%;          /* Very light, desaturated blue for muted backgrounds */
+    --muted-foreground: 200 30% 50%; /* Muted text color */
 
-    --accent: 180 100% 25.1%;     /* #008080 - Teal */
+    --accent: 195 100% 13%;      /* #003749 - Very Dark Blue/Teal */
     --accent-foreground: 0 0% 100%;   /* White for text on accent */
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 180 50% 80%;        /* Cyan-tinted border */
-    --input: 180 70% 90%;         /* Light cyan input background */
-    --ring: 195 100% 50%;         /* Deep Sky Blue for focus rings */
+    --border: 200 50% 85%;        /* Blue/Cyan-tinted border */
+    --input: 200 70% 93%;         /* Light blue/cyan input background */
+    --ring: 193 100% 31%;         /* Primary for focus rings */
 
     --radius: 0.5rem;
 
     /* Sidebar specific colors - themed consistently */
-    --sidebar-background: 180 90% 96%; /* Very light cyan for sidebar */
-    --sidebar-foreground: 196 100% 12%;   /* Dark Blue text */
-    --sidebar-primary: 195 100% 50%;      /* Deep Sky Blue */
+    --sidebar-background: 200 95% 97%; /* Very light blue/cyan for sidebar */
+    --sidebar-foreground: 201 100% 11%;   /* Dark Blue text */
+    --sidebar-primary: 193 100% 31%;      /* Vibrant Teal/Blue */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 180 100% 25.1%;       /* Teal */
+    --sidebar-accent: 195 100% 13%;       /* Very Dark Blue/Teal */
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 180 50% 75%;
-    --sidebar-ring: 195 100% 50%;
+    --sidebar-border: 200 50% 80%;
+    --sidebar-ring: 193 100% 31%;
 
     /* Chart colors derived from the palette */
-    --chart-1: 195 100% 50%; /* Primary */
-    --chart-2: 180 100% 25.1%; /* Accent */
-    --chart-3: 195 70% 60%;  /* Secondary */
-    --chart-4: 195 80% 40%;  /* Darker Primary variant */
-    --chart-5: 180 80% 35%;  /* Darker Accent variant */
+    --chart-1: 193 100% 31%; /* Primary */
+    --chart-2: 195 100% 13%; /* Accent */
+    --chart-3: 190 100% 23%;  /* Secondary */
+    --chart-4: 193 80% 25%;  /* Darker Primary variant */
+    --chart-5: 195 80% 10%;  /* Darker Accent variant */
   }
-
-  /*
-  .dark {
-    --background: 196 100% 12%; / * #002C3B - Azul muy oscuro para fondo * /
-    --foreground: 180 80% 90%; / * Un cyan muy claro para texto * /
-
-    --card: 196 100% 15%; / * Un poco más claro que el fondo oscuro * /
-    --card-foreground: 180 80% 90%;
-
-    --popover: 196 100% 15%;
-    --popover-foreground: 180 80% 90%;
-
-    --primary: 195 100% 50%; / * #00BFFF - Deep Sky Blue * /
-    --primary-foreground: 196 100% 10%; / * Azul muy oscuro para contraste * /
-
-    --secondary: 195 70% 60%; / * Muted Deep Sky Blue * /
-    --secondary-foreground: 196 100% 10%;
-
-    --muted: 196 30% 25%; / * Un gris azulado oscuro * /
-    --muted-foreground: 196 25% 75%; / * Un gris azulado más claro para texto silenciado * /
-
-    --accent: 180 100% 30%; / * #008080 - Teal, un poco más brillante para dark mode * /
-    --accent-foreground: 0 0% 100%; / * Blanco * /
-
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 196 30% 30%; / * Un borde gris azulado oscuro * /
-    --input: 196 30% 22%; / * Un fondo de input gris azulado oscuro * /
-    --ring: 195 100% 50%; / * Mismo que primario para anillos de enfoque * /
-
-    / * Sidebar dark theme adjustments * /
-    --sidebar-background: 196 100% 10%; / * Aún más oscuro para la barra lateral * /
-    --sidebar-foreground: 180 80% 90%;
-    --sidebar-primary: 195 100% 50%;
-    --sidebar-primary-foreground: 196 100% 10%;
-    --sidebar-accent: 180 100% 30%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 196 30% 25%;
-    --sidebar-ring: 195 100% 50%;
-  }
-  */
 
   body {
     font-family: var(--font-pt-sans), sans-serif;
