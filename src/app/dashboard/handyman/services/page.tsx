@@ -48,6 +48,7 @@ const priceTypeTranslations: Record<PriceType, string> = {
 async function fetchHandymanServices(handymanUid: string): Promise<HandymanService[]> {
   if (!handymanUid) return [];
   const servicesRef = collection(firestore, "handymanServices");
+  // Firestore query: where handymanUid matches, order by createdAt descending
   const q = query(servicesRef, where("handymanUid", "==", handymanUid), orderBy("createdAt", "desc"));
   
   const querySnapshot = await getDocs(q);
@@ -88,18 +89,22 @@ export default function HandymanServicesPage() {
         .then(setOfferedServices)
         .catch(err => {
           console.error("Detailed error fetching services:", err);
-          let description = "No se pudieron cargar tus servicios. Revisa la consola del navegador para más detalles (busca errores de Firestore sobre permisos o índices faltantes).";
-          if (err.message && (err.message.toLowerCase().includes('permission-denied') || err.message.toLowerCase().includes('missing or insufficient permissions'))) {
-            description = "Error de permisos al cargar servicios. Asegúrate de que tus reglas de seguridad de Firestore permitan leer 'handymanServices' para tu usuario.";
-          } else if (err.message && err.message.toLowerCase().includes('failed-precondition') && err.message.toLowerCase().includes('index')) {
-            description = "Error al cargar servicios: Firestore necesita un índice. Revisa la consola del navegador, usualmente hay un enlace para crearlo directamente.";
+          let description = "No se pudieron cargar tus servicios. Revisa la consola del navegador para más detalles.";
+          if (err.message) {
+            if (err.message.toLowerCase().includes('permission-denied') || err.message.toLowerCase().includes('missing or insufficient permissions')) {
+              description = "Error de permisos al cargar servicios. Asegúrate de que tus reglas de seguridad de Firestore permitan leer 'handymanServices' para tu usuario.";
+            } else if (err.message.toLowerCase().includes('failed-precondition') && err.message.toLowerCase().includes('index')) {
+              description = "Error al cargar servicios: Firestore necesita un índice. Revisa la consola del navegador, usualmente hay un enlace para crearlo directamente.";
+            } else {
+              description = `Error al cargar servicios: ${err.message}`;
+            }
           }
           toast({ title: "Error al Cargar Servicios", description, variant: "destructive", duration: 10000 });
         })
         .finally(() => setIsLoadingServices(false));
     } else {
       setIsLoadingServices(false);
-      setOfferedServices([]);
+      setOfferedServices([]); // Clear services if user logs out or is not a handyman
     }
   }, [typedUser, toast]);
 
@@ -117,15 +122,15 @@ export default function HandymanServicesPage() {
         category: data.category,
         description: data.description,
         priceType: data.priceType as PriceType,
-        priceValue: data.priceType !== 'consultar' ? data.priceValue : undefined,
+        priceValue: data.priceType !== 'consultar' ? (data.priceValue || null) : null,
         isActive: data.isActive,
         currency: "COP", 
       };
 
       const docRef = await addDoc(collection(firestore, "handymanServices"), {
         ...serviceDataForFirestore,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp(), // Firestore server timestamp
+        updatedAt: serverTimestamp(), // Firestore server timestamp
       });
 
       toast({
@@ -133,9 +138,13 @@ export default function HandymanServicesPage() {
         description: `El servicio "${data.name}" ha sido añadido exitosamente.`,
       });
       
+      // Create a representation for the local state with Timestamps
+      // Note: serverTimestamp() resolves on the server. For immediate client-side update,
+      // we use Timestamp.now() or fetch the doc again. Timestamp.now() is simpler here.
       const serviceForState: HandymanService = {
         id: docRef.id,
         ...serviceDataForFirestore,
+        priceValue: serviceDataForFirestore.priceValue, // Ensure it's string or null
         createdAt: Timestamp.now(), 
         updatedAt: Timestamp.now(), 
       };
@@ -146,17 +155,21 @@ export default function HandymanServicesPage() {
 
     } catch (error: any) {
       console.error("Error adding service:", error);
-      let description = "Hubo un problema al guardar el servicio. Revisa la consola del navegador para más detalles (busca errores de Firestore sobre permisos).";
-      if (error.message && (error.message.toLowerCase().includes('permission-denied') || error.message.toLowerCase().includes('missing or insufficient permissions'))) {
-            description = "Error de permisos al guardar el servicio. Asegúrate de que tus reglas de seguridad de Firestore permitan escribir en 'handymanServices' para tu usuario.";
-      }
+      let description = "Hubo un problema al guardar el servicio. Revisa la consola del navegador para más detalles.";
+       if (error.message) {
+            if (error.message.toLowerCase().includes('permission-denied') || error.message.toLowerCase().includes('missing or insufficient permissions')) {
+                description = "Error de permisos al guardar el servicio. Asegúrate de que tus reglas de seguridad de Firestore permitan escribir en 'handymanServices' para tu usuario.";
+            } else {
+                 description = `Error al guardar servicio: ${error.message}`;
+            }
+       }
       toast({ title: "Error al Añadir Servicio", description, variant: "destructive", duration: 10000 });
     } finally {
       setIsLoading(false);
     }
   };
   
-  if (!typedUser && !isLoading) {
+  if (!typedUser && !isLoading) { // Check isLoading to prevent flash of denied access during auth check
      return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
