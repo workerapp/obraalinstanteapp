@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore } from '@/firebase/clientApp';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -48,7 +48,6 @@ const priceTypeTranslations: Record<PriceType, string> = {
 async function fetchHandymanServices(handymanUid: string): Promise<HandymanService[]> {
   if (!handymanUid) return [];
   const servicesRef = collection(firestore, "handymanServices");
-  // Firestore query: where handymanUid matches, order by createdAt descending
   const q = query(servicesRef, where("handymanUid", "==", handymanUid), orderBy("createdAt", "desc"));
   
   const querySnapshot = await getDocs(q);
@@ -69,6 +68,7 @@ export default function HandymanServicesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [offeredServices, setOfferedServices] = useState<HandymanService[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceFormSchema),
@@ -104,19 +104,50 @@ export default function HandymanServicesPage() {
         .finally(() => setIsLoadingServices(false));
     } else {
       setIsLoadingServices(false);
-      setOfferedServices([]); // Clear services if user logs out or is not a handyman
+      setOfferedServices([]);
     }
   }, [typedUser, toast]);
 
+  useEffect(() => {
+    // Reset form and editing state when dialog closes, unless we are in edit mode and just opened it.
+    if (!isDialogOpen && editingServiceId) {
+      setEditingServiceId(null);
+      form.reset({
+        name: "",
+        category: "",
+        description: "",
+        priceType: "consultar",
+        priceValue: "",
+        isActive: true,
+      });
+    }
+  }, [isDialogOpen, editingServiceId, form]);
+
+  const handleEdit = (service: HandymanService) => {
+    if (!service.id) {
+        toast({ title: "Error", description: "ID de servicio no encontrado para editar.", variant: "destructive"});
+        return;
+    }
+    setEditingServiceId(service.id);
+    form.reset({
+        name: service.name,
+        category: service.category,
+        description: service.description,
+        priceType: service.priceType,
+        priceValue: service.priceValue || "",
+        isActive: service.isActive,
+    });
+    setIsDialogOpen(true);
+  };
 
   const onSubmit: SubmitHandler<ServiceFormData> = async (data) => {
     if (!typedUser?.uid) {
-      toast({ title: "Error", description: "Debes iniciar sesión para añadir servicios.", variant: "destructive"});
+      toast({ title: "Error", description: "Debes iniciar sesión para gestionar servicios.", variant: "destructive"});
       return;
     }
     setIsLoading(true);
     try {
-      const serviceDataForFirestore: Omit<HandymanService, 'id' | 'createdAt' | 'updatedAt'> = {
+      const serviceDataForFirestore: Omit<HandymanService, 'id' | 'createdAt' | 'updatedAt'> & { handymanUid: string; updatedAt: Timestamp; createdAt?: Timestamp } = {
         handymanUid: typedUser.uid,
         name: data.name,
         category: data.category,
@@ -124,37 +155,54 @@ export default function HandymanServicesPage() {
         priceType: data.priceType as PriceType,
         priceValue: data.priceType !== 'consultar' ? (data.priceValue || null) : null,
         isActive: data.isActive,
-        currency: "COP", 
+        currency: "COP",
+        updatedAt: serverTimestamp() as Timestamp, // Type assertion for serverTimestamp
       };
 
-      const docRef = await addDoc(collection(firestore, "handymanServices"), {
-        ...serviceDataForFirestore,
-        createdAt: serverTimestamp(), // Firestore server timestamp
-        updatedAt: serverTimestamp(), // Firestore server timestamp
-      });
+      if (editingServiceId) {
+        // Editing existing service
+        const serviceDocRef = doc(firestore, "handymanServices", editingServiceId);
+        await updateDoc(serviceDocRef, serviceDataForFirestore);
+        
+        toast({
+          title: "Servicio Actualizado",
+          description: `El servicio "${data.name}" ha sido actualizado exitosamente.`,
+        });
+        
+        setOfferedServices(prev => prev.map(s => s.id === editingServiceId ? { ...s, ...serviceDataForFirestore, id: editingServiceId, updatedAt: Timestamp.now() } as HandymanService : s));
+        setEditingServiceId(null);
 
-      toast({
-        title: "Servicio Añadido",
-        description: `El servicio "${data.name}" ha sido añadido exitosamente.`,
+      } else {
+        // Adding new service
+        serviceDataForFirestore.createdAt = serverTimestamp() as Timestamp; // Type assertion
+        const docRef = await addDoc(collection(firestore, "handymanServices"), serviceDataForFirestore);
+        toast({
+          title: "Servicio Añadido",
+          description: `El servicio "${data.name}" ha sido añadido exitosamente.`,
+        });
+        
+        const newService: HandymanService = {
+            id: docRef.id,
+            ...serviceDataForFirestore,
+            priceValue: serviceDataForFirestore.priceValue, // Ensure it's string or null
+            createdAt: Timestamp.now(), 
+            updatedAt: Timestamp.now(),
+        };
+        setOfferedServices(prev => [newService, ...prev]);
+      }
+      
+      form.reset({ // Reset to default values after add or edit
+        name: "",
+        category: "",
+        description: "",
+        priceType: "consultar",
+        priceValue: "",
+        isActive: true,
       });
-      
-      // Create a representation for the local state with Timestamps
-      // Note: serverTimestamp() resolves on the server. For immediate client-side update,
-      // we use Timestamp.now() or fetch the doc again. Timestamp.now() is simpler here.
-      const serviceForState: HandymanService = {
-        id: docRef.id,
-        ...serviceDataForFirestore,
-        priceValue: serviceDataForFirestore.priceValue, // Ensure it's string or null
-        createdAt: Timestamp.now(), 
-        updatedAt: Timestamp.now(), 
-      };
-      
-      setOfferedServices(prev => [serviceForState, ...prev]);
-      form.reset();
       setIsDialogOpen(false);
 
     } catch (error: any) {
-      console.error("Error adding service:", error);
+      console.error("Error saving service:", error);
       let description = "Hubo un problema al guardar el servicio. Revisa la consola del navegador para más detalles.";
        if (error.message) {
             if (error.message.toLowerCase().includes('permission-denied') || error.message.toLowerCase().includes('missing or insufficient permissions')) {
@@ -163,13 +211,13 @@ export default function HandymanServicesPage() {
                  description = `Error al guardar servicio: ${error.message}`;
             }
        }
-      toast({ title: "Error al Añadir Servicio", description, variant: "destructive", duration: 10000 });
+      toast({ title: `Error al ${editingServiceId ? 'Actualizar' : 'Añadir'} Servicio`, description, variant: "destructive", duration: 10000 });
     } finally {
       setIsLoading(false);
     }
   };
   
-  if (!typedUser && !isLoading) { // Check isLoading to prevent flash of denied access during auth check
+  if (!typedUser && !isLoading) {
      return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
@@ -180,6 +228,19 @@ export default function HandymanServicesPage() {
       </div>
     );
   }
+
+  const handleOpenDialogForNewService = () => {
+    setEditingServiceId(null); // Asegurarse de que no estamos en modo edición
+    form.reset({ // Restablecer el formulario a valores predeterminados
+        name: "",
+        category: "",
+        description: "",
+        priceType: "consultar",
+        priceValue: "",
+        isActive: true,
+    });
+    setIsDialogOpen(true);
+  };
 
 
   return (
@@ -196,14 +257,16 @@ export default function HandymanServicesPage() {
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
-          <Button onClick={() => { form.reset(); setIsDialogOpen(true);}} className="mb-6">
+          <Button onClick={handleOpenDialogForNewService} className="mb-6">
             <PlusCircle size={18} className="mr-2" /> Añadir Nuevo Servicio
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
-            <DialogTitle>Añadir Nuevo Servicio</DialogTitle>
-            <DialogDescription>Completa los detalles del servicio que ofreces.</DialogDescription>
+            <DialogTitle>{editingServiceId ? "Editar Servicio" : "Añadir Nuevo Servicio"}</DialogTitle>
+            <DialogDescription>
+              {editingServiceId ? "Modifica los detalles de tu servicio." : "Completa los detalles del servicio que ofreces."}
+            </DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -248,7 +311,7 @@ export default function HandymanServicesPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo de Precio</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un tipo" /></SelectTrigger></FormControl>
                         <SelectContent>
                           {Object.entries(priceTypeTranslations).map(([value, label]) => (
@@ -291,11 +354,11 @@ export default function HandymanServicesPage() {
               />
               <DialogFooter className="pt-4">
                 <DialogClose asChild>
-                  <Button type="button" variant="outline">Cancelar</Button>
+                  <Button type="button" variant="outline" onClick={() => {setEditingServiceId(null); setIsDialogOpen(false);}}>Cancelar</Button>
                 </DialogClose>
                 <Button type="submit" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isLoading ? "Guardando..." : "Guardar Servicio"}
+                  {isLoading ? "Guardando..." : (editingServiceId ? "Guardar Cambios" : "Guardar Servicio")}
                 </Button>
               </DialogFooter>
             </form>
@@ -329,7 +392,7 @@ export default function HandymanServicesPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-1 truncate">{service.description}</p>
+                    <p className="text-sm text-muted-foreground mb-1 truncate" title={service.description}>{service.description}</p>
                     <p className="text-sm">
                       <strong>Precio:</strong> {priceTypeTranslations[service.priceType]}
                       {service.priceType !== 'consultar' && service.priceValue && ` - $${Number(service.priceValue).toLocaleString('es-CO')} ${service.currency || 'COP'}`}
@@ -341,7 +404,7 @@ export default function HandymanServicesPage() {
                     )}
                   </CardContent>
                   <CardFooter className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => toast({ title: "Próximamente", description: "Editar servicio estará disponible pronto."})} disabled>Editar</Button>
+                    <Button variant="outline" size="sm" onClick={() => handleEdit(service)}>Editar</Button>
                     <Button variant="destructive" size="sm" onClick={() => toast({ title: "Próximamente", description: "Eliminar servicio estará disponible pronto."})} disabled>Eliminar</Button>
                   </CardFooter>
                 </Card>
