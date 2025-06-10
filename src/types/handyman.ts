@@ -1,14 +1,15 @@
+
 // src/types/handyman.ts
 export interface Handyman {
-  id: string;
+  id: string; // Firebase UID
   name: string;
-  tagline: string;
-  skills: string[];
-  rating: number; // e.g., 4.5
-  reviewsCount: number;
+  tagline?: string;
+  skills?: string[];
+  rating?: number; 
+  reviewsCount?: number;
   imageUrl?: string;
-  location?: string; // e.g., "City, State" or general area
-  memberSince: string; // e.g., "Joined Jan 2022"
+  location?: string; 
+  memberSince?: string; 
   dataAiHint?: string;
-  phone?: string; // Phone number for WhatsApp contact
+  phone?: string;
 }
