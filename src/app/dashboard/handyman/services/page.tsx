@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore } from '@/firebase/clientApp';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -87,8 +87,8 @@ export default function HandymanServicesPage() {
       fetchHandymanServices(typedUser.uid)
         .then(setOfferedServices)
         .catch(err => {
-          console.error("Error fetching services:", err);
-          toast({ title: "Error", description: "No se pudieron cargar tus servicios.", variant: "destructive" });
+          console.error("Detailed error fetching services:", err);
+          toast({ title: "Error", description: "No se pudieron cargar tus servicios. Revisa la consola del navegador para más detalles.", variant: "destructive" });
         })
         .finally(() => setIsLoadingServices(false));
     } else {
@@ -105,7 +105,7 @@ export default function HandymanServicesPage() {
     }
     setIsLoading(true);
     try {
-      const newService: Omit<HandymanService, 'id' | 'createdAt' | 'updatedAt'> = {
+      const serviceDataForFirestore: Omit<HandymanService, 'id' | 'createdAt' | 'updatedAt'> = {
         handymanUid: typedUser.uid,
         name: data.name,
         category: data.category,
@@ -113,11 +113,11 @@ export default function HandymanServicesPage() {
         priceType: data.priceType as PriceType,
         priceValue: data.priceType !== 'consultar' ? data.priceValue : undefined,
         isActive: data.isActive,
-        currency: "COP", // Defaulting to COP for now
+        currency: "COP", 
       };
 
       const docRef = await addDoc(collection(firestore, "handymanServices"), {
-        ...newService,
+        ...serviceDataForFirestore,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -127,13 +127,20 @@ export default function HandymanServicesPage() {
         description: `El servicio "${data.name}" ha sido añadido exitosamente.`,
       });
       
-      setOfferedServices(prev => [{id: docRef.id, ...newService, createdAt: new Date(), updatedAt: new Date()} as any, ...prev]);
+      const serviceForState: HandymanService = {
+        id: docRef.id,
+        ...serviceDataForFirestore,
+        createdAt: Timestamp.now(), // Use Firestore Timestamp for local state consistency
+        updatedAt: Timestamp.now(), // Use Firestore Timestamp for local state consistency
+      };
+      
+      setOfferedServices(prev => [serviceForState, ...prev]);
       form.reset();
       setIsDialogOpen(false);
 
     } catch (error) {
       console.error("Error adding service:", error);
-      toast({ title: "Error al Añadir Servicio", description: "Hubo un problema al guardar el servicio.", variant: "destructive" });
+      toast({ title: "Error al Añadir Servicio", description: "Hubo un problema al guardar el servicio. Revisa la consola para más detalles.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -237,7 +244,7 @@ export default function HandymanServicesPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Valor (COP)</FormLabel>
-                        <FormControl><Input type="number" placeholder="Ej: 50000" {...field} /></FormControl>
+                        <FormControl><Input type="number" placeholder="Ej: 50000" {...field} value={field.value || ''} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -331,3 +338,6 @@ export default function HandymanServicesPage() {
     </div>
   );
 }
+
+
+    
