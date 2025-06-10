@@ -26,7 +26,17 @@ const fetchQuotationRequests = async (userId: string | undefined): Promise<Quota
   const querySnapshot = await getDocs(q);
   const requests: QuotationRequest[] = [];
   querySnapshot.forEach((doc) => {
-    requests.push({ id: doc.id, ...doc.data() } as QuotationRequest);
+    const data = doc.data();
+    // Aseguramos que los campos de fecha sean Timestamps antes de castear
+    const requestedAt = data.requestedAt instanceof Timestamp ? data.requestedAt : Timestamp.now(); // Fallback o manejo de error
+    const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(); // Fallback o manejo de error
+
+    requests.push({ 
+      id: doc.id, 
+      ...data,
+      requestedAt: requestedAt,
+      updatedAt: updatedAt,
+    } as QuotationRequest); // Es importante que los datos de Firestore coincidan con la estructura
   });
   return requests;
 };
@@ -35,26 +45,24 @@ export default function CustomerDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
 
-  const { data: quotationRequests, isLoading: requestsLoading, error: requestsError } = useQuery<QuotationRequest[], Error>(
-    ['quotationRequests', typedUser?.uid],
-    () => fetchQuotationRequests(typedUser?.uid),
-    {
-      enabled: !!typedUser?.uid, // Solo ejecutar la query si tenemos un userId
-    }
-  );
+  const { data: quotationRequests, isLoading: requestsLoading, error: requestsError } = useQuery<QuotationRequest[], Error>({
+    queryKey: ['quotationRequests', typedUser?.uid],
+    queryFn: () => fetchQuotationRequests(typedUser?.uid),
+    enabled: !!typedUser?.uid, 
+  });
 
   const getStatusVariant = (status: QuotationRequest['status']): "default" | "secondary" | "outline" | "destructive" => {
     switch (status) {
       case 'Completada':
-        return 'default'; // Verde o color primario sólido
+        return 'default'; 
       case 'Programada':
-        return 'secondary'; // Un color secundario
+        return 'secondary'; 
       case 'Enviada':
       case 'Revisando':
       case 'Cotizada':
-        return 'outline'; // Con borde, menos prominente
+        return 'outline'; 
       case 'Cancelada':
-        return 'destructive'; // Rojo
+        return 'destructive';
       default:
         return 'outline';
     }
@@ -79,7 +87,6 @@ export default function CustomerDashboardPage() {
     }
   }
 
-
   if (authLoading) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -88,7 +95,7 @@ export default function CustomerDashboardPage() {
     );
   }
 
-  if (!typedUser) {
+  if (!typedUser && !authLoading) { 
      return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
@@ -99,7 +106,7 @@ export default function CustomerDashboardPage() {
       </div>
     );
   }
-
+  
   return (
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-accent/10 via-background to-background rounded-lg shadow-md">
@@ -133,12 +140,12 @@ export default function CustomerDashboardPage() {
           <CardDescription>Resumen de tus solicitudes de servicio activas y pasadas.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {requestsLoading && (
+          {requestsLoading && typedUser && ( // Mostrar loader solo si el usuario está logueado
             <div className="flex justify-center py-4">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           )}
-          {requestsError && (
+          {requestsError && typedUser && ( // Mostrar error solo si el usuario está logueado
             <Alert variant="destructive">
               <AlertTitle>Error al Cargar Solicitudes</AlertTitle>
               <AlertDescription>
@@ -148,20 +155,19 @@ export default function CustomerDashboardPage() {
               </AlertDescription>
             </Alert>
           )}
-          {!requestsLoading && !requestsError && quotationRequests && quotationRequests.length > 0 ? quotationRequests.map((req, index) => (
+          {!requestsLoading && !requestsError && quotationRequests && quotationRequests.length > 0 && typedUser ? quotationRequests.map((req, index) => (
             <div key={req.id}>
               <div className="p-4 border rounded-md hover:shadow-md transition-shadow bg-background">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                   <div>
                     <h3 className="font-semibold">{req.serviceName}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Solicitado: {req.requestedAt ? format(req.requestedAt.toDate(), 'PPPp', { locale: es }) : 'Fecha no disponible'}
+                      Solicitado: {req.requestedAt && typeof req.requestedAt.toDate === 'function' ? format(req.requestedAt.toDate(), 'PPPp', { locale: es }) : 'Fecha no disponible'}
                       {req.handymanName && ` | Operario Solicitado: ${req.handymanName}`}
                     </p>
                     <p className="text-sm text-muted-foreground truncate max-w-md" title={req.problemDescription}>Problema: {req.problemDescription}</p>
                   </div>
                   <Badge 
-                    // variant={getStatusVariant(req.status)}
                     className={`mt-2 sm:mt-0 self-start sm:self-center ${getStatusColorClass(req.status)}`}
                   >
                     {req.status}
@@ -177,14 +183,16 @@ export default function CustomerDashboardPage() {
               {index < quotationRequests.length - 1 && <Separator className="my-4" />}
             </div>
           )) : (
-            !requestsLoading && !requestsError && <p className="text-muted-foreground text-center py-4">Aún no tienes solicitudes de servicio.</p>
+            !requestsLoading && !requestsError && typedUser && <p className="text-muted-foreground text-center py-4">Aún no tienes solicitudes de servicio.</p>
           )}
         </CardContent>
-        <CardFooter className="justify-center">
-            <Button variant="outline" onClick={() => console.log('Ver historial completo clickeado')} disabled>
-                <History className="mr-2 h-4 w-4"/> Ver Historial Completo (Próximamente)
-            </Button>
-        </CardFooter>
+        {typedUser && ( // Solo mostrar footer si el usuario está logueado
+          <CardFooter className="justify-center">
+              <Button variant="outline" onClick={() => console.log('Ver historial completo clickeado')} disabled>
+                  <History className="mr-2 h-4 w-4"/> Ver Historial Completo (Próximamente)
+              </Button>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );
