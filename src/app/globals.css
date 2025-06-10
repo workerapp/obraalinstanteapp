@@ -3,10 +3,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
 body {
   font-family: var(--font-pt-sans), sans-serif;
 }
+*/
 
+/*
 @layer base {
   :root {
     --background: 0 0% 100%; /* White */
@@ -56,38 +59,38 @@ body {
     --chart-4: 193 100% 40%; /* Lighter shade of #006375 */
     --chart-5: 197 20% 55%;  /* Muted foreground color */
   }
-
+*/
+/*
   .dark {
-    --background: 197 100% 12%; /* #002C3B - User's Very Dark Blue */
-    --foreground: 197 20% 85%; /* Lightened #002C3B for text */
+    --background: 197 100% 12%; 
+    --foreground: 197 20% 85%; 
 
-    --card: 198 100% 14%; /* #003749 - User's Dark Teal Blue */
-    --card-foreground: 197 20% 85%; /* Lightened #002C3B for text */
+    --card: 198 100% 14%; 
+    --card-foreground: 197 20% 85%; 
 
-    --popover: 198 100% 14%; /* #003749 */
+    --popover: 198 100% 14%; 
     --popover-foreground: 197 20% 85%;
 
-    --primary: 196 100% 41%; /* Lightened #00799E for dark mode, e.g., #00A1CF */
-    --primary-foreground: 197 100% 8%; /* Very dark for contrast on primary, e.g., #001A23 */
+    --primary: 196 100% 41%; 
+    --primary-foreground: 197 100% 8%; 
 
-    --secondary: 193 100% 33%; /* Lightened #006375 for dark mode, e.g., #0088A9 */
-    --secondary-foreground: 197 100% 8%; /* Very dark for contrast on secondary */
+    --secondary: 193 100% 33%; 
+    --secondary-foreground: 197 100% 8%; 
 
-    --muted: 197 60% 18%; /* Slightly lighter/desaturated version of #002C3B */
-    --muted-foreground: 197 20% 65%; /* Mid-light gray on dark bg */
+    --muted: 197 60% 18%; 
+    --muted-foreground: 197 20% 65%; 
 
-    --accent: 196 100% 41%; /* Lightened #00799E */
-    --accent-foreground: 197 100% 8%; /* Very dark for contrast on accent */
+    --accent: 196 100% 41%; 
+    --accent-foreground: 197 100% 8%; 
 
-    --destructive: 0 70% 50%; /* Darker/less vibrant red for dark mode */
+    --destructive: 0 70% 50%; 
     --destructive-foreground: 0 0% 98%;
 
-    --border: 198 50% 25%; /* Dark border, based on #003749 */
-    --input: 198 50% 22%; /* Dark input bg, based on #003749 */
-    --ring: 196 100% 41%; /* Lightened #00799E for focus rings */
+    --border: 198 50% 25%; 
+    --input: 198 50% 22%; 
+    --ring: 196 100% 41%; 
 
-    /* Sidebar specific colors - dark theme */
-    --sidebar-background: 197 80% 15%; /* Slightly lighter than main dark bg */
+    --sidebar-background: 197 80% 15%; 
     --sidebar-foreground: 197 20% 85%;
     --sidebar-primary: 196 100% 41%;
     --sidebar-primary-foreground: 197 100% 8%;
@@ -96,21 +99,23 @@ body {
     --sidebar-border: 198 50% 28%;
     --sidebar-ring: 196 100% 41%;
     
-    /* Chart colors derived for dark theme */
-    --chart-1: 196 100% 41%; /* Lightened #00799E */
-    --chart-2: 193 100% 33%; /* Lightened #006375 */
-    --chart-3: 196 100% 60%; /* Even lighter shade of #00799E */
-    --chart-4: 193 100% 50%; /* Even lighter shade of #006375 */
-    --chart-5: 197 20% 65%;  /* Muted foreground dark */
+    --chart-1: 196 100% 41%; 
+    --chart-2: 193 100% 33%; 
+    --chart-3: 196 100% 60%; 
+    --chart-4: 193 100% 50%; 
+    --chart-5: 197 20% 65%;  
   }
-}
+*/
+/* } */ /* This closing brace was for the original @layer base */
 
+/*
 @layer base {
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    /* @apply bg-background text-foreground; */ /* Commented out as vars are removed */
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+*/

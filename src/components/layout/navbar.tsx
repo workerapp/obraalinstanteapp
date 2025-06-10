@@ -175,7 +175,7 @@ export default function Navbar() {
       <header className="bg-card shadow-md sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
-            <Image src="/images/icon.png" alt="Obra al Instante Logo" width={32} height={32} priority />
+            <Image src="https://placehold.co/32x32.png" alt="Obra al Instante Logo" width={32} height={32} priority data-ai-hint="logo simple" />
             <h1 className="text-2xl font-headline font-bold">Obra al Instante</h1>
           </Link>
           <div className="flex items-center gap-2 md:gap-3">
@@ -195,7 +195,7 @@ export default function Navbar() {
     <header className="bg-card shadow-md sticky top-0 z-50">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <Link href="/" className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
-          <Image src="/images/icon.png" alt="Obra al Instante Logo" width={32} height={32} priority />
+          <Image src="https://placehold.co/32x32.png" alt="Obra al Instante Logo" width={32} height={32} priority data-ai-hint="logo simple"/>
           <h1 className="text-2xl font-headline font-bold">Obra al Instante</h1>
         </Link>
 

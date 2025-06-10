@@ -9,11 +9,12 @@ export default function Footer() {
       <div className="container mx-auto px-4 text-center">
         <div className="flex justify-center items-center mb-4">
           <Image 
-            src="/images/icon.png" 
+            src="https://placehold.co/24x24.png" 
             alt="Obra al Instante Logo" 
             width={24} 
             height={24} 
             className="mr-2"
+            data-ai-hint="logo simple"
           />
           <p className="text-lg font-headline font-semibold">Obra al Instante</p>
         </div>
