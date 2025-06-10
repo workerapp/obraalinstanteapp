@@ -42,7 +42,7 @@ const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null
       
       if (createdAtDate && !isNaN(createdAtDate.getTime())) {
           memberSince = `Se unió en ${createdAtDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}`;
-      } else if (createdAtDate) { // If date object was created but invalid
+      } else if (createdAtDate) { 
           console.error(`mapFirestoreUserToHandyman: [UID: ${uid}] Invalid date parsed from 'createdAt'. Raw:`, userData.createdAt);
       }
     } catch (e: any) {
@@ -72,7 +72,6 @@ const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null
 
 export async function generateMetadata({ params }: HandymanDetailPageProps) {
   try {
-    // Check if params.id is a valid non-empty string before fetching
     if (!params.id || typeof params.id !== 'string' || params.id.trim() === '') {
         console.warn("generateMetadata: Invalid or empty handyman ID provided in params.");
         return { title: "Operario No Encontrado" };
@@ -106,8 +105,12 @@ export default async function HandymanDetailPage({ params }: HandymanDetailPageP
   console.log(`HandymanDetailPage: [ID: ${handymanId}] Attempting to fetch profile.`);
 
   try {
+    console.log(`HandymanDetailPage: [ID: ${handymanId}] Preparing to get user document reference.`);
     const userDocRef = doc(firestore, "users", handymanId);
+    console.log(`HandymanDetailPage: [ID: ${handymanId}] User document reference created. Attempting to get snapshot.`);
+    
     const userDocSnap = await getDoc(userDocRef);
+    console.log(`HandymanDetailPage: [ID: ${handymanId}] User document snapshot received. Exists: ${userDocSnap.exists()}`);
 
     if (!userDocSnap.exists()) {
       console.warn(`HandymanDetailPage: [ID: ${handymanId}] No user document found in 'users' collection. This ID might be from static data or does not exist in Firestore. Calling notFound().`);
@@ -117,6 +120,7 @@ export default async function HandymanDetailPage({ params }: HandymanDetailPageP
     const userData = userDocSnap.data();
     console.log(`HandymanDetailPage: [ID: ${handymanId}] Raw user data from Firestore:`, JSON.stringify(userData, null, 2));
 
+    console.log(`HandymanDetailPage: [ID: ${handymanId}] Attempting to map Firestore data to Handyman object.`);
     const handyman = mapFirestoreUserToHandyman(handymanId, userData);
 
     if (!handyman) {
@@ -124,9 +128,8 @@ export default async function HandymanDetailPage({ params }: HandymanDetailPageP
       notFound();
     }
     
-    // Mock reviews - in a real app, these might be fetched or come from handyman data
-    const reviews = [
-      { id: 1, author: "Alicia B.", rating: 5, comment: "¡Juan fue fantástico! Arregló mi grifo que goteaba en poco tiempo. Altamente recomendado.", date: "2023-03-15" },
+    const reviews = [ // Mock reviews for now
+      { id: 1, author: "Alicia B.", rating: 5, comment: "¡Fantástico! Arregló mi grifo que goteaba en poco tiempo.", date: "2023-03-15" },
       { id: 2, author: "Roberto C.", rating: 4, comment: "Buen trabajo en el cableado eléctrico. Profesional y ordenado.", date: "2023-02-20" },
     ];
 
@@ -134,7 +137,14 @@ export default async function HandymanDetailPage({ params }: HandymanDetailPageP
     return <HandymanDetailClientContent handyman={handyman} reviews={reviews} />;
 
   } catch (error: any) {
-    console.error(`HandymanDetailPage: [ID: ${handymanId}] EXCEPTION CAUGHT. This could be Firestore security rules (PERMISSION_DENIED), a network issue, or an unhandled problem in data processing. Error:`, error.message, "\nStack:", error.stack, "Calling notFound().");
-    notFound();
+    if (error.message === "NEXT_HTTP_ERROR_FALLBACK;404" || error.name === 'NotFoundError') {
+      // This means one of the notFound() calls within the try block was hit.
+      // The specific reason should have been logged by a console.warn just before that notFound() call.
+      console.error(`HandymanDetailPage: [ID: ${handymanId}] Operation resulted in notFound(). Check preceding console.warn logs for the specific reason. Stack:`, error.stack);
+    } else {
+      // This is for other types of errors, like direct Firestore permission issues from getDoc
+      console.error(`HandymanDetailPage: [ID: ${handymanId}] EXCEPTION CAUGHT during Firestore operation. This could be Firestore security rules (PERMISSION_DENIED), network issue, etc. Error:`, error.message, "\nStack:", error.stack);
+    }
+    notFound(); // Re-throw or call notFound() to ensure the page correctly 404s
   }
 }
