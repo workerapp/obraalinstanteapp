@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ListChecks, MessageSquarePlus, History, UserCircle, Loader2, Trash2, CheckCircle2, CalendarPlus } from 'lucide-react'; // Added CheckCircle2, CalendarPlus
+import { ListChecks, MessageSquarePlus, History, UserCircle, Loader2, Trash2, CheckCircle2, CalendarPlus, Eye } from 'lucide-react'; // Added Eye icon
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
@@ -292,9 +292,11 @@ export default function CustomerDashboardPage() {
                     {req.status}
                   </Badge>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                    <Button variant="link" size="sm" className="p-0 h-auto text-accent hover:text-accent/80" onClick={() => console.log('Ver detalles de la solicitud:', req.id)} disabled>Ver Detalles (Próximamente)</Button>
-                    {(req.status === 'Enviada' || req.status === 'Revisando') && // Keep this for requests that are not yet quoted
+                <div className="mt-3 flex flex-wrap gap-2 items-center">
+                    <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:text-accent/80">
+                        <Link href={`/dashboard/requests/${req.id}`}><Eye className="mr-1.5 h-4 w-4" />Ver Detalles</Link>
+                    </Button>
+                    {(req.status === 'Enviada' || req.status === 'Revisando') && 
                         <Button 
                           variant="link" 
                           size="sm" 

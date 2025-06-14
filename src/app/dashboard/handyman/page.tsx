@@ -32,11 +32,12 @@ import {
   Loader2, 
   AlertTriangle, 
   Edit3,
-  FileSignature, // Para Cotizar
-  XCircle, // Para Rechazar
-  CalendarPlus, // Para Programar
-  CheckCircle2 // Para Completar
-} from 'lucide-react';
+  FileSignature, 
+  XCircle, 
+  CalendarPlus, 
+  CheckCircle2,
+  Eye 
+} from 'lucide-react'; // Added Eye icon
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
@@ -56,7 +57,7 @@ const fetchHandymanRequests = async (handymanUid: string | undefined): Promise<Q
   const q = query(
     requestsRef, 
     where("handymanId", "==", handymanUid),
-    where("status", "in", ["Enviada", "Revisando", "Cotizada", "Programada", "Completada"]), 
+    // where("status", "in", ["Enviada", "Revisando", "Cotizada", "Programada", "Completada"]), // Keep commented to see all for now
     orderBy("status"), 
     orderBy("requestedAt", "desc")
   );
@@ -153,7 +154,7 @@ export default function HandymanDashboardPage() {
   const openQuoteDialog = (request: QuotationRequest) => {
     setRequestBeingQuoted(request);
     quoteForm.reset({ 
-      quotedAmount: request.quotedAmount ?? undefined, // Use ?? to handle 0 correctly
+      quotedAmount: request.quotedAmount ?? undefined, 
       quotationDetails: request.quotationDetails || "",
     });
     setIsQuoteDialogOpen(true);
@@ -170,7 +171,7 @@ export default function HandymanDashboardPage() {
       await updateDoc(requestDocRef, {
         status: "Cotizada",
         quotedAmount: data.quotedAmount,
-        quotedCurrency: "COP", // Assuming COP for now
+        quotedCurrency: "COP", 
         quotationDetails: data.quotationDetails || null,
         updatedAt: serverTimestamp(),
       });
@@ -294,14 +295,16 @@ export default function HandymanDashboardPage() {
                     <p className="text-sm text-muted-foreground">Cliente: {req.contactFullName} ({req.contactEmail})</p>
                     <p className="text-sm text-muted-foreground">Solicitado: {req.requestedAt?.toDate ? format(req.requestedAt.toDate(), 'PPPp', { locale: es }) : 'Fecha no disp.'}</p>
                     <p className="text-sm text-muted-foreground truncate max-w-md" title={req.problemDescription}>Problema: {req.problemDescription}</p>
-                    {req.status === 'Cotizada' && req.quotedAmount && (
+                    {req.quotedAmount && (req.status === 'Cotizada' || req.status === 'Programada' || req.status === 'Completada') && (
                         <p className="text-sm text-purple-600 font-medium">Monto Cotizado: ${req.quotedAmount.toLocaleString('es-CO')} {req.quotedCurrency || 'COP'}</p>
                     )}
                   </div>
                   <Badge className={`mt-2 sm:mt-0 self-start sm:self-end ${getStatusColorClass(req.status)}`}>{req.status}</Badge>
                 </div>
                  <div className="mt-3 flex flex-wrap gap-2 items-center">
-                    <Button variant="link" size="sm" className="p-0 h-auto text-accent" onClick={() => console.log('Ver detalles:', req.id)} disabled>Ver Detalles (Próximamente)</Button>
+                    <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:text-accent/80">
+                        <Link href={`/dashboard/requests/${req.id}`}><Eye className="mr-1.5 h-4 w-4" />Ver Detalles</Link>
+                    </Button>
                     
                     {req.status === 'Enviada' && 
                         <Button variant="link" size="sm" className="p-0 h-auto text-orange-600 hover:text-orange-700" onClick={() => handleChangeRequestStatus(req.id, 'Revisando')} disabled={isUpdatingRequestId === req.id}>
