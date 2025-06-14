@@ -2,26 +2,27 @@
 // src/app/dashboard/handyman/page.tsx
 "use client";
 
+import { useState } from 'react'; // Añadido para isUpdatingRequestId
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Briefcase, CalendarCheck, DollarSign, Settings2, UserCog, ListChecks, Loader2, AlertTriangle } from 'lucide-react';
+import { Briefcase, CalendarCheck, DollarSign, Settings2, UserCog, ListChecks, Loader2, AlertTriangle, Edit3 } from 'lucide-react'; // Edit3 añadido
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore } from '@/firebase/clientApp';
-import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
-import { useQuery } from '@tanstack/react-query';
+import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore'; // doc, updateDoc, serverTimestamp añadidos
+import { useQuery, useQueryClient } from '@tanstack/react-query'; // useQueryClient añadido
 import type { QuotationRequest } from '@/types/quotationRequest';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast'; // useToast añadido
 
 const fetchHandymanRequests = async (handymanUid: string | undefined): Promise<QuotationRequest[]> => {
   if (!handymanUid) return [];
   
   const requestsRef = collection(firestore, "quotationRequests");
-  // Incluimos varios estados relevantes para el operario, ordenados por fecha de solicitud descendente
   const q = query(
     requestsRef, 
     where("handymanId", "==", handymanUid),
@@ -47,6 +48,9 @@ const fetchHandymanRequests = async (handymanUid: string | undefined): Promise<Q
 export default function HandymanDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
+  const queryClient = useQueryClient(); // Hook de QueryClient
+  const { toast } = useToast(); // Hook para Toasts
+  const [isUpdatingRequestId, setIsUpdatingRequestId] = useState<string | null>(null); // Estado para feedback de carga
 
   const { data: quotationRequests, isLoading: requestsLoading, error: requestsError } = useQuery<QuotationRequest[], Error>({
     queryKey: ['handymanRequests', typedUser?.uid],
@@ -54,8 +58,7 @@ export default function HandymanDashboardPage() {
     enabled: !!typedUser?.uid && typedUser.role === 'handyman', 
   });
 
-  // TODO: Calcular ganancias reales cuando tengamos precios en las solicitudes completadas
-  const totalEarnings = 0; // Placeholder
+  const totalEarnings = 0; 
 
   const getStatusColorClass = (status: QuotationRequest['status']): string => {
      switch (status) {
@@ -75,6 +78,29 @@ export default function HandymanDashboardPage() {
         return 'bg-gray-500 text-white';
     }
   }
+
+  const handleChangeRequestStatus = async (requestId: string, newStatus: QuotationRequest['status']) => {
+    if (!typedUser?.uid) {
+      toast({ title: "Error", description: "No se pudo identificar al operario.", variant: "destructive" });
+      return;
+    }
+    setIsUpdatingRequestId(requestId);
+    try {
+      const requestDocRef = doc(firestore, "quotationRequests", requestId);
+      await updateDoc(requestDocRef, {
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+      });
+
+      toast({ title: "Estado Actualizado", description: `La solicitud ahora está "${newStatus}".` });
+      queryClient.invalidateQueries({ queryKey: ['handymanRequests', typedUser.uid] });
+    } catch (error: any) {
+      console.error("Error al actualizar estado de solicitud:", error);
+      toast({ title: "Error al Actualizar", description: error.message || "No se pudo actualizar el estado.", variant: "destructive" });
+    } finally {
+      setIsUpdatingRequestId(null);
+    }
+  };
 
   if (authLoading) {
     return (
@@ -177,11 +203,11 @@ export default function HandymanDashboardPage() {
             </div>
           )}
           {requestsError && ( 
-            <Alert variant="destructive">
+             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Error al Cargar Solicitudes</AlertTitle>
               <AlertDescription>
-                {requestsError.message.toLowerCase().includes('index') ? (
+                {requestsError.message.toLowerCase().includes('index') || requestsError.message.toLowerCase().includes('failed-precondition') ? (
                   <>
                     Firestore necesita un índice para esta consulta. Por favor, revisa la consola de tu navegador (o los logs del servidor si estás desarrollando localmente) para obtener un enlace directo y crear el índice necesario en la consola de Firebase.
                     Una vez creado el índice, espera unos minutos e intenta recargar la página.
@@ -219,10 +245,25 @@ export default function HandymanDashboardPage() {
                  <div className="mt-3 flex flex-wrap gap-2">
                     <Button variant="link" size="sm" className="p-0 h-auto text-accent" onClick={() => console.log('Ver detalles de la solicitud:', req.id)} disabled>Ver Detalles (Próximamente)</Button>
                     {req.status === 'Enviada' && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-green-600" onClick={() => console.log('Revisar/Cotizar solicitud:', req.id)} disabled>Revisar/Cotizar (Próximamente)</Button>
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          className="p-0 h-auto text-orange-600" 
+                          onClick={() => handleChangeRequestStatus(req.id, 'Revisando')}
+                          disabled={isUpdatingRequestId === req.id}
+                        >
+                          {isUpdatingRequestId === req.id ? (
+                            <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Marcando...</>
+                          ) : (
+                            <><Edit3 className="mr-1.5 h-4 w-4" /> Marcar como Revisando</>
+                          )}
+                        </Button>
                     }
                      {(req.status === 'Enviada' || req.status === 'Revisando' || req.status === 'Cotizada') && 
                         <Button variant="link" size="sm" className="p-0 h-auto text-destructive" onClick={() => console.log('Rechazar solicitud:', req.id)} disabled>Rechazar (Próximamente)</Button>
+                    }
+                     {(req.status === 'Revisando') && // Habilitar cotizar cuando está "Revisando"
+                        <Button variant="link" size="sm" className="p-0 h-auto text-purple-600" onClick={() => console.log('Cotizar servicio:', req.id)} disabled>Cotizar (Próximamente)</Button>
                     }
                      {req.status === 'Cotizada' && 
                         <Button variant="link" size="sm" className="p-0 h-auto text-blue-600" onClick={() => console.log('Programar servicio:', req.id)} disabled>Programar (Próximamente)</Button>
