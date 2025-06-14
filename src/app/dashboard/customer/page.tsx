@@ -2,20 +2,32 @@
 // src/app/dashboard/customer/page.tsx
 "use client";
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ListChecks, MessageSquarePlus, History, UserCircle, Loader2 } from 'lucide-react';
+import { ListChecks, MessageSquarePlus, History, UserCircle, Loader2, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore } from '@/firebase/clientApp';
-import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
-import { useQuery } from '@tanstack/react-query';
+import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { QuotationRequest } from '@/types/quotationRequest';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from '@/hooks/use-toast';
 
 const fetchQuotationRequests = async (userId: string | undefined): Promise<QuotationRequest[]> => {
   if (!userId) return [];
@@ -27,16 +39,15 @@ const fetchQuotationRequests = async (userId: string | undefined): Promise<Quota
   const requests: QuotationRequest[] = [];
   querySnapshot.forEach((doc) => {
     const data = doc.data();
-    // Aseguramos que los campos de fecha sean Timestamps antes de castear
-    const requestedAt = data.requestedAt instanceof Timestamp ? data.requestedAt : Timestamp.now(); // Fallback o manejo de error
-    const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(); // Fallback o manejo de error
+    const requestedAt = data.requestedAt instanceof Timestamp ? data.requestedAt : Timestamp.now();
+    const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now();
 
     requests.push({ 
       id: doc.id, 
       ...data,
       requestedAt: requestedAt,
       updatedAt: updatedAt,
-    } as QuotationRequest); // Es importante que los datos de Firestore coincidan con la estructura
+    } as QuotationRequest);
   });
   return requests;
 };
@@ -44,29 +55,18 @@ const fetchQuotationRequests = async (userId: string | undefined): Promise<Quota
 export default function CustomerDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [isCancelAlertOpen, setIsCancelAlertOpen] = useState(false);
+  const [requestToCancelId, setRequestToCancelId] = useState<string | null>(null);
+  const [isCancellingRequest, setIsCancellingRequest] = useState(false);
 
   const { data: quotationRequests, isLoading: requestsLoading, error: requestsError } = useQuery<QuotationRequest[], Error>({
     queryKey: ['quotationRequests', typedUser?.uid],
     queryFn: () => fetchQuotationRequests(typedUser?.uid),
     enabled: !!typedUser?.uid, 
   });
-
-  const getStatusVariant = (status: QuotationRequest['status']): "default" | "secondary" | "outline" | "destructive" => {
-    switch (status) {
-      case 'Completada':
-        return 'default'; 
-      case 'Programada':
-        return 'secondary'; 
-      case 'Enviada':
-      case 'Revisando':
-      case 'Cotizada':
-        return 'outline'; 
-      case 'Cancelada':
-        return 'destructive';
-      default:
-        return 'outline';
-    }
-  };
 
   const getStatusColorClass = (status: QuotationRequest['status']): string => {
      switch (status) {
@@ -86,6 +86,37 @@ export default function CustomerDashboardPage() {
         return 'bg-gray-500 text-white';
     }
   }
+
+  const openCancelConfirmDialog = (requestId: string) => {
+    setRequestToCancelId(requestId);
+    setIsCancelAlertOpen(true);
+  };
+
+  const handleCancelRequest = async () => {
+    if (!requestToCancelId || !typedUser?.uid) {
+      toast({ title: "Error", description: "No se pudo identificar la solicitud o el usuario.", variant: "destructive" });
+      return;
+    }
+
+    setIsCancellingRequest(true);
+    try {
+      const requestDocRef = doc(firestore, "quotationRequests", requestToCancelId);
+      await updateDoc(requestDocRef, {
+        status: "Cancelada",
+        updatedAt: serverTimestamp(),
+      });
+
+      toast({ title: "Solicitud Cancelada", description: "Tu solicitud de cotización ha sido cancelada." });
+      queryClient.invalidateQueries({ queryKey: ['quotationRequests', typedUser.uid] });
+      setIsCancelAlertOpen(false);
+      setRequestToCancelId(null);
+    } catch (error: any) {
+      console.error("Error al cancelar solicitud:", error);
+      toast({ title: "Error al Cancelar", description: error.message || "No se pudo cancelar la solicitud.", variant: "destructive" });
+    } finally {
+      setIsCancellingRequest(false);
+    }
+  };
 
   if (authLoading) {
     return (
@@ -134,18 +165,43 @@ export default function CustomerDashboardPage() {
         </Card>
       </div>
 
+      <AlertDialog open={isCancelAlertOpen} onOpenChange={setIsCancelAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Confirmas la cancelación?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción cancelará tu solicitud de cotización. No podrás deshacerla, pero puedes enviar una nueva solicitud si cambias de opinión.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsCancelAlertOpen(false)}>Volver</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleCancelRequest} 
+              disabled={isCancellingRequest}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isCancellingRequest ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cancelando...</>
+              ) : (
+                <><Trash2 className="mr-2 h-4 w-4" /> Confirmar Cancelación</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><ListChecks className="text-primary" /> Mis Solicitudes de Servicio</CardTitle>
           <CardDescription>Resumen de tus solicitudes de servicio activas y pasadas.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {requestsLoading && typedUser && ( // Mostrar loader solo si el usuario está logueado
+          {requestsLoading && typedUser && (
             <div className="flex justify-center py-4">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           )}
-          {requestsError && typedUser && ( // Mostrar error solo si el usuario está logueado
+          {requestsError && typedUser && ( 
             <Alert variant="destructive">
               <AlertTitle>Error al Cargar Solicitudes</AlertTitle>
               <AlertDescription>
@@ -176,7 +232,14 @@ export default function CustomerDashboardPage() {
                 <div className="mt-3 flex gap-2">
                     <Button variant="link" size="sm" className="p-0 h-auto text-accent" onClick={() => console.log('Ver detalles de la solicitud:', req.id)} disabled>Ver Detalles (Próximamente)</Button>
                     {(req.status === 'Enviada' || req.status === 'Cotizada') && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-destructive" onClick={() => console.log('Cancelar solicitud:', req.id)} disabled>Cancelar Solicitud (Próximamente)</Button>
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          className="p-0 h-auto text-destructive" 
+                          onClick={() => openCancelConfirmDialog(req.id)}
+                        >
+                          Cancelar Solicitud
+                        </Button>
                     }
                 </div>
               </div>
@@ -186,7 +249,7 @@ export default function CustomerDashboardPage() {
             !requestsLoading && !requestsError && typedUser && <p className="text-muted-foreground text-center py-4">Aún no tienes solicitudes de servicio.</p>
           )}
         </CardContent>
-        {typedUser && ( // Solo mostrar footer si el usuario está logueado
+        {typedUser && (
           <CardFooter className="justify-center">
               <Button variant="outline" onClick={() => console.log('Ver historial completo clickeado')} disabled>
                   <History className="mr-2 h-4 w-4"/> Ver Historial Completo (Próximamente)
