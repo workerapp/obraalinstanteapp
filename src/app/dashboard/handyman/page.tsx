@@ -25,7 +25,7 @@ const fetchHandymanRequests = async (handymanUid: string | undefined): Promise<Q
   const q = query(
     requestsRef, 
     where("handymanId", "==", handymanUid),
-    where("status", "in", ["Enviada", "Revisando", "Cotizada", "Programada", "Completada"]), // Podríamos ajustar estos estados según necesidad
+    where("status", "in", ["Enviada", "Revisando", "Cotizada", "Programada", "Completada"]), 
     orderBy("requestedAt", "desc")
   );
   
@@ -69,7 +69,7 @@ export default function HandymanDashboardPage() {
         return 'bg-orange-500 text-white';
       case 'Cotizada':
         return 'bg-purple-500 text-white';
-      case 'Cancelada': // Aunque filtramos canceladas en la query, es bueno tenerla por si acaso
+      case 'Cancelada': 
         return 'bg-red-600 text-white';
       default:
         return 'bg-gray-500 text-white';
@@ -181,12 +181,20 @@ export default function HandymanDashboardPage() {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Error al Cargar Solicitudes</AlertTitle>
               <AlertDescription>
-                No pudimos cargar tus solicitudes en este momento. Verifica tu conexión o inténtalo más tarde.
-                <br />
-                <small>Detalle: {requestsError.message}</small>
-                 {requestsError.message.toLowerCase().includes('index') && 
-                    <small className="block mt-1">Este error usualmente indica que Firestore necesita un índice para esta consulta. Revisa la consola del navegador para un enlace que te permita crearlo.</small>
-                 }
+                {requestsError.message.toLowerCase().includes('index') ? (
+                  <>
+                    Firestore necesita un índice para esta consulta. Por favor, revisa la consola de tu navegador (o los logs del servidor si estás desarrollando localmente) para obtener un enlace directo y crear el índice necesario en la consola de Firebase.
+                    Una vez creado el índice, espera unos minutos e intenta recargar la página.
+                    <br />
+                    <small>Detalle del error original: {requestsError.message}</small>
+                  </>
+                ) : (
+                  <>
+                    No pudimos cargar tus solicitudes en este momento. Verifica tu conexión o inténtalo más tarde.
+                    <br />
+                    <small>Detalle: {requestsError.message}</small>
+                  </>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -206,7 +214,6 @@ export default function HandymanDashboardPage() {
                      <Badge className={`mt-2 sm:mt-0 self-start sm:self-end ${getStatusColorClass(req.status)}`}>
                         {req.status}
                       </Badge>
-                      {/* Futuro: Mostrar precio cotizado si existe */}
                   </div>
                 </div>
                  <div className="mt-3 flex flex-wrap gap-2">
@@ -217,7 +224,7 @@ export default function HandymanDashboardPage() {
                      {(req.status === 'Enviada' || req.status === 'Revisando' || req.status === 'Cotizada') && 
                         <Button variant="link" size="sm" className="p-0 h-auto text-destructive" onClick={() => console.log('Rechazar solicitud:', req.id)} disabled>Rechazar (Próximamente)</Button>
                     }
-                     {req.status === 'Cotizada' && /* Asumiendo que el cliente acepta y luego el operario programa */
+                     {req.status === 'Cotizada' && 
                         <Button variant="link" size="sm" className="p-0 h-auto text-blue-600" onClick={() => console.log('Programar servicio:', req.id)} disabled>Programar (Próximamente)</Button>
                     }
                      {req.status === 'Programada' &&
