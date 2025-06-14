@@ -5,19 +5,109 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Briefcase, CalendarCheck, DollarSign, Settings2, UserCog } from 'lucide-react';
+import { Briefcase, CalendarCheck, DollarSign, Settings2, UserCog, ListChecks, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { useAuth, type AppUser } from '@/hooks/useAuth';
+import { firestore } from '@/firebase/clientApp';
+import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+import { useQuery } from '@tanstack/react-query';
+import type { QuotationRequest } from '@/types/quotationRequest';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-// Mock data for handyman dashboard
-const mockAppointments = [
-  { id: 'apt1', service: 'Plomería - Grifo con Fugas', customer: 'Alicia Maravillas', status: 'Programado', date: '2023-10-28, 10:00 AM', earnings: 75000 },
-  { id: 'apt2', service: 'Electricidad - Instalar Ventilador de Techo', customer: 'Roberto Constructor', status: 'Pendiente Confirmación', date: '2023-10-29, 02:00 PM', earnings: 120000 },
-  { id: 'apt3', service: 'Pintura - Sala de Estar', customer: 'Carlos Pardo', status: 'Completado', date: '2023-09-15', earnings: 350000 },
-];
+const fetchHandymanRequests = async (handymanUid: string | undefined): Promise<QuotationRequest[]> => {
+  if (!handymanUid) return [];
+  
+  const requestsRef = collection(firestore, "quotationRequests");
+  // Incluimos varios estados relevantes para el operario, ordenados por fecha de solicitud descendente
+  const q = query(
+    requestsRef, 
+    where("handymanId", "==", handymanUid),
+    where("status", "in", ["Enviada", "Revisando", "Cotizada", "Programada", "Completada"]), // Podríamos ajustar estos estados según necesidad
+    orderBy("requestedAt", "desc")
+  );
+  
+  const querySnapshot = await getDocs(q);
+  const requests: QuotationRequest[] = [];
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    requests.push({ 
+      id: doc.id, 
+      ...data,
+      requestedAt: data.requestedAt instanceof Timestamp ? data.requestedAt : Timestamp.now(),
+      updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
+    } as QuotationRequest);
+  });
+  return requests;
+};
+
 
 export default function HandymanDashboardPage() {
-  const totalEarnings = mockAppointments.filter(apt => apt.status === 'Completado').reduce((sum, apt) => sum + apt.earnings, 0);
+  const { user, loading: authLoading } = useAuth();
+  const typedUser = user as AppUser | null;
+
+  const { data: quotationRequests, isLoading: requestsLoading, error: requestsError } = useQuery<QuotationRequest[], Error>({
+    queryKey: ['handymanRequests', typedUser?.uid],
+    queryFn: () => fetchHandymanRequests(typedUser?.uid),
+    enabled: !!typedUser?.uid && typedUser.role === 'handyman', 
+  });
+
+  // TODO: Calcular ganancias reales cuando tengamos precios en las solicitudes completadas
+  const totalEarnings = 0; // Placeholder
+
+  const getStatusColorClass = (status: QuotationRequest['status']): string => {
+     switch (status) {
+      case 'Completada':
+        return 'bg-green-600 text-white';
+      case 'Programada':
+        return 'bg-blue-500 text-white';
+      case 'Enviada':
+        return 'bg-yellow-500 text-black';
+      case 'Revisando':
+        return 'bg-orange-500 text-white';
+      case 'Cotizada':
+        return 'bg-purple-500 text-white';
+      case 'Cancelada': // Aunque filtramos canceladas en la query, es bueno tenerla por si acaso
+        return 'bg-red-600 text-white';
+      default:
+        return 'bg-gray-500 text-white';
+    }
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!typedUser && !authLoading) { 
+     return (
+      <div className="text-center py-10">
+        <h1 className="text-2xl font-bold">Acceso Denegado</h1>
+        <p className="text-muted-foreground">Debes iniciar sesión como operario para ver este panel.</p>
+        <Button asChild className="mt-4">
+          <Link href="/sign-in">Iniciar Sesión</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (typedUser && typedUser.role !== 'handyman' && !authLoading) {
+     return (
+      <div className="text-center py-10">
+        <h1 className="text-2xl font-bold">Acceso Denegado</h1>
+        <p className="text-muted-foreground">Esta sección es solo para operarios.</p>
+        <Button asChild className="mt-4">
+          <Link href="/dashboard/customer">Ir al Panel de Cliente</Link>
+        </Button>
+      </div>
+    );
+  }
+  
 
   return (
     <div className="space-y-8">
@@ -25,7 +115,7 @@ export default function HandymanDashboardPage() {
         <UserCog className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-4xl font-headline font-bold text-primary mb-2">Panel de Operario</h1>
         <p className="text-lg text-foreground/80 max-w-xl mx-auto">
-          Gestiona tus servicios, citas, ganancias y perfil.
+          Gestiona tus servicios, solicitudes de clientes, y perfil.
         </p>
       </section>
 
@@ -51,11 +141,11 @@ export default function HandymanDashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-primary">${totalEarnings.toLocaleString('es-CO')}</p>
-            <p className="text-xs text-muted-foreground">Basado en citas completadas.</p>
+            <p className="text-xs text-muted-foreground">Cálculo basado en solicitudes completadas (próximamente con precios reales).</p>
           </CardContent>
            <CardFooter>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/dashboard/handyman/earnings">Ver Detalles de Ganancias</Link>
+            <Button asChild variant="outline" className="w-full" disabled>
+              <Link href="/dashboard/handyman/earnings">Ver Detalles de Ganancias (Próximamente)</Link>
             </Button>
           </CardFooter>
         </Card>
@@ -68,8 +158,8 @@ export default function HandymanDashboardPage() {
             <p>Mantén tu información actualizada para los clientes.</p>
           </CardContent>
           <CardFooter>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/dashboard/handyman/profile">Editar Perfil</Link>
+            <Button asChild variant="outline" className="w-full" disabled>
+              <Link href="/dashboard/handyman/profile">Editar Perfil (Próximamente)</Link>
             </Button>
           </CardFooter>
         </Card>
@@ -77,52 +167,77 @@ export default function HandymanDashboardPage() {
 
       <Card className="shadow-xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><CalendarCheck className="text-primary" /> Próximas Citas y Solicitudes</CardTitle>
+          <CardTitle className="flex items-center gap-2"><ListChecks className="text-primary" /> Solicitudes de Servicio Recibidas</CardTitle>
           <CardDescription>Gestiona tu agenda y responde a nuevas solicitudes de servicio.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {mockAppointments.length > 0 ? mockAppointments.map((apt, index) => (
-            <div key={apt.id}>
+          {requestsLoading && (
+            <div className="flex justify-center py-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          )}
+          {requestsError && ( 
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error al Cargar Solicitudes</AlertTitle>
+              <AlertDescription>
+                No pudimos cargar tus solicitudes en este momento. Verifica tu conexión o inténtalo más tarde.
+                <br />
+                <small>Detalle: {requestsError.message}</small>
+                 {requestsError.message.toLowerCase().includes('index') && 
+                    <small className="block mt-1">Este error usualmente indica que Firestore necesita un índice para esta consulta. Revisa la consola del navegador para un enlace que te permita crearlo.</small>
+                 }
+              </AlertDescription>
+            </Alert>
+          )}
+          {!requestsLoading && !requestsError && quotationRequests && quotationRequests.length > 0 ? quotationRequests.map((req, index) => (
+            <div key={req.id}>
               <div className="p-4 border rounded-md hover:shadow-md transition-shadow bg-background">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-2">
                   <div>
-                    <h3 className="font-semibold">{apt.service}</h3>
-                    <p className="text-sm text-muted-foreground">Cliente: {apt.customer}</p>
-                    <p className="text-sm text-muted-foreground">Fecha: {apt.date}</p>
+                    <h3 className="font-semibold">{req.serviceName}</h3>
+                    <p className="text-sm text-muted-foreground">Cliente: {req.contactFullName} ({req.contactEmail})</p>
+                    <p className="text-sm text-muted-foreground">
+                        Solicitado: {req.requestedAt && typeof req.requestedAt.toDate === 'function' ? format(req.requestedAt.toDate(), 'PPPp', { locale: es }) : 'Fecha no disponible'}
+                    </p>
+                     <p className="text-sm text-muted-foreground truncate max-w-md" title={req.problemDescription}>Problema: {req.problemDescription}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                     <Badge variant={
-                        apt.status === 'Completado' ? 'default' : 
-                        apt.status === 'Programado' ? 'secondary' : 
-                        'outline'
-                      } className="mt-2 sm:mt-0 self-start sm:self-end bg-primary text-primary-foreground">
-                        {apt.status}
+                     <Badge className={`mt-2 sm:mt-0 self-start sm:self-end ${getStatusColorClass(req.status)}`}>
+                        {req.status}
                       </Badge>
-                      <p className="text-sm font-medium text-green-600">Ganancia Est.: ${apt.earnings.toLocaleString('es-CO')}</p>
+                      {/* Futuro: Mostrar precio cotizado si existe */}
                   </div>
                 </div>
-                 <div className="mt-3 flex gap-2">
-                    <Button variant="link" size="sm" className="p-0 h-auto text-accent" onClick={() => console.log('Ver detalles de la cita:', apt.id)}>Ver Detalles</Button>
-                    {apt.status === 'Pendiente Confirmación' && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-green-600" onClick={() => console.log('Confirmar cita:', apt.id)}>Confirmar</Button>
+                 <div className="mt-3 flex flex-wrap gap-2">
+                    <Button variant="link" size="sm" className="p-0 h-auto text-accent" onClick={() => console.log('Ver detalles de la solicitud:', req.id)} disabled>Ver Detalles (Próximamente)</Button>
+                    {req.status === 'Enviada' && 
+                        <Button variant="link" size="sm" className="p-0 h-auto text-green-600" onClick={() => console.log('Revisar/Cotizar solicitud:', req.id)} disabled>Revisar/Cotizar (Próximamente)</Button>
                     }
-                     {apt.status !== 'Completado' && apt.status !== 'Cancelado' && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-destructive" onClick={() => console.log('Cancelar/Rechazar cita:', apt.id)}>Cancelar/Rechazar</Button>
+                     {(req.status === 'Enviada' || req.status === 'Revisando' || req.status === 'Cotizada') && 
+                        <Button variant="link" size="sm" className="p-0 h-auto text-destructive" onClick={() => console.log('Rechazar solicitud:', req.id)} disabled>Rechazar (Próximamente)</Button>
+                    }
+                     {req.status === 'Cotizada' && /* Asumiendo que el cliente acepta y luego el operario programa */
+                        <Button variant="link" size="sm" className="p-0 h-auto text-blue-600" onClick={() => console.log('Programar servicio:', req.id)} disabled>Programar (Próximamente)</Button>
+                    }
+                     {req.status === 'Programada' &&
+                        <Button variant="link" size="sm" className="p-0 h-auto text-green-700" onClick={() => console.log('Marcar como completada:', req.id)} disabled>Completar (Próximamente)</Button>
                     }
                 </div>
               </div>
-              {index < mockAppointments.length - 1 && <Separator className="my-4" />}
+              {index < quotationRequests.length - 1 && <Separator className="my-4" />}
             </div>
           )) : (
-            <p className="text-muted-foreground">No tienes próximas citas o nuevas solicitudes.</p>
+            !requestsLoading && !requestsError && <p className="text-muted-foreground text-center py-6">No tienes solicitudes de servicio asignadas en este momento.</p>
           )}
         </CardContent>
          <CardFooter className="justify-center">
-            <Button variant="outline" onClick={() => console.log('Ver agenda completa clickeado')}>
-                <CalendarCheck className="mr-2 h-4 w-4"/> Ver Agenda Completa (Ejemplo)
+            <Button variant="outline" onClick={() => console.log('Ver historial completo clickeado')} disabled>
+                <CalendarCheck className="mr-2 h-4 w-4"/> Ver Historial Completo (Próximamente)
             </Button>
         </CardFooter>
       </Card>
     </div>
   );
 }
+
