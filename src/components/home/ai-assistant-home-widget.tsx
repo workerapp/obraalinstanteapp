@@ -51,7 +51,7 @@ export default function AiAssistantHomeWidget() {
       } else {
         console.error("Respuesta inesperada de la IA:", response);
         setError("La IA devolvió una respuesta inesperada. Inténtalo de nuevo.");
-        setAiResponse(null); // Asegúrate de que no haya respuesta parcial
+        setAiResponse(null); 
       }
     } catch (err: any) {
       console.error("Error completo del Asistente IA (Widget):", err);
@@ -61,6 +61,8 @@ export default function AiAssistantHomeWidget() {
       setIsLoading(false);
     }
   };
+
+  const currentProblemDescription = form.getValues("problemDescription");
 
   return (
     <Card className="shadow-lg hover:shadow-xl transition-shadow w-full max-w-2xl mx-auto">
@@ -152,7 +154,7 @@ export default function AiAssistantHomeWidget() {
             )}
 
              <Button variant="link" asChild className="mt-4 self-center">
-                <Link href="/handymen">Encuentra un Operario con estas habilidades &rarr;</Link>
+                <Link href={`/request-quotation?problem=${encodeURIComponent(currentProblemDescription)}`}>Solicita una cotización para este problema &rarr;</Link>
             </Button>
           </div>
         )}

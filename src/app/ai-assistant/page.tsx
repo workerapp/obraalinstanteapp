@@ -62,6 +62,8 @@ export default function AiAssistantPage() {
     }
   };
 
+  const currentProblemDescription = form.getValues("problemDescription");
+
   return (
     <div className="max-w-2xl mx-auto py-8">
       <Card className="shadow-xl">
@@ -148,7 +150,7 @@ export default function AiAssistantPage() {
               </div>
             )}
              <Button variant="link" asChild className="mt-4 self-center">
-                <Link href="/handymen">Encuentra un Operario con estas habilidades &rarr;</Link>
+                <Link href={`/request-quotation?problem=${encodeURIComponent(currentProblemDescription)}`}>Solicita una cotización para este problema &rarr;</Link>
             </Button>
           </CardFooter>
         )}
