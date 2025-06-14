@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Send, FileText } from 'lucide-react';
+import { Loader2, Send, FileText, Package } from 'lucide-react'; // Added Package icon
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { services as availableServices } from '@/data/services';
@@ -26,7 +26,8 @@ const formSchema = z.object({
   contactEmail: z.string().email("Dirección de correo inválida."),
   contactPhone: z.string().min(7, "Se requiere un número de teléfono válido.").optional().or(z.literal('')),
   address: z.string().min(5, "La dirección es requerida."),
-  serviceId: z.string({ required_error: "Por favor, selecciona un servicio." }),
+  serviceId: z.string({ required_error: "Por favor, selecciona un servicio o asegúrate que venga preseleccionado." }),
+  serviceName: z.string().optional(), // Added serviceName to schema for pre-filled cases
   problemDescription: z.string().min(20, "Por favor, describe tu problema en al menos 20 caracteres.").max(1000),
   preferredDate: z.string().optional(),
   handymanId: z.string().optional(),
@@ -38,10 +39,11 @@ type FormData = z.infer<typeof formSchema>;
 export default function RequestQuotationPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth(); // Obtener usuario autenticado
+  const { user } = useAuth();
   const typedUser = user as AppUser | null;
   const searchParams = useSearchParams();
   const serviceIdFromQuery = searchParams.get('serviceId');
+  const serviceNameFromQuery = searchParams.get('serviceName'); // Get serviceName
   const handymanIdFromQuery = searchParams.get('handymanId');
   const handymanNameFromQuery = searchParams.get('handymanName');
 
@@ -53,6 +55,7 @@ export default function RequestQuotationPage() {
       contactPhone: "",
       address: "",
       serviceId: serviceIdFromQuery || "",
+      serviceName: serviceNameFromQuery || "", // Initialize serviceName
       problemDescription: "",
       preferredDate: "",
       handymanId: handymanIdFromQuery || "",
@@ -61,30 +64,35 @@ export default function RequestQuotationPage() {
   });
 
   useEffect(() => {
-    if (typedUser) {
-      form.reset({
-        ...form.getValues(),
-        contactFullName: typedUser.displayName || form.getValues("contactFullName") || "",
-        contactEmail: typedUser.email || form.getValues("contactEmail") || "",
-        serviceId: serviceIdFromQuery || form.getValues("serviceId") || "",
-        handymanId: handymanIdFromQuery || form.getValues("handymanId") || "",
-        handymanName: handymanNameFromQuery || form.getValues("handymanName") || "",
-      });
-    } else {
-       form.reset({
-        ...form.getValues(),
-        serviceId: serviceIdFromQuery || form.getValues("serviceId") || "",
-        handymanId: handymanIdFromQuery || form.getValues("handymanId") || "",
-        handymanName: handymanNameFromQuery || form.getValues("handymanName") || "",
-      });
-    }
-  }, [typedUser, serviceIdFromQuery, handymanIdFromQuery, handymanNameFromQuery, form]);
+    // Pre-fill form if user is logged in or query params change
+    const currentValues = form.getValues();
+    form.reset({
+      ...currentValues, // Preserve existing form data if any
+      contactFullName: typedUser?.displayName || currentValues.contactFullName || "",
+      contactEmail: typedUser?.email || currentValues.contactEmail || "",
+      serviceId: serviceIdFromQuery || currentValues.serviceId || "",
+      serviceName: serviceNameFromQuery || currentValues.serviceName || "", // Update serviceName
+      handymanId: handymanIdFromQuery || currentValues.handymanId || "",
+      handymanName: handymanNameFromQuery || currentValues.handymanName || "",
+    });
+  }, [typedUser, serviceIdFromQuery, serviceNameFromQuery, handymanIdFromQuery, handymanNameFromQuery, form]);
 
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     setIsLoading(true);
     
-    const selectedService = availableServices.find(s => s.id === data.serviceId);
+    let finalServiceName = data.serviceName; // Use pre-filled service name if available
+    let finalServiceId = data.serviceId;
+
+    if (serviceIdFromQuery && serviceNameFromQuery) {
+      finalServiceId = serviceIdFromQuery;
+      finalServiceName = serviceNameFromQuery;
+    } else if (data.serviceId) { // If not pre-filled, find from availableServices
+      const selectedService = availableServices.find(s => s.id === data.serviceId);
+      finalServiceName = selectedService?.name || 'N/A';
+      finalServiceId = selectedService?.id || data.serviceId; // Ensure finalServiceId is from selectedService if possible
+    }
+
 
     const quotationData = {
       userId: typedUser?.uid || null,
@@ -94,8 +102,8 @@ export default function RequestQuotationPage() {
       contactEmail: data.contactEmail,
       contactPhone: data.contactPhone || null,
       address: data.address,
-      serviceId: data.serviceId,
-      serviceName: selectedService?.name || 'N/A',
+      serviceId: finalServiceId,
+      serviceName: finalServiceName,
       problemDescription: data.problemDescription,
       preferredDate: data.preferredDate || null,
       handymanId: data.handymanId || null,
@@ -132,7 +140,9 @@ export default function RequestQuotationPage() {
         address: "",
         problemDescription: "",
         preferredDate: "",
-        serviceId: serviceIdFromQuery || "",
+        // Preserve query params for next potential submission if user stays on page
+        serviceId: serviceIdFromQuery || "", 
+        serviceName: serviceNameFromQuery || "",
         handymanId: handymanIdFromQuery || "",
         handymanName: handymanNameFromQuery || "",
       });
@@ -209,30 +219,57 @@ export default function RequestQuotationPage() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="serviceId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Servicio Requerido</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un servicio" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {availableServices.map(service => (
-                          <SelectItem key={service.id} value={service.id}>
-                            {service.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+
+              {/* Conditional rendering for service selection */}
+              {serviceIdFromQuery && serviceNameFromQuery ? (
+                <FormItem>
+                  <FormLabel>Servicio Requerido</FormLabel>
+                  <div className="flex items-center gap-2 p-3 rounded-md border bg-muted">
+                    <Package className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm text-foreground">{decodeURIComponent(serviceNameFromQuery)}</span>
+                  </div>
+                  <FormDescription>
+                    Solicitando cotización para el servicio específico de {handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : 'un operario'}.
+                  </FormDescription>
+                  {/* Hidden fields to carry these values if needed by the form structure, though serviceId is already in form state */}
+                  <FormField control={form.control} name="serviceId" render={({ field }) => <Input type="hidden" {...field} />} />
+                  <FormField control={form.control} name="serviceName" render={({ field }) => <Input type="hidden" {...field} />} />
+                </FormItem>
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="serviceId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Servicio Requerido</FormLabel>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          const selectedService = availableServices.find(s => s.id === value);
+                          form.setValue('serviceName', selectedService?.name || '');
+                        }} 
+                        value={field.value || ""} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona un servicio" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableServices.map(service => (
+                            <SelectItem key={service.id} value={service.id}>
+                              {service.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
               <FormField
                 control={form.control}
                 name="problemDescription"
