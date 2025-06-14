@@ -152,8 +152,8 @@ export default function HandymanDashboardPage() {
 
   const openQuoteDialog = (request: QuotationRequest) => {
     setRequestBeingQuoted(request);
-    quoteForm.reset({ // Reset form with existing values if any, or defaults
-      quotedAmount: request.quotedAmount || undefined,
+    quoteForm.reset({ 
+      quotedAmount: request.quotedAmount ?? undefined, // Use ?? to handle 0 correctly
       quotationDetails: request.quotationDetails || "",
     });
     setIsQuoteDialogOpen(true);
@@ -241,7 +241,7 @@ export default function HandymanDashboardPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Monto Cotizado (COP)</FormLabel>
-                    <FormControl><Input type="number" placeholder="Ej: 150000" {...field} /></FormControl>
+                    <FormControl><Input type="number" placeholder="Ej: 150000" {...field} value={field.value ?? ''} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
