@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone } from 'lucide-react'; // Changed Tool to Wrench
+import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
@@ -177,7 +177,7 @@ export default function RequestDetailPage() {
           </div>
           
           {/* Sección de Cotización (si existe y el estado es apropiado) */}
-          {(request.status === 'Cotizada' || request.status === 'Programada' || request.status === 'Completada') && request.quotedAmount && (
+          {(request.status === 'Cotizada' || request.status === 'Programada' || request.status === 'Completada') && request.quotedAmount != null && (
             <>
               <Separator />
               <div>
