@@ -1,4 +1,3 @@
-
 // src/components/handymen/handyman-detail-client-content.tsx
 "use client";
 
@@ -29,7 +28,7 @@ interface HandymanDetailClientContentProps {
   reviews: Review[];
 }
 
-const ADMIN_WHATSAPP_NUMBER = "+573017412292"; // Admin's WhatsApp
+const ADMIN_WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP_NUMBER || "+573017412292"; // Admin's WhatsApp
 
 // Helper function to translate price type
 const priceTypeTranslations: Record<HandymanService['priceType'], string> = {
@@ -85,16 +84,16 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
           if (err.message && (err.message.toLowerCase().includes('permission-denied') || err.message.toLowerCase().includes('missing or insufficient permissions'))) {
             description = "Error de permisos al cargar los servicios. Verifica las reglas de seguridad de Firestore.";
           } else if (err.message && err.message.toLowerCase().includes('failed-precondition') && err.message.toLowerCase().includes('index')) {
-            description = "Error al cargar servicios: Firestore necesita un índice. Revisa la consola del navegador, usualmente hay un enlace para crearlo directamente.";
+            description = "Error al cargar servicios: Firestore necesita un índice. Revisa la consola del navegador para más detalles (suele haber un enlace para crearlo).";
           }
           setServicesError(description);
-          toast({ title: "Error al Cargar Servicios", description, variant: "destructive", duration: 7000 });
+          // No mostramos toast aquí para no ser intrusivos, el error se muestra en la UI.
         })
         .finally(() => setIsLoadingServices(false));
     } else {
       setIsLoadingServices(false);
     }
-  }, [handyman?.id, toast]);
+  }, [handyman?.id]);
 
   if (!handyman) {
     return (
@@ -108,14 +107,16 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
   }
 
   const handleWhatsAppContact = () => {
-    if (ADMIN_WHATSAPP_NUMBER === "TU_NUMERO_DE_WHATSAPP_AQUI" || !ADMIN_WHATSAPP_NUMBER) {
-       toast({
-        title: "Configuración Requerida",
-        description: "El número de WhatsApp del administrador no ha sido configurado.",
-        variant: "destructive",
-      });
-      console.warn('El número de WhatsApp del administrador no está configurado en HandymanDetailClientContent.tsx');
-      return;
+    if (ADMIN_WHATSAPP_NUMBER === "+573017412292" && !process.env.NEXT_PUBLIC_ADMIN_WHATSAPP_NUMBER) {
+       console.warn('El número de WhatsApp del administrador no está configurado en las variables de entorno. Usando valor por defecto.');
+    }
+    if (!ADMIN_WHATSAPP_NUMBER) {
+        toast({
+            title: "Configuración Requerida",
+            description: "El número de WhatsApp del administrador no ha sido configurado.",
+            variant: "destructive",
+        });
+        return;
     }
     const adminPhoneNumber = ADMIN_WHATSAPP_NUMBER.replace(/\D/g, ''); 
     
@@ -192,13 +193,13 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
             </div>
 
             <section className="mb-6">
-              <h2 className="text-xl font-semibold font-headline mb-3">Habilidades Generales (Ejemplo)</h2>
+              <h2 className="text-xl font-semibold font-headline mb-3">Habilidades Generales</h2>
               <div className="flex flex-wrap gap-2">
                 {(handyman.skills && handyman.skills.length > 0) ? handyman.skills.map((skill) => (
                   <Badge key={skill} variant="secondary" className="px-3 py-1 text-sm bg-secondary/20 text-secondary-foreground border border-secondary/50">
                      {skill}
                   </Badge>
-                )) : <p className="text-sm text-muted-foreground">No hay habilidades especificadas.</p>}
+                )) : <p className="text-sm text-muted-foreground">No hay habilidades generales especificadas.</p>}
               </div>
             </section>
             
@@ -219,18 +220,15 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
             <Briefcase size={24} className="mr-3 text-primary" /> Servicios Ofrecidos por {handyman.name}
           </h2>
           {isLoadingServices && (
-            <div className="flex justify-center py-6">
+            <div className="flex justify-center items-center py-6">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="ml-2 text-muted-foreground">Cargando servicios...</p>
+              <p className="ml-3 text-muted-foreground">Cargando servicios...</p>
             </div>
           )}
           {servicesError && !isLoadingServices && (
             <div className="text-center py-6 bg-destructive/10 p-4 rounded-md">
-              <p className="text-destructive font-medium">Error al cargar servicios</p>
+              <p className="text-destructive font-medium">Error al Cargar Servicios del Operario</p>
               <p className="text-sm text-destructive/80">{servicesError}</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Asegúrate de que las reglas de seguridad de Firestore permitan leer 'handymanServices' y que los índices necesarios estén configurados (revisa la consola del navegador para más detalles si el error persiste).
-              </p>
             </div>
           )}
           {!isLoadingServices && !servicesError && offeredServices.length > 0 && (
@@ -238,17 +236,17 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
               {offeredServices.map((service) => (
                 <Card key={service.id} className="bg-background hover:shadow-md transition-shadow">
                   <CardHeader>
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start gap-2">
                         <CardTitle className="text-xl text-accent">{service.name}</CardTitle>
-                        <Badge variant="outline" className="border-primary text-primary">
+                        <Badge variant="outline" className="border-primary text-primary whitespace-nowrap">
                             {priceTypeTranslations[service.priceType]}
                             {service.priceType !== 'consultar' && service.priceValue && ` - $${Number(service.priceValue).toLocaleString('es-CO')}`}
                         </Badge>
                     </div>
-                    <CardDescription>{service.category}</CardDescription>
+                    <CardDescription className="text-muted-foreground">{service.category}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-foreground/80 mb-3 line-clamp-3">{service.description}</p>
+                    <p className="text-sm text-foreground/80 mb-3 line-clamp-3" title={service.description}>{service.description}</p>
                   </CardContent>
                   <CardFooter className="flex justify-end">
                     <Button asChild size="sm">
@@ -263,7 +261,7 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
           )}
           {!isLoadingServices && !servicesError && offeredServices.length === 0 && (
             <p className="text-muted-foreground text-center py-6">
-              {handyman.name} aún no ha publicado servicios específicos o no tiene servicios activos.
+              {handyman.name} aún no ha publicado servicios específicos o no tiene servicios activos en este momento.
             </p>
           )}
         </section>
@@ -294,4 +292,3 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
     </div>
   );
 }
-
