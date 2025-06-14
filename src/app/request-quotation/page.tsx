@@ -26,15 +26,19 @@ const formSchema = z.object({
   contactEmail: z.string().email("Dirección de correo inválida."),
   contactPhone: z.string().min(7, "Se requiere un número de teléfono válido.").optional().or(z.literal('')),
   address: z.string().min(5, "La dirección es requerida."),
-  serviceId: z.string().optional(), // Optional if problem is provided from AI
+  serviceId: z.string().optional(),
   serviceName: z.string().optional(), 
   problemDescription: z.string().min(20, "Por favor, describe tu problema en al menos 20 caracteres.").max(1000),
   preferredDate: z.string().optional(),
   handymanId: z.string().optional(),
   handymanName: z.string().optional(),
-}).refine(data => data.serviceId || data.problemDescription, { // Must have either serviceId (if selected) or problemDescription (if from AI)
-    message: "Debes seleccionar un servicio o tener una descripción del problema.",
-    path: ["serviceId"], // Or problemDescription, but serviceId is more prominent if visible
+}).refine(data => {
+    // Si se seleccionó un servicio (serviceId) O hay una descripción del problema, es válido.
+    // Esto permite que si problemDescription viene pre-llenado (ej. de la IA), no sea obligatorio seleccionar un serviceId.
+    return data.serviceId || data.problemDescription;
+}, {
+    message: "Debes seleccionar un servicio o proporcionar una descripción del problema.",
+    path: ["serviceId"], // El error se puede asociar a serviceId si problemDescription está vacío y serviceId también.
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -45,11 +49,12 @@ export default function RequestQuotationPage() {
   const { user } = useAuth();
   const typedUser = user as AppUser | null;
   const searchParams = useSearchParams();
+
   const serviceIdFromQuery = searchParams.get('serviceId');
   const serviceNameFromQuery = searchParams.get('serviceName');
   const handymanIdFromQuery = searchParams.get('handymanId');
   const handymanNameFromQuery = searchParams.get('handymanName');
-  const problemFromQuery = searchParams.get('problem'); // New: get problem from query
+  const problemFromQuery = searchParams.get('problem');
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -60,7 +65,8 @@ export default function RequestQuotationPage() {
       address: "",
       serviceId: serviceIdFromQuery || "",
       serviceName: serviceNameFromQuery || "",
-      problemDescription: problemFromQuery ? decodeURIComponent(problemFromQuery) : "", // Pre-fill if from AI
+      // Pre-fill problemDescription if coming from AI and no specific service is selected
+      problemDescription: (problemFromQuery && !serviceIdFromQuery) ? decodeURIComponent(problemFromQuery) : "",
       preferredDate: "",
       handymanId: handymanIdFromQuery || "",
       handymanName: handymanNameFromQuery || "",
@@ -68,20 +74,40 @@ export default function RequestQuotationPage() {
   });
 
   useEffect(() => {
-    const currentValues = form.getValues();
-    const decodedProblem = problemFromQuery ? decodeURIComponent(problemFromQuery) : currentValues.problemDescription || "";
-    
-    form.reset({
-      ...currentValues, 
-      contactFullName: typedUser?.displayName || currentValues.contactFullName || "",
-      contactEmail: typedUser?.email || currentValues.contactEmail || "",
-      serviceId: serviceIdFromQuery || currentValues.serviceId || "",
-      serviceName: serviceNameFromQuery || currentValues.serviceName || "",
-      problemDescription: decodedProblem, // Update with problem from query if present
-      handymanId: handymanIdFromQuery || currentValues.handymanId || "",
-      handymanName: handymanNameFromQuery || currentValues.handymanName || "",
+    const { getValues, reset } = form;
+    const currentFormValues = getValues();
+
+    // Determine the correct problem description based on query parameters
+    let newProblemDescription = currentFormValues.problemDescription || "";
+    if (problemFromQuery && !serviceIdFromQuery) { // Coming from AI, no specific service
+      newProblemDescription = decodeURIComponent(problemFromQuery);
+    } else if (serviceIdFromQuery) { // Coming from a specific service, clear problem description
+      newProblemDescription = "";
+    }
+
+    // Reset the form with updated values from query parameters or user state
+    reset({
+      contactFullName: typedUser?.displayName || currentFormValues.contactFullName || "",
+      contactEmail: typedUser?.email || currentFormValues.contactEmail || "",
+      contactPhone: currentFormValues.contactPhone || "",
+      address: currentFormValues.address || "",
+      serviceId: serviceIdFromQuery || currentFormValues.serviceId || "",
+      serviceName: serviceNameFromQuery || currentFormValues.serviceName || "",
+      problemDescription: newProblemDescription,
+      preferredDate: currentFormValues.preferredDate || "",
+      handymanId: handymanIdFromQuery || currentFormValues.handymanId || "",
+      handymanName: handymanNameFromQuery || currentFormValues.handymanName || "",
     });
-  }, [typedUser, serviceIdFromQuery, serviceNameFromQuery, handymanIdFromQuery, handymanNameFromQuery, problemFromQuery, form]);
+
+  }, [
+    typedUser, 
+    serviceIdFromQuery, 
+    serviceNameFromQuery, 
+    handymanIdFromQuery, 
+    handymanNameFromQuery, 
+    problemFromQuery, 
+    form // RHF recommends including form if using its methods like reset, getValues
+  ]);
 
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
@@ -90,19 +116,21 @@ export default function RequestQuotationPage() {
     let finalServiceName = data.serviceName;
     let finalServiceId = data.serviceId;
 
-    if (serviceIdFromQuery && serviceNameFromQuery) {
+    // Determine service details based on how the form was filled
+    if (serviceIdFromQuery && serviceNameFromQuery) { // From specific service link
       finalServiceId = serviceIdFromQuery;
       finalServiceName = serviceNameFromQuery;
-    } else if (data.serviceId) { 
-      const selectedService = availableServices.find(s => s.id === data.serviceId);
-      finalServiceName = selectedService?.name || 'Servicio General'; // Default if not found
-      finalServiceId = selectedService?.id || data.serviceId;
-    } else {
-        // This case implies problemFromQuery was used, and no specific serviceId was selected/passed
+    } else if (data.serviceId && data.serviceName) { // Service selected from dropdown
+      finalServiceId = data.serviceId;
+      finalServiceName = data.serviceName;
+    } else if (data.problemDescription && !data.serviceId) { // From AI assistant or manual problem description without service selection
         finalServiceName = 'Consulta General (Problema Detallado)';
-        finalServiceId = 'general-consultation'; // Placeholder or a specific ID for general requests
+        finalServiceId = 'general-consultation'; 
+    } else { // Fallback if logic somehow misses a case (should be caught by validation)
+        toast({ title: "Error", description: "No se pudo determinar el servicio. Por favor, intenta de nuevo.", variant: "destructive" });
+        setIsLoading(false);
+        return;
     }
-
 
     const quotationData = {
       userId: typedUser?.uid || null,
@@ -112,8 +140,8 @@ export default function RequestQuotationPage() {
       contactEmail: data.contactEmail,
       contactPhone: data.contactPhone || null,
       address: data.address,
-      serviceId: finalServiceId!, // Assert non-null as schema ensures one is present
-      serviceName: finalServiceName!, // Assert non-null
+      serviceId: finalServiceId,
+      serviceName: finalServiceName,
       problemDescription: data.problemDescription,
       preferredDate: data.preferredDate || null,
       handymanId: data.handymanId || null,
@@ -127,15 +155,15 @@ export default function RequestQuotationPage() {
       const docRef = await addDoc(collection(firestore, "quotationRequests"), quotationData);
       console.log("Solicitud de cotización guardada con ID: ", docRef.id);
 
-      let description = `Servicio: ${quotationData.serviceName}.`;
+      let descriptionToast = `Servicio: ${quotationData.serviceName}.`;
       if (data.handymanName) {
-        description += ` Solicitud para ${data.handymanName}.`;
+        descriptionToast += ` Solicitud para ${data.handymanName}.`;
       }
-      description += " Hemos recibido tu solicitud y nos pondremos en contacto pronto.";
+      descriptionToast += " Hemos recibido tu solicitud y nos pondremos en contacto pronto.";
 
       toast({
         title: "Solicitud de Cotización Enviada",
-        description: description,
+        description: descriptionToast,
         action: typedUser ? (
           <Button variant="outline" size="sm" asChild>
             <Link href="/dashboard/customer">Ver Mis Solicitudes</Link>
@@ -143,12 +171,13 @@ export default function RequestQuotationPage() {
         ) : undefined,
       });
 
+      // Reset form to its initial state based on current query params (if any)
       form.reset({ 
         contactFullName: typedUser?.displayName || "",
         contactEmail: typedUser?.email || "",
         contactPhone: "",
         address: "",
-        problemDescription: "", // Reset problem description
+        problemDescription: (problemFromQuery && !serviceIdFromQuery) ? decodeURIComponent(problemFromQuery) : "",
         preferredDate: "",
         serviceId: serviceIdFromQuery || "", 
         serviceName: serviceNameFromQuery || "",
@@ -169,6 +198,9 @@ export default function RequestQuotationPage() {
   };
   
   const displayServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : null;
+  // Determine if the service selection dropdown should be shown
+  const showServiceSelection = !serviceIdFromQuery && !problemFromQuery;
+
 
   return (
     <div className="max-w-2xl mx-auto py-8">
@@ -179,7 +211,7 @@ export default function RequestQuotationPage() {
           <CardDescription>
             Completa el formulario a continuación para obtener una cotización para el servicio que necesitas.
             {handymanNameFromQuery && ` Estás solicitando una cotización específicamente a ${decodeURIComponent(handymanNameFromQuery)}.`}
-            {problemFromQuery && !serviceNameFromQuery && " La descripción de tu problema ha sido pre-llenada por nuestro Asistente IA."}
+            {problemFromQuery && !serviceIdFromQuery && " La descripción de tu problema ha sido pre-llenada por nuestro Asistente IA."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -232,12 +264,13 @@ export default function RequestQuotationPage() {
                 )}
               />
 
-              {displayServiceName ? (
-                <FormItem>
+              {/* Conditional rendering for service selection/display */}
+              {serviceIdFromQuery ? ( 
+                <FormItem> {/* Display service if coming from a specific service link */}
                   <FormLabel>Servicio Requerido</FormLabel>
                   <div className="flex items-center gap-2 p-3 rounded-md border bg-muted">
                     <Package className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm text-foreground">{displayServiceName}</span>
+                    <span className="text-sm text-foreground">{displayServiceName || 'Servicio Específico'}</span>
                   </div>
                   <FormDescription>
                     {handymanNameFromQuery 
@@ -245,12 +278,19 @@ export default function RequestQuotationPage() {
                       : `Solicitando cotización para ${displayServiceName}.`
                     }
                   </FormDescription>
-                  <FormField control={form.control} name="serviceId" render={({ field }) => <Input type="hidden" {...field} />} />
-                  <FormField control={form.control} name="serviceName" render={({ field }) => <Input type="hidden" {...field} />} />
+                  {/* Hidden fields for serviceId and serviceName are automatically handled by defaultValues and useEffect */}
                 </FormItem>
-              ) : (
-                !problemFromQuery && ( // Only show service selection if not coming from AI with a general problem
-                  <FormField
+              ) : problemFromQuery ? ( 
+                 <FormItem> {/* Display generic consultation if coming from AI assistant with a problem */}
+                    <FormLabel>Servicio Requerido</FormLabel>
+                     <div className="flex items-center gap-2 p-3 rounded-md border bg-muted">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm text-foreground">Consulta General (basada en tu descripción)</span>
+                    </div>
+                    <FormDescription>Tu problema descrito a la IA se usará como base para la cotización.</FormDescription>
+                 </FormItem>
+              ) : ( 
+                  <FormField /* Default: show service selection dropdown */
                     control={form.control}
                     name="serviceId"
                     render={({ field }) => (
@@ -262,8 +302,7 @@ export default function RequestQuotationPage() {
                             const selectedService = availableServices.find(s => s.id === value);
                             form.setValue('serviceName', selectedService?.name || '');
                           }} 
-                          value={field.value || ""} 
-                          defaultValue={field.value}
+                          value={field.value || ""}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -282,7 +321,6 @@ export default function RequestQuotationPage() {
                       </FormItem>
                     )}
                   />
-                )
               )}
               
               <FormField
@@ -309,14 +347,13 @@ export default function RequestQuotationPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Fecha Preferida (Opcional)</FormLabel>
-                    <FormControl><Input type="date" {...field} min={new Date().toISOString().split("T")[0]} /></FormControl>
+                    <FormControl><Input type="date" {...field} min={new Date().toISOString().split("T")[0]}/></FormControl>
                     <FormDescription>Indícanos si tienes una fecha preferida para el servicio.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField control={form.control} name="handymanId" render={({ field }) => <FormItem><FormControl><Input type="hidden" {...field} /></FormControl></FormItem>} />
-              <FormField control={form.control} name="handymanName" render={({ field }) => <FormItem><FormControl><Input type="hidden" {...field} /></FormControl></FormItem>} />
+              {/* Hidden fields for handymanId and handymanName are already part of defaultValues and useEffect handles them */}
               
               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading ? (
@@ -332,3 +369,5 @@ export default function RequestQuotationPage() {
     </div>
   );
 }
+
+    
