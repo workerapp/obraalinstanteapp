@@ -40,7 +40,7 @@ const fetchRequestDetails = async (requestId: string | undefined, userId: string
     id: requestDocSnap.id,
     ...requestData,
     requestedAt: requestData.requestedAt instanceof Timestamp ? requestData.requestedAt : Timestamp.now(),
-    updatedAt: requestData.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
+    updatedAt: requestData.updatedAt instanceof Timestamp ? requestData.updatedAt : Timestamp.now(), // Corregido aquí
   } as QuotationRequest;
 };
 
@@ -204,3 +204,4 @@ export default function RequestDetailPage() {
     </div>
   );
 }
+
