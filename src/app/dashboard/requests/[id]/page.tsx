@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertTriangle, ArrowLeft, User, Tool, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone } from 'lucide-react'; // Changed Tool to Wrench
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
@@ -40,7 +40,7 @@ const fetchRequestDetails = async (requestId: string | undefined, userId: string
     id: requestDocSnap.id,
     ...requestData,
     requestedAt: requestData.requestedAt instanceof Timestamp ? requestData.requestedAt : Timestamp.now(),
-    updatedAt: requestData.updatedAt instanceof Timestamp ? requestData.updatedAt : Timestamp.now(), // Corregido aquí
+    updatedAt: requestData.updatedAt instanceof Timestamp ? requestData.updatedAt : Timestamp.now(),
   } as QuotationRequest;
 };
 
@@ -142,7 +142,7 @@ export default function RequestDetailPage() {
           
           {/* Sección de Servicio */}
           <div>
-            <h3 className="text-xl font-semibold mb-2 flex items-center"><Tool className="mr-2 text-accent h-5 w-5"/>Información del Servicio</h3>
+            <h3 className="text-xl font-semibold mb-2 flex items-center"><Wrench className="mr-2 text-accent h-5 w-5"/>Información del Servicio</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <p><strong>Servicio:</strong> {request.serviceName}</p>
               {request.handymanName && <p><strong>Operario Solicitado:</strong> {request.handymanName}</p>}
