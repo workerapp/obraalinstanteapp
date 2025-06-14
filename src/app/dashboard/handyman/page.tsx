@@ -2,31 +2,50 @@
 // src/app/dashboard/handyman/page.tsx
 "use client";
 
-import { useState } from 'react'; // Añadido para isUpdatingRequestId
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Briefcase, CalendarCheck, DollarSign, Settings2, UserCog, ListChecks, Loader2, AlertTriangle, Edit3 } from 'lucide-react'; // Edit3 añadido
+import { 
+  Briefcase, 
+  CalendarCheck, 
+  DollarSign, 
+  Settings2, 
+  UserCog, 
+  ListChecks, 
+  Loader2, 
+  AlertTriangle, 
+  Edit3,
+  FileSignature, // Para Cotizar
+  XCircle, // Para Rechazar
+  CalendarPlus, // Para Programar
+  CheckCircle2 // Para Completar
+} from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore } from '@/firebase/clientApp';
-import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore'; // doc, updateDoc, serverTimestamp añadidos
-import { useQuery, useQueryClient } from '@tanstack/react-query'; // useQueryClient añadido
+import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { QuotationRequest } from '@/types/quotationRequest';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useToast } from '@/hooks/use-toast'; // useToast añadido
+import { useToast } from '@/hooks/use-toast';
 
 const fetchHandymanRequests = async (handymanUid: string | undefined): Promise<QuotationRequest[]> => {
   if (!handymanUid) return [];
   
   const requestsRef = collection(firestore, "quotationRequests");
+  // Mostramos todas excepto las canceladas por el cliente directamente o ya completadas por el operario
+  // O ajustamos para mostrar completadas si queremos que el operario las vea en su lista principal
   const q = query(
     requestsRef, 
     where("handymanId", "==", handymanUid),
+    // Dejamos 'Cancelada' fuera para que no aparezcan las que el cliente canceló.
+    // El operario podría tener su propio "historial de rechazadas" si fuera necesario.
     where("status", "in", ["Enviada", "Revisando", "Cotizada", "Programada", "Completada"]), 
+    orderBy("status"), // Podríamos ordenar por status para agruparlas visualmente
     orderBy("requestedAt", "desc")
   );
   
@@ -48,9 +67,9 @@ const fetchHandymanRequests = async (handymanUid: string | undefined): Promise<Q
 export default function HandymanDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
-  const queryClient = useQueryClient(); // Hook de QueryClient
-  const { toast } = useToast(); // Hook para Toasts
-  const [isUpdatingRequestId, setIsUpdatingRequestId] = useState<string | null>(null); // Estado para feedback de carga
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [isUpdatingRequestId, setIsUpdatingRequestId] = useState<string | null>(null);
 
   const { data: quotationRequests, isLoading: requestsLoading, error: requestsError } = useQuery<QuotationRequest[], Error>({
     queryKey: ['handymanRequests', typedUser?.uid],
@@ -58,7 +77,11 @@ export default function HandymanDashboardPage() {
     enabled: !!typedUser?.uid && typedUser.role === 'handyman', 
   });
 
-  const totalEarnings = 0; 
+  // TODO: Calcular ganancias reales de `quotationRequests` con status 'Completada' y que tengan un precio.
+  const totalEarnings = quotationRequests
+    ?.filter(req => req.status === 'Completada')
+    // .reduce((sum, req) => sum + (req.price || 0), 0) // Asumiendo que hay un campo 'price' en QuotationRequest
+    .length * 0; // Placeholder, ya que no tenemos precio por ahora
 
   const getStatusColorClass = (status: QuotationRequest['status']): string => {
      switch (status) {
@@ -167,7 +190,7 @@ export default function HandymanDashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-primary">${totalEarnings.toLocaleString('es-CO')}</p>
-            <p className="text-xs text-muted-foreground">Cálculo basado en solicitudes completadas (próximamente con precios reales).</p>
+            <p className="text-xs text-muted-foreground">Cálculo basado en solicitudes completadas (se requiere precio en la cotización).</p>
           </CardContent>
            <CardFooter>
             <Button asChild variant="outline" className="w-full" disabled>
@@ -244,39 +267,88 @@ export default function HandymanDashboardPage() {
                 </div>
                  <div className="mt-3 flex flex-wrap gap-2">
                     <Button variant="link" size="sm" className="p-0 h-auto text-accent" onClick={() => console.log('Ver detalles de la solicitud:', req.id)} disabled>Ver Detalles (Próximamente)</Button>
+                    
                     {req.status === 'Enviada' && 
                         <Button 
                           variant="link" 
                           size="sm" 
-                          className="p-0 h-auto text-orange-600" 
+                          className="p-0 h-auto text-orange-600 hover:text-orange-700" 
                           onClick={() => handleChangeRequestStatus(req.id, 'Revisando')}
                           disabled={isUpdatingRequestId === req.id}
                         >
                           {isUpdatingRequestId === req.id ? (
-                            <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Marcando...</>
+                            <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Procesando...</>
                           ) : (
                             <><Edit3 className="mr-1.5 h-4 w-4" /> Marcar como Revisando</>
                           )}
                         </Button>
                     }
-                     {(req.status === 'Enviada' || req.status === 'Revisando' || req.status === 'Cotizada') && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-destructive" onClick={() => console.log('Rechazar solicitud:', req.id)} disabled>Rechazar (Próximamente)</Button>
+                     {(req.status === 'Enviada' || req.status === 'Revisando') && 
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          className="p-0 h-auto text-destructive hover:text-destructive/70" 
+                          onClick={() => handleChangeRequestStatus(req.id, 'Cancelada')}
+                          disabled={isUpdatingRequestId === req.id}
+                        >
+                          {isUpdatingRequestId === req.id ? (
+                            <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Procesando...</>
+                          ) : (
+                            <><XCircle className="mr-1.5 h-4 w-4" /> Rechazar Solicitud</>
+                          )}
+                        </Button>
                     }
-                     {(req.status === 'Revisando') && // Habilitar cotizar cuando está "Revisando"
-                        <Button variant="link" size="sm" className="p-0 h-auto text-purple-600" onClick={() => console.log('Cotizar servicio:', req.id)} disabled>Cotizar (Próximamente)</Button>
+                     {req.status === 'Revisando' &&
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          className="p-0 h-auto text-purple-600 hover:text-purple-700" 
+                          onClick={() => handleChangeRequestStatus(req.id, 'Cotizada')}
+                          disabled={isUpdatingRequestId === req.id}
+                        >
+                           {isUpdatingRequestId === req.id ? (
+                            <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Procesando...</>
+                          ) : (
+                            <><FileSignature className="mr-1.5 h-4 w-4" /> Marcar como Cotizada</>
+                          )}
+                        </Button>
                     }
                      {req.status === 'Cotizada' && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-blue-600" onClick={() => console.log('Programar servicio:', req.id)} disabled>Programar (Próximamente)</Button>
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          className="p-0 h-auto text-blue-600 hover:text-blue-700" 
+                          onClick={() => handleChangeRequestStatus(req.id, 'Programada')}
+                          disabled={isUpdatingRequestId === req.id}
+                        >
+                          {isUpdatingRequestId === req.id ? (
+                            <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Procesando...</>
+                          ) : (
+                            <><CalendarPlus className="mr-1.5 h-4 w-4" /> Marcar como Programada</>
+                          )}
+                        </Button>
                     }
                      {req.status === 'Programada' &&
-                        <Button variant="link" size="sm" className="p-0 h-auto text-green-700" onClick={() => console.log('Marcar como completada:', req.id)} disabled>Completar (Próximamente)</Button>
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          className="p-0 h-auto text-green-700 hover:text-green-800" 
+                          onClick={() => handleChangeRequestStatus(req.id, 'Completada')}
+                          disabled={isUpdatingRequestId === req.id}
+                        >
+                          {isUpdatingRequestId === req.id ? (
+                            <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Procesando...</>
+                          ) : (
+                            <><CheckCircle2 className="mr-1.5 h-4 w-4" /> Marcar como Completada</>
+                          )}
+                        </Button>
                     }
                 </div>
               </div>
               {index < quotationRequests.length - 1 && <Separator className="my-4" />}
             </div>
           )) : (
-            !requestsLoading && !requestsError && <p className="text-muted-foreground text-center py-6">No tienes solicitudes de servicio asignadas en este momento.</p>
+            !requestsLoading && !requestsError && <p className="text-muted-foreground text-center py-6">No tienes solicitudes de servicio activas o asignadas en este momento.</p>
           )}
         </CardContent>
          <CardFooter className="justify-center">
@@ -288,4 +360,4 @@ export default function HandymanDashboardPage() {
     </div>
   );
 }
-
+    
