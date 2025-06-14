@@ -20,4 +20,10 @@ export interface QuotationRequest {
   status: "Enviada" | "Revisando" | "Cotizada" | "Programada" | "Completada" | "Cancelada";
   requestedAt: Timestamp;
   updatedAt: Timestamp;
+
+  // Campos para la cotización del operario
+  quotedAmount?: number;
+  quotedCurrency?: string; // e.g., "COP"
+  quotationDetails?: string; // Notas adicionales de la cotización
 }
+
