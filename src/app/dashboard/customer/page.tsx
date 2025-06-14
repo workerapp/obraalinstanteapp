@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ListChecks, MessageSquarePlus, History, UserCircle, Loader2, Trash2 } from 'lucide-react';
+import { ListChecks, MessageSquarePlus, History, UserCircle, Loader2, Trash2, CheckCircle2, CalendarPlus } from 'lucide-react'; // Added CheckCircle2, CalendarPlus
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
@@ -61,6 +61,10 @@ export default function CustomerDashboardPage() {
   const [isCancelAlertOpen, setIsCancelAlertOpen] = useState(false);
   const [requestToCancelId, setRequestToCancelId] = useState<string | null>(null);
   const [isCancellingRequest, setIsCancellingRequest] = useState(false);
+
+  const [isAcceptAlertOpen, setIsAcceptAlertOpen] = useState(false);
+  const [requestToAcceptId, setRequestToAcceptId] = useState<string | null>(null);
+  const [isAcceptingQuotation, setIsAcceptingQuotation] = useState(false);
 
   const { data: quotationRequests, isLoading: requestsLoading, error: requestsError } = useQuery<QuotationRequest[], Error>({
     queryKey: ['quotationRequests', typedUser?.uid],
@@ -118,6 +122,38 @@ export default function CustomerDashboardPage() {
     }
   };
 
+  const openAcceptConfirmDialog = (requestId: string) => {
+    setRequestToAcceptId(requestId);
+    setIsAcceptAlertOpen(true);
+  };
+
+  const handleAcceptQuotation = async () => {
+    if (!requestToAcceptId || !typedUser?.uid) {
+      toast({ title: "Error", description: "No se pudo identificar la solicitud o el usuario.", variant: "destructive" });
+      return;
+    }
+
+    setIsAcceptingQuotation(true);
+    try {
+      const requestDocRef = doc(firestore, "quotationRequests", requestToAcceptId);
+      await updateDoc(requestDocRef, {
+        status: "Programada",
+        updatedAt: serverTimestamp(),
+      });
+
+      toast({ title: "Cotización Aceptada", description: "El servicio ha sido programado. El operario se pondrá en contacto." });
+      queryClient.invalidateQueries({ queryKey: ['quotationRequests', typedUser.uid] });
+      setIsAcceptAlertOpen(false);
+      setRequestToAcceptId(null);
+    } catch (error: any) {
+      console.error("Error al aceptar cotización:", error);
+      toast({ title: "Error al Aceptar", description: error.message || "No se pudo aceptar la cotización.", variant: "destructive" });
+    } finally {
+      setIsAcceptingQuotation(false);
+    }
+  };
+
+
   if (authLoading) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -165,6 +201,7 @@ export default function CustomerDashboardPage() {
         </Card>
       </div>
 
+      {/* Cancel Confirmation Dialog */}
       <AlertDialog open={isCancelAlertOpen} onOpenChange={setIsCancelAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -174,7 +211,7 @@ export default function CustomerDashboardPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setIsCancelAlertOpen(false)}>Volver</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => {setIsCancelAlertOpen(false); setRequestToCancelId(null);}}>Volver</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleCancelRequest} 
               disabled={isCancellingRequest}
@@ -184,6 +221,32 @@ export default function CustomerDashboardPage() {
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cancelando...</>
               ) : (
                 <><Trash2 className="mr-2 h-4 w-4" /> Confirmar Cancelación</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Accept Quotation Confirmation Dialog */}
+      <AlertDialog open={isAcceptAlertOpen} onOpenChange={setIsAcceptAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Aceptar Cotización y Programar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esto confirmará que aceptas la cotización y el servicio se marcará como "Programada". El operario se pondrá en contacto para coordinar los detalles.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {setIsAcceptAlertOpen(false); setRequestToAcceptId(null);}}>Volver</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleAcceptQuotation} 
+              disabled={isAcceptingQuotation}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {isAcceptingQuotation ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Aceptando...</>
+              ) : (
+                <><CalendarPlus className="mr-2 h-4 w-4" /> Aceptar y Programar</>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -229,17 +292,43 @@ export default function CustomerDashboardPage() {
                     {req.status}
                   </Badge>
                 </div>
-                <div className="mt-3 flex gap-2">
-                    <Button variant="link" size="sm" className="p-0 h-auto text-accent" onClick={() => console.log('Ver detalles de la solicitud:', req.id)} disabled>Ver Detalles (Próximamente)</Button>
-                    {(req.status === 'Enviada' || req.status === 'Cotizada') && 
+                <div className="mt-3 flex flex-wrap gap-2">
+                    <Button variant="link" size="sm" className="p-0 h-auto text-accent hover:text-accent/80" onClick={() => console.log('Ver detalles de la solicitud:', req.id)} disabled>Ver Detalles (Próximamente)</Button>
+                    {(req.status === 'Enviada' || req.status === 'Revisando') && // Keep this for requests that are not yet quoted
                         <Button 
                           variant="link" 
                           size="sm" 
-                          className="p-0 h-auto text-destructive" 
+                          className="p-0 h-auto text-destructive hover:text-destructive/70" 
                           onClick={() => openCancelConfirmDialog(req.id)}
+                          disabled={isCancellingRequest && requestToCancelId === req.id}
                         >
+                          {isCancellingRequest && requestToCancelId === req.id ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1.5 h-4 w-4" />}
                           Cancelar Solicitud
                         </Button>
+                    }
+                     {req.status === 'Cotizada' && 
+                        <>
+                          <Button 
+                            variant="link" 
+                            size="sm" 
+                            className="p-0 h-auto text-green-600 hover:text-green-700" 
+                            onClick={() => openAcceptConfirmDialog(req.id)}
+                            disabled={isAcceptingQuotation && requestToAcceptId === req.id}
+                          >
+                            {isAcceptingQuotation && requestToAcceptId === req.id ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-4 w-4" />}
+                            Aceptar Cotización
+                          </Button>
+                           <Button 
+                            variant="link" 
+                            size="sm" 
+                            className="p-0 h-auto text-destructive hover:text-destructive/70" 
+                            onClick={() => openCancelConfirmDialog(req.id)} // Client can still cancel/reject a quote
+                            disabled={isCancellingRequest && requestToCancelId === req.id}
+                          >
+                            {isCancellingRequest && requestToCancelId === req.id ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1.5 h-4 w-4" />}
+                            Rechazar Cotización
+                          </Button>
+                        </>
                     }
                 </div>
               </div>
@@ -260,3 +349,4 @@ export default function CustomerDashboardPage() {
     </div>
   );
 }
+
