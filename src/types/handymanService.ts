@@ -17,3 +17,4 @@ export interface HandymanService {
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
+
