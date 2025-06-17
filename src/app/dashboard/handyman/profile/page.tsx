@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2, UserCircle, ArrowLeft, Save } from 'lucide-react';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
-import { firestore } from '@/firebase/clientApp';
+import { firestore, auth } from '@/firebase/clientApp'; // Added auth import
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { updateProfile as updateFirebaseAuthProfile } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
@@ -118,18 +118,21 @@ export default function HandymanProfilePage() {
       // Update Firebase Auth profile (only displayName and photoURL can be updated here)
       await updateFirebaseAuthProfile(auth.currentUser, {
         displayName: data.displayName,
-        photoURL: data.photoURL,
+        photoURL: data.photoURL || null, // Ensure photoURL can be set to null
       });
       
       // Optimistically update local auth state if setUser is available in useAuth
       // This provides immediate feedback in the UI (e.g., navbar)
       if (setAuthUser && auth.currentUser) {
         const updatedAuthUser: AppUser = {
-          ...auth.currentUser, // Spread the existing FirebaseUser properties
+          // It's important to spread the existing user from Firebase Auth, then override
+          // FirebaseUser type doesn't have `role`, so we need careful typing or casting
+          ...(auth.currentUser as FirebaseUser), // Get the base FirebaseUser
           displayName: data.displayName,
-          photoURL: data.photoURL,
-          role: typedUser.role, // Preserve role
-        };
+          photoURL: data.photoURL || null,
+          role: typedUser.role, // Preserve role from our AppUser type
+          // Other AppUser specific fields if necessary
+        } as AppUser; // Assert the final shape matches AppUser
         setAuthUser(updatedAuthUser);
       }
 
