@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge'; // Added missing import
 import { BarChart, DollarSign, Users, ListChecks, Loader2, AlertTriangle, ArrowLeft, CheckCircle, XCircle, CreditCard, CircleDollarSign } from 'lucide-react';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -70,17 +71,15 @@ export default function AdminOverviewPage() {
     queryFn: fetchAllCompletedRequests,
   });
   
-  console.log("Admin Overview: allCompletedRequests from useQuery:", allCompletedRequests);
-
-  const validCompletedRequests = allCompletedRequests?.filter(req => req.quotedAmount && req.quotedAmount > 0) || [];
-  console.log("Admin Overview: validCompletedRequests (filtered for quotedAmount > 0):", validCompletedRequests);
+  // Filter for requests that actually generated a commission
+  const validCompletedRequests = allCompletedRequests?.filter(req => req.platformFeeCalculated && req.platformFeeCalculated > 0) || [];
   
   const totalPlatformRevenue = validCompletedRequests.reduce((sum, req) => sum + (req.platformFeeCalculated || 0), 0);
   const totalQuotedAmount = validCompletedRequests.reduce((sum, req) => sum + (req.quotedAmount || 0), 0);
   const totalHandymanPayout = validCompletedRequests.reduce((sum, req) => sum + (req.handymanEarnings || 0), 0);
 
   const commissionsByHandyman = validCompletedRequests.reduce((acc, req) => {
-    if (req.handymanId && req.handymanName && req.platformFeeCalculated) {
+    if (req.handymanId && req.handymanName && req.platformFeeCalculated && req.platformFeeCalculated > 0) {
       if (!acc[req.handymanId]) {
         acc[req.handymanId] = { 
             name: req.handymanName, 
@@ -101,7 +100,6 @@ export default function AdminOverviewPage() {
     return acc;
   }, {} as CommissionsByHandyman);
   
-  console.log("Admin Overview: Calculated Metrics:", { totalPlatformRevenue, totalQuotedAmount, totalHandymanPayout, commissionsByHandyman });
 
   const handleToggleCommissionStatus = async (requestId: string, currentStatus?: "Pendiente" | "Pagada") => {
     setIsUpdatingCommissionStatusId(requestId);
@@ -139,8 +137,7 @@ export default function AdminOverviewPage() {
     );
   }
 
-  if (error) {
-    console.error("Admin Overview: Error from useQuery:", error);
+  if (isError) {
     return (
       <div className="max-w-4xl mx-auto py-10">
         <Alert variant="destructive">
@@ -177,14 +174,14 @@ export default function AdminOverviewPage() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="shadow-lg">
           <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="text-green-500"/>Ingresos Totales (Plataforma)</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-primary">${totalPlatformRevenue.toLocaleString('es-CO')}</p><p className="text-xs text-muted-foreground">Comisiones de servicios completados y cotizados.</p></CardContent>
+          <CardContent><p className="text-3xl font-bold text-primary">${totalPlatformRevenue.toLocaleString('es-CO')}</p><p className="text-xs text-muted-foreground">Comisiones de servicios completados que generaron comisión.</p></CardContent>
         </Card>
         <Card className="shadow-lg">
           <CardHeader><CardTitle className="flex items-center gap-2"><ListChecks className="text-blue-500"/>Servicios Gestionados</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-primary">{validCompletedRequests.length || 0}</p><p className="text-xs text-muted-foreground">Total de trabajos completados y cotizados.</p></CardContent>
+          <CardContent><p className="text-3xl font-bold text-primary">{validCompletedRequests.length || 0}</p><p className="text-xs text-muted-foreground">Total de trabajos completados que generaron comisión.</p></CardContent>
         </Card>
          <Card className="shadow-lg">
-          <CardHeader><CardTitle className="flex items-center gap-2"><Users className="text-purple-500"/>Operarios Activos (Conceptual)</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Users className="text-purple-500"/>Operarios con Comisiones</CardTitle></CardHeader>
           <CardContent><p className="text-3xl font-bold text-primary">{Object.keys(commissionsByHandyman).length}</p><p className="text-xs text-muted-foreground">Operarios que generaron comisiones.</p></CardContent>
         </Card>
       </div>
@@ -210,8 +207,8 @@ export default function AdminOverviewPage() {
                             <TableHead>Operario</TableHead>
                             <TableHead className="text-right">Servicios</TableHead>
                             <TableHead className="text-right">Comisión Total</TableHead>
-                            <TableHead className="text-right">Pendiente</TableHead>
-                            <TableHead className="text-right">Pagada</TableHead>
+                            <TableHead className="text-right">Com. Pendiente</TableHead>
+                            <TableHead className="text-right">Com. Pagada</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -239,7 +236,7 @@ export default function AdminOverviewPage() {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle>Detalle de Servicios Completados y Comisiones</CardTitle>
-          <CardDescription>Lista de todos los servicios completados que generaron comisión (monto cotizado > 0).</CardDescription>
+          <CardDescription>Lista de todos los servicios completados que generaron comisión (comisión plataforma > 0).</CardDescription>
         </CardHeader>
         <CardContent>
           {validCompletedRequests && validCompletedRequests.length > 0 ? (
@@ -250,11 +247,11 @@ export default function AdminOverviewPage() {
                   <TableHead>Operario</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead className="text-right">Monto Cotizado</TableHead>
-                  <TableHead className="text-right">Tasa</TableHead>
+                  <TableHead className="text-right">Tasa Aplicada</TableHead>
                   <TableHead className="text-right">Com. Plataforma</TableHead>
                   <TableHead className="text-right">G. Operario</TableHead>
                   <TableHead>Estado Comisión</TableHead>
-                  <TableHead>Acción</TableHead>
+                  <TableHead className="text-center">Acción</TableHead>
                   <TableHead>Fecha Completado</TableHead>
                 </TableRow>
               </TableHeader>
@@ -273,19 +270,20 @@ export default function AdminOverviewPage() {
                             variant={req.commissionPaymentStatus === "Pagada" ? "default" : (req.commissionPaymentStatus === "Pendiente" ? "secondary" : "outline")}
                             className={
                                 req.commissionPaymentStatus === "Pagada" ? "bg-green-600 text-white" : 
-                                (req.commissionPaymentStatus === "Pendiente" ? "bg-orange-500 text-white" : "")
+                                (req.commissionPaymentStatus === "Pendiente" ? "bg-orange-500 text-white" : "border-gray-400 text-gray-600")
                             }
                         >
                             {req.commissionPaymentStatus || 'N/A'}
                         </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       {req.platformFeeCalculated && req.platformFeeCalculated > 0 && (
                         <Button 
                           variant="outline" 
                           size="sm" 
                           onClick={() => handleToggleCommissionStatus(req.id, req.commissionPaymentStatus)}
                           disabled={isUpdatingCommissionStatusId === req.id}
+                          className="w-full max-w-[160px]"
                         >
                           {isUpdatingCommissionStatusId === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 
                             req.commissionPaymentStatus === "Pagada" ? <XCircle className="mr-1.5 h-4 w-4"/> : <CheckCircle className="mr-1.5 h-4 w-4"/>
@@ -306,7 +304,7 @@ export default function AdminOverviewPage() {
         <CardFooter>
             <p className="text-xs text-muted-foreground">
                 Los cálculos de comisión y ganancias se basan en la tasa vigente y el monto cotizado al momento de marcar el servicio como completado. 
-                El estado de pago de la comisión se actualiza manualmente.
+                El estado de pago de la comisión se actualiza manualmente. La "Tasa Aplicada" refleja la tasa de comisión usada para ese servicio específico.
             </p>
         </CardFooter>
       </Card>
