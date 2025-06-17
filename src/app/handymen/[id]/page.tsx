@@ -81,17 +81,20 @@ export async function generateMetadata({ params }: HandymanDetailPageProps) {
 
     if (userDocSnap.exists()) {
       const userData = userDocSnap.data();
-      if (userData.role === 'handyman') {
+      if (userData.role === 'handyman') { // Check role here
         return {
           title: `${userData.displayName || 'Operario'} - Perfil | Obra al Instante`,
-          description: `Perfil de ${userData.displayName || 'Operario'}. Contacta para servicios.`,
+          description: `Perfil de ${userData.displayName || 'Operario'} (${userData.skills?.slice(0,3).join(', ') || 'Servicios varios'}). Contacta para servicios.`,
         };
       }
     }
   } catch (error) {
     console.error(`generateMetadata: Error fetching handyman metadata for ID '${params.id}':`, error);
   }
-  return { title: "Operario No Encontrado" };
+  return { 
+    title: "Operario No Encontrado | Obra al Instante",
+    description: "El perfil de este operario no está disponible o no se encontró." 
+  };
 }
 
 export default async function HandymanDetailPage({ params }: HandymanDetailPageProps) {

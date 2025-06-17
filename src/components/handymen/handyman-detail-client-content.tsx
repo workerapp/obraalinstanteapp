@@ -1,3 +1,4 @@
+
 // src/components/handymen/handyman-detail-client-content.tsx
 "use client";
 
@@ -122,19 +123,17 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
     
     let skillsText = "";
     if (handyman.skills && handyman.skills.length > 0) {
-      if (handyman.skills.length <= 2) {
-        skillsText = handyman.skills.join(', ');
-      } else {
-        skillsText = `${handyman.skills.slice(0, 2).join(', ')}, entre otros`;
-      }
+      // Limit to a few skills to keep message concise
+      skillsText = `, quien ofrece servicios como ${handyman.skills.slice(0, 2).join(', ')}${handyman.skills.length > 2 ? ', entre otros' : ''},`;
+    } else {
+      skillsText = ",";
     }
 
     const messageIntro = `Hola, estoy interesado/a en los servicios de ${handyman.name} (ID: ${handyman.id})`;
-    const skillsMention = skillsText ? `, quien ofrece ${skillsText},` : ",";
     const platformMention = ` que vi en Obra al Instante.`;
     const callToAction = ` Por favor, describe detalladamente el servicio que necesitas:`;
 
-    const message = encodeURIComponent(`${messageIntro}${skillsMention}${platformMention}${callToAction}`);
+    const message = encodeURIComponent(`${messageIntro}${skillsText}${platformMention}${callToAction}`);
     const whatsappUrl = `https://wa.me/${adminPhoneNumber}?text=${message}`;
     window.open(whatsappUrl, '_blank');
   };
