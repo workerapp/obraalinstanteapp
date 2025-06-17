@@ -15,13 +15,14 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import Link from 'next/link';
+import Link from 'next/link'; // No usado directamente, pero puede ser útil
 import { useRouter } from 'next/navigation';
 
 
 // Consulta simplificada: solo filtra por estado y ordena por fecha de actualización.
 // El filtrado de quotedAmount > 0 se hará en el cliente.
 const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
+  console.log("Admin Overview: Fetching all completed requests from Firestore...");
   const requestsRef = collection(firestore, "quotationRequests");
   const q = query(
     requestsRef, 
@@ -40,6 +41,7 @@ const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
       updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
     } as QuotationRequest);
   });
+  console.log(`Admin Overview: Fetched ${requests.length} completed requests.`);
   return requests;
 };
 
@@ -64,8 +66,26 @@ export default function AdminOverviewPage() {
     queryFn: fetchAllCompletedRequests,
   });
 
+  // Debug logs
+  useEffect(() => {
+    if (!isLoading && !error) {
+      console.log('Admin Overview: allCompletedRequests from useQuery:', allCompletedRequests);
+    }
+    if (error) {
+      console.error('Admin Overview: Error from useQuery:', error);
+    }
+  }, [allCompletedRequests, isLoading, error]);
+
+
   // Filtrar por quotedAmount > 0 aquí en el cliente
   const validCompletedRequests = allCompletedRequests?.filter(req => req.quotedAmount && req.quotedAmount > 0) || [];
+  
+  useEffect(() => {
+     if (!isLoading && !error) {
+      console.log('Admin Overview: validCompletedRequests (filtered for quotedAmount > 0):', validCompletedRequests);
+    }
+  }, [validCompletedRequests, isLoading, error]);
+
 
   const totalPlatformRevenue = validCompletedRequests.reduce((sum, req) => sum + (req.platformFeeCalculated || 0), 0);
   const totalQuotedAmount = validCompletedRequests.reduce((sum, req) => sum + (req.quotedAmount || 0), 0);
@@ -81,6 +101,19 @@ export default function AdminOverviewPage() {
     }
     return acc;
   }, {} as CommissionsByHandyman);
+  
+  // Log calculated totals
+  useEffect(() => {
+    if (!isLoading && !error) {
+      console.log('Admin Overview: Calculated Metrics:', {
+        totalPlatformRevenue,
+        totalQuotedAmount,
+        totalHandymanPayout,
+        commissionsByHandymanCount: Object.keys(commissionsByHandyman).length,
+      });
+    }
+  }, [totalPlatformRevenue, totalQuotedAmount, totalHandymanPayout, commissionsByHandyman, isLoading, error]);
+
 
   if (!isClient) {
     return (
@@ -238,6 +271,8 @@ export default function AdminOverviewPage() {
     </div>
   );
 }
+    
+
     
 
     
