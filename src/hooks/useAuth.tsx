@@ -26,7 +26,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Define el correo del administrador aquí.
-// ¡¡IMPORTANTE!! Reemplaza 'admin@obraalinstante.com' con tu correo electrónico real.
 const ADMIN_EMAIL = 'workeraplicationservices@gmail.com'; 
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -45,11 +44,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
           setUser({
             ...firebaseUser,
             displayName: userData.displayName || firebaseUser.displayName,
-            photoURL: userData.photoURL || firebaseUser.photoURL, // Ensure photoURL is also loaded
+            photoURL: userData.photoURL || firebaseUser.photoURL,
             role: userData.role,
           });
         } else {
-          // If no Firestore doc, use Firebase Auth data directly (might happen during signUp before Firestore doc is fully set)
           setUser(firebaseUser as AppUser); 
         }
       } else {
@@ -66,34 +64,31 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
       await updateProfile(userCredential.user, { displayName: fullName });
 
-      // Initial Firestore document for the user
       const userDocRef = doc(firestore, "users", userCredential.user.uid);
       await setDoc(userDocRef, {
         uid: userCredential.user.uid,
         email: userCredential.user.email,
         displayName: fullName,
-        role: role,
-        createdAt: serverTimestamp(), // Use serverTimestamp for consistency
-        // Initialize other profile fields as null or empty as appropriate for handymen
+        role: email === ADMIN_EMAIL ? 'admin' : role, // Asignar rol 'admin' si el email coincide
+        createdAt: serverTimestamp(),
         tagline: null,
         skills: [],
         location: null,
         phone: null,
-        photoURL: null, // Initially no photoURL from Firestore
+        photoURL: null,
       });
       
-      console.log('Usuario registrado y datos guardados en Firestore:', userCredential.user.uid, 'Nombre:', fullName, 'Rol:', role);
+      console.log('Usuario registrado y datos guardados en Firestore:', userCredential.user.uid, 'Nombre:', fullName, 'Rol:', email === ADMIN_EMAIL ? 'admin' : role);
       toast({ title: "¡Cuenta Creada!", description: "¡Bienvenido/a! Te has registrado con éxito." });
       
       const appUser: AppUser = {
         ...userCredential.user,
-        displayName: fullName, // From Firebase Auth profile update
-        photoURL: userCredential.user.photoURL, // From Firebase Auth profile (likely null initially)
-        role: role,
+        displayName: fullName,
+        photoURL: userCredential.user.photoURL,
+        role: email === ADMIN_EMAIL ? 'admin' : role,
       };
-      setUser(appUser); // Update context state
+      setUser(appUser);
       
-      // Redirección basada en el rol (incluyendo admin si es el email)
       if (email === ADMIN_EMAIL) {
         router.push('/admin/overview');
       } else {
@@ -125,21 +120,37 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+      const firebaseUser = userCredential.user;
+      
+      const userDocRef = doc(firestore, "users", firebaseUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      let userRole = 'customer'; // default role
+      let userDisplayName = firebaseUser.displayName;
+      let userPhotoURL = firebaseUser.photoURL;
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        userRole = userData.role || 'customer';
+        userDisplayName = userData.displayName || firebaseUser.displayName;
+        userPhotoURL = userData.photoURL || firebaseUser.photoURL;
+      }
+      
+      const appUser: AppUser = {
+        ...firebaseUser,
+        displayName: userDisplayName,
+        photoURL: userPhotoURL,
+        role: email === ADMIN_EMAIL ? 'admin' : userRole, // Prioritize admin role by email
+      };
+      setUser(appUser); // Update context user
+      
       toast({ title: "¡Sesión Iniciada!", description: "¡Bienvenido/a de nuevo!" });
       
-      if (userCredential.user.email === ADMIN_EMAIL) {
+      if (appUser.email === ADMIN_EMAIL) {
         router.push('/admin/overview');
       } else {
-        const userDocRef = doc(firestore, "users", userCredential.user.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        let role = 'customer'; 
-        if (userDocSnap.exists()) {
-          role = userDocSnap.data().role || 'customer';
-        }
-        router.push(role === 'handyman' ? '/dashboard/handyman' : '/dashboard/customer');
+        router.push(appUser.role === 'handyman' ? '/dashboard/handyman' : '/dashboard/customer');
       }
-      // The user state will be updated by onAuthStateChanged listener
-      return userCredential.user as AppUser; // Cast for return type, actual full AppUser from context
+      return appUser;
     } catch (error: any) {
       console.error("Error al iniciar sesión:", error);
       toast({ title: "Falló el Inicio de Sesión", description: error.message || "Credenciales inválidas. Por favor, inténtalo de nuevo.", variant: "destructive" });
@@ -164,7 +175,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   };
   
-  const value = { user, loading, signUp, signIn, signOutUser, setUser }; // Add setUser to context
+  const value = { user, loading, signUp, signIn, signOutUser, setUser };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
