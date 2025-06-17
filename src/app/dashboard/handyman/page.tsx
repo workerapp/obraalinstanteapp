@@ -36,7 +36,8 @@ import {
   XCircle, 
   CalendarPlus, 
   CheckCircle2,
-  Eye 
+  Eye,
+  CreditCard // Added for commission status
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -73,6 +74,7 @@ const fetchHandymanRequests = async (handymanUid: string | undefined): Promise<Q
       ...data,
       requestedAt: data.requestedAt instanceof Timestamp ? data.requestedAt : Timestamp.now(),
       updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
+      commissionPaymentStatus: data.commissionPaymentStatus || undefined,
     } as QuotationRequest);
   });
   return requests;
@@ -128,6 +130,12 @@ export default function HandymanDashboardPage() {
       default: return 'bg-gray-500 text-white';
     }
   }
+  
+  const getCommissionStatusColor = (status?: "Pendiente" | "Pagada"): string => {
+    if (status === "Pagada") return "bg-green-600 text-white";
+    if (status === "Pendiente") return "bg-orange-500 text-white";
+    return "border-gray-400 text-gray-600";
+  };
 
   const handleChangeRequestStatus = async (requestId: string, newStatus: QuotationRequest['status']) => {
     if (!typedUser?.uid) {
@@ -151,18 +159,15 @@ export default function HandymanDashboardPage() {
           if (updateData.platformFeeCalculated > 0) {
             updateData.commissionPaymentStatus = "Pendiente";
           } else {
-            updateData.commissionPaymentStatus = null; // O undefined, si no hay comisión
+            updateData.commissionPaymentStatus = null;
           }
         } else {
-          // Si no hay monto cotizado o es 0, no hay comisión.
           updateData.platformCommissionRate = null;
           updateData.platformFeeCalculated = null;
           updateData.handymanEarnings = currentRequest?.quotedAmount ?? 0; 
-          updateData.commissionPaymentStatus = null; // O undefined
+          updateData.commissionPaymentStatus = null;
         }
       } else if (newStatus !== 'Cotizada') { 
-        // Resetear campos de comisión si el estado vuelve a uno anterior a 'Completada' (y no es 'Cotizada', donde se mantiene el quotedAmount)
-        // Esto es por si un admin revierte un estado, por ejemplo.
         updateData.platformCommissionRate = null;
         updateData.platformFeeCalculated = null;
         updateData.handymanEarnings = null;
@@ -174,7 +179,7 @@ export default function HandymanDashboardPage() {
 
       toast({ title: "Estado Actualizado", description: `La solicitud ahora está "${newStatus}".` });
       queryClient.invalidateQueries({ queryKey: ['handymanRequests', typedUser.uid] });
-      queryClient.invalidateQueries({ queryKey: ['allCompletedRequestsForAdmin'] }); // Invalidate admin overview
+      queryClient.invalidateQueries({ queryKey: ['allCompletedRequestsForAdmin'] }); 
     } catch (error: any) {
       console.error("Error al actualizar estado de solicitud:", error);
       toast({ title: "Error al Actualizar", description: error.message || "No se pudo actualizar el estado.", variant: "destructive" });
@@ -206,7 +211,6 @@ export default function HandymanDashboardPage() {
         quotedCurrency: "COP", 
         quotationDetails: data.quotationDetails || null,
         updatedAt: serverTimestamp(),
-        // Resetear campos de comisión si se está re-cotizando
         platformCommissionRate: null,
         platformFeeCalculated: null,
         handymanEarnings: null,
@@ -337,6 +341,18 @@ export default function HandymanDashboardPage() {
                         <p className="text-purple-600">Cotizado: ${req.quotedAmount.toLocaleString('es-CO')}</p>
                         <p className="text-red-600">Comisión Plataforma ({((req.platformCommissionRate || 0) * 100).toFixed(0)}%): -${(req.platformFeeCalculated || 0).toLocaleString('es-CO')}</p>
                         <p className="text-green-700 font-medium">Tu Ganancia: ${(req.handymanEarnings || 0).toLocaleString('es-CO')}</p>
+                        {req.platformFeeCalculated && req.platformFeeCalculated > 0 && (
+                           <div className="flex items-center gap-1.5 mt-1">
+                               <CreditCard className="h-3 w-3 text-muted-foreground" />
+                               <span className="text-xs text-muted-foreground">Comisión:</span>
+                               <Badge 
+                                variant={req.commissionPaymentStatus === "Pagada" ? "default" : "secondary"}
+                                className={`text-xs ${getCommissionStatusColor(req.commissionPaymentStatus)}`}
+                               >
+                                {req.commissionPaymentStatus || 'N/A'}
+                               </Badge>
+                           </div>
+                        )}
                       </div>
                     )}
                     {(req.status === 'Cotizada' || req.status === 'Programada') && req.quotedAmount != null && (
