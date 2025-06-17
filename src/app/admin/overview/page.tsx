@@ -19,10 +19,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 
+// Consulta simplificada: solo filtra por estado y ordena por fecha de actualización.
+// El filtrado de quotedAmount > 0 se hará en el cliente.
 const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
   const requestsRef = collection(firestore, "quotationRequests");
-  // Consulta simplificada: solo filtra por estado y ordena por fecha de actualización.
-  // El filtrado de quotedAmount > 0 se hará en el cliente.
   const q = query(
     requestsRef, 
     where("status", "==", "Completada"),
@@ -56,7 +56,7 @@ export default function AdminOverviewPage() {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    setIsClient(true); // Component is now mounted on client
+    setIsClient(true);
   }, []);
 
   const { data: allCompletedRequests, isLoading, error } = useQuery<QuotationRequest[], Error>({
@@ -83,7 +83,6 @@ export default function AdminOverviewPage() {
   }, {} as CommissionsByHandyman);
 
   if (!isClient) {
-    // Render a basic skeleton or null on the server, or during the very first client render pass
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -239,6 +238,6 @@ export default function AdminOverviewPage() {
     </div>
   );
 }
-
+    
 
     
