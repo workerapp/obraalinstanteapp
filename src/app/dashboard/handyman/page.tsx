@@ -50,6 +50,9 @@ import { es } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 
+// Tasa de comisión de la plataforma (ej. 15%)
+const PLATFORM_COMMISSION_RATE = 0.15;
+
 const fetchHandymanRequests = async (handymanUid: string | undefined): Promise<QuotationRequest[]> => {
   if (!handymanUid) return [];
   
@@ -110,9 +113,9 @@ export default function HandymanDashboardPage() {
     enabled: !!typedUser?.uid && typedUser.role === 'handyman', 
   });
 
-  const totalEarnings = quotationRequests
-    ?.filter(req => req.status === 'Completada' && req.quotedAmount)
-    .reduce((sum, req) => sum + (req.quotedAmount || 0), 0) || 0;
+  const totalHandymanEarnings = quotationRequests
+    ?.filter(req => req.status === 'Completada' && req.handymanEarnings)
+    .reduce((sum, req) => sum + (req.handymanEarnings || 0), 0) || 0;
 
   const getStatusColorClass = (status: QuotationRequest['status']): string => {
      switch (status) {
@@ -134,10 +137,26 @@ export default function HandymanDashboardPage() {
     setIsUpdatingRequestId(requestId);
     try {
       const requestDocRef = doc(firestore, "quotationRequests", requestId);
-      await updateDoc(requestDocRef, {
+      const updateData: any = {
         status: newStatus,
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      if (newStatus === 'Completada') {
+        const currentRequest = quotationRequests?.find(req => req.id === requestId);
+        if (currentRequest && currentRequest.quotedAmount && currentRequest.quotedAmount > 0) {
+          updateData.platformCommissionRate = PLATFORM_COMMISSION_RATE;
+          updateData.platformFeeCalculated = currentRequest.quotedAmount * PLATFORM_COMMISSION_RATE;
+          updateData.handymanEarnings = currentRequest.quotedAmount - updateData.platformFeeCalculated;
+        } else {
+          // No se calculan comisiones si no hay monto cotizado o es cero.
+          updateData.platformCommissionRate = null;
+          updateData.platformFeeCalculated = null;
+          updateData.handymanEarnings = currentRequest?.quotedAmount ?? 0; // O simplemente el quotedAmount si es 0 o null
+        }
+      }
+
+      await updateDoc(requestDocRef, updateData);
 
       toast({ title: "Estado Actualizado", description: `La solicitud ahora está "${newStatus}".` });
       queryClient.invalidateQueries({ queryKey: ['handymanRequests', typedUser.uid] });
@@ -172,6 +191,10 @@ export default function HandymanDashboardPage() {
         quotedCurrency: "COP", 
         quotationDetails: data.quotationDetails || null,
         updatedAt: serverTimestamp(),
+        // Limpiar campos de comisión si se re-cotiza
+        platformCommissionRate: null,
+        platformFeeCalculated: null,
+        handymanEarnings: null,
       });
 
       toast({ title: "Cotización Enviada", description: `La cotización para "${requestBeingQuoted.serviceName}" ha sido enviada.` });
@@ -212,8 +235,8 @@ export default function HandymanDashboardPage() {
           <CardFooter><Button asChild variant="outline" className="w-full"><Link href="/dashboard/handyman/services">Gestionar Servicios</Link></Button></CardFooter>
         </Card>
          <Card className="shadow-lg">
-          <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="text-green-500"/>Ganancias Totales</CardTitle><CardDescription>Tus ganancias de trabajos completados.</CardDescription></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-primary">${totalEarnings.toLocaleString('es-CO')}</p><p className="text-xs text-muted-foreground">Basado en solicitudes completadas con monto cotizado.</p></CardContent>
+          <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="text-green-500"/>Mis Ganancias (Neto)</CardTitle><CardDescription>Ganancias después de comisión de plataforma.</CardDescription></CardHeader>
+          <CardContent><p className="text-3xl font-bold text-primary">${totalHandymanEarnings.toLocaleString('es-CO')}</p><p className="text-xs text-muted-foreground">Basado en solicitudes completadas.</p></CardContent>
            <CardFooter><Button asChild variant="outline" className="w-full" disabled><Link href="/dashboard/handyman/earnings">Ver Detalles (Próximamente)</Link></Button></CardFooter>
         </Card>
          <Card className="shadow-lg">
@@ -293,8 +316,16 @@ export default function HandymanDashboardPage() {
                     <p className="text-sm text-muted-foreground">Cliente: {req.contactFullName} ({req.contactEmail})</p>
                     <p className="text-sm text-muted-foreground">Solicitado: {req.requestedAt?.toDate ? format(req.requestedAt.toDate(), 'PPPp', { locale: es }) : 'Fecha no disp.'}</p>
                     <p className="text-sm text-muted-foreground truncate max-w-md" title={req.problemDescription}>Problema: {req.problemDescription}</p>
-                    {req.quotedAmount && (req.status === 'Cotizada' || req.status === 'Programada' || req.status === 'Completada') && (
-                        <p className="text-sm text-purple-600 font-medium">Monto Cotizado: ${req.quotedAmount.toLocaleString('es-CO')} {req.quotedCurrency || 'COP'}</p>
+                    
+                    {req.status === 'Completada' && req.quotedAmount != null && (
+                      <div className="text-xs mt-1 space-y-0.5">
+                        <p className="text-purple-600">Cotizado: ${req.quotedAmount.toLocaleString('es-CO')}</p>
+                        <p className="text-red-600">Comisión ({((req.platformCommissionRate || 0) * 100).toFixed(0)}%): -${(req.platformFeeCalculated || 0).toLocaleString('es-CO')}</p>
+                        <p className="text-green-700 font-medium">Tu Ganancia: ${(req.handymanEarnings || 0).toLocaleString('es-CO')}</p>
+                      </div>
+                    )}
+                    {(req.status === 'Cotizada' || req.status === 'Programada') && req.quotedAmount != null && (
+                        <p className="text-sm text-purple-600 font-medium mt-1">Monto Cotizado: ${req.quotedAmount.toLocaleString('es-CO')} {req.quotedCurrency || 'COP'}</p>
                     )}
                   </div>
                   <Badge className={`mt-2 sm:mt-0 self-start sm:self-end ${getStatusColorClass(req.status)}`}>{req.status}</Badge>

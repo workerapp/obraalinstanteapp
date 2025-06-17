@@ -25,5 +25,11 @@ export interface QuotationRequest {
   quotedAmount?: number;
   quotedCurrency?: string; // e.g., "COP"
   quotationDetails?: string; // Notas adicionales de la cotización
+
+  // Campos para comisiones de la plataforma
+  platformCommissionRate?: number; // Tasa de comisión aplicada (ej. 0.15 para 15%)
+  platformFeeCalculated?: number; // Monto de la comisión calculada para la plataforma
+  handymanEarnings?: number; // Ganancias netas para el operario (quotedAmount - platformFeeCalculated)
 }
+
 

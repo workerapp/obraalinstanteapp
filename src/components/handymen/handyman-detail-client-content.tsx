@@ -13,8 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Star, MapPin, CalendarDays, MessageSquare, Phone, CheckCircle, Briefcase, Tag, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; // Import Card components, ADDED CardFooter
-import { Separator } from '@/components/ui/separator'; // Import Separator
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; 
+import { Separator } from '@/components/ui/separator'; 
 
 interface Review {
   id: number;
@@ -29,9 +29,8 @@ interface HandymanDetailClientContentProps {
   reviews: Review[];
 }
 
-const ADMIN_WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP_NUMBER || "+573017412292"; // Admin's WhatsApp
+const ADMIN_WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP_NUMBER || "+573017412292"; 
 
-// Helper function to translate price type
 const priceTypeTranslations: Record<HandymanService['priceType'], string> = {
   fijo: "Fijo",
   porHora: "Por Hora",
@@ -42,12 +41,11 @@ const priceTypeTranslations: Record<HandymanService['priceType'], string> = {
 async function fetchServicesForHandyman(handymanId: string): Promise<HandymanService[]> {
   if (!handymanId) return [];
   
-  // Fetch only active services
   const servicesRef = collection(firestore, "handymanServices");
   const q = query(
     servicesRef, 
     where("handymanUid", "==", handymanId), 
-    where("isActive", "==", true), // Only fetch active services
+    where("isActive", "==", true), 
     orderBy("createdAt", "desc")
   );
   
@@ -58,7 +56,6 @@ async function fetchServicesForHandyman(handymanId: string): Promise<HandymanSer
     services.push({ 
       id: doc.id, 
       ...data,
-      // Ensure timestamps are correctly handled if they are part of the data
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt : Timestamp.now(),
       updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
     } as HandymanService);
@@ -88,7 +85,6 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
             description = "Error al cargar servicios: Firestore necesita un índice. Revisa la consola del navegador para más detalles (suele haber un enlace para crearlo).";
           }
           setServicesError(description);
-          // No mostramos toast aquí para no ser intrusivos, el error se muestra en la UI.
         })
         .finally(() => setIsLoadingServices(false));
     } else {
@@ -123,7 +119,6 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
     
     let skillsText = "";
     if (handyman.skills && handyman.skills.length > 0) {
-      // Limit to a few skills to keep message concise
       skillsText = `, quien ofrece servicios como ${handyman.skills.slice(0, 2).join(', ')}${handyman.skills.length > 2 ? ', entre otros' : ''},`;
     } else {
       skillsText = ",";
@@ -170,6 +165,9 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
             <Button variant="outline" size="lg" className="w-full" onClick={handleWhatsAppContact}>
               <Phone size={18} className="mr-2" /> Contactar por WhatsApp
             </Button>
+             <p className="text-xs text-muted-foreground text-center mt-2">
+              El contacto por WhatsApp es con el administrador de la plataforma.
+            </p>
           </div>
 
           <div className="md:col-span-2">
@@ -189,6 +187,7 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
               {handyman.memberSince && (
                 <p className="flex items-center gap-2"><CalendarDays size={18} className="text-accent" /> {handyman.memberSince}</p>
               )}
+              {/* Teléfono del operario ya no se muestra públicamente aquí para centralizar contacto */}
             </div>
 
             <section className="mb-6">
@@ -213,7 +212,6 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
 
         <Separator className="my-8" />
 
-        {/* Sección de Servicios Ofrecidos */}
         <section>
           <h2 className="text-2xl font-semibold font-headline mb-4 flex items-center">
             <Briefcase size={24} className="mr-3 text-primary" /> Servicios Ofrecidos por {handyman.name}
@@ -291,3 +289,4 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
     </div>
   );
 }
+
