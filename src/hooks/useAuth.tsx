@@ -27,7 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Define el correo del administrador aquí.
 // ¡¡IMPORTANTE!! Reemplaza 'admin@obraalinstante.com' con tu correo electrónico real.
-const ADMIN_EMAIL = 'admin@obraalinstante.com'; 
+const ADMIN_EMAIL = 'workeraplicationservices@gmail.com'; 
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -102,7 +102,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return appUser;
     } catch (error: any) {
       console.error("Error al registrarse:", error);
-      toast({ title: "Falló el Registro", description: error.message || "Por favor, inténtalo de nuevo.", variant: "destructive" });
+      if (error.code === 'auth/email-already-in-use') {
+        toast({ 
+          title: "Falló el Registro", 
+          description: "Este correo electrónico ya está en uso. Por favor, intenta con otro o inicia sesión si ya tienes una cuenta.", 
+          variant: "destructive" 
+        });
+      } else {
+        toast({ 
+          title: "Falló el Registro", 
+          description: error.message || "Ocurrió un error inesperado. Por favor, inténtalo de nuevo.", 
+          variant: "destructive" 
+        });
+      }
       return null;
     } finally {
       setLoading(false);
