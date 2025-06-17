@@ -37,7 +37,7 @@ import {
   CalendarPlus, 
   CheckCircle2,
   Eye 
-} from 'lucide-react'; // Added Eye icon
+} from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
@@ -57,7 +57,6 @@ const fetchHandymanRequests = async (handymanUid: string | undefined): Promise<Q
   const q = query(
     requestsRef, 
     where("handymanId", "==", handymanUid),
-    // where("status", "in", ["Enviada", "Revisando", "Cotizada", "Programada", "Completada"]), // Keep commented to see all for now
     orderBy("status"), 
     orderBy("requestedAt", "desc")
   );
@@ -93,7 +92,6 @@ export default function HandymanDashboardPage() {
   const { toast } = useToast();
   const [isUpdatingRequestId, setIsUpdatingRequestId] = useState<string | null>(null);
 
-  // State for quotation dialog
   const [isQuoteDialogOpen, setIsQuoteDialogOpen] = useState(false);
   const [requestBeingQuoted, setRequestBeingQuoted] = useState<QuotationRequest | null>(null);
   const [isSubmittingQuote, setIsSubmittingQuote] = useState(false);
@@ -221,7 +219,7 @@ export default function HandymanDashboardPage() {
          <Card className="shadow-lg">
           <CardHeader><CardTitle className="flex items-center gap-2"><Settings2 className="text-muted-foreground"/>Perfil y Configuración</CardTitle><CardDescription>Actualiza tu perfil público y cuenta.</CardDescription></CardHeader>
           <CardContent><p>Mantén tu información actualizada para los clientes.</p></CardContent>
-          <CardFooter><Button asChild variant="outline" className="w-full" disabled><Link href="/dashboard/handyman/profile">Editar Perfil (Próximamente)</Link></Button></CardFooter>
+          <CardFooter><Button asChild variant="outline" className="w-full"><Link href="/dashboard/handyman/profile">Editar Perfil</Link></Button></CardFooter>
         </Card>
       </div>
 
