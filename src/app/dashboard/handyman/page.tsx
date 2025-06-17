@@ -148,12 +148,27 @@ export default function HandymanDashboardPage() {
           updateData.platformCommissionRate = PLATFORM_COMMISSION_RATE;
           updateData.platformFeeCalculated = currentRequest.quotedAmount * PLATFORM_COMMISSION_RATE;
           updateData.handymanEarnings = currentRequest.quotedAmount - updateData.platformFeeCalculated;
+          if (updateData.platformFeeCalculated > 0) {
+            updateData.commissionPaymentStatus = "Pendiente";
+          } else {
+            updateData.commissionPaymentStatus = null; // O undefined, si no hay comisión
+          }
         } else {
+          // Si no hay monto cotizado o es 0, no hay comisión.
           updateData.platformCommissionRate = null;
           updateData.platformFeeCalculated = null;
           updateData.handymanEarnings = currentRequest?.quotedAmount ?? 0; 
+          updateData.commissionPaymentStatus = null; // O undefined
         }
+      } else if (newStatus !== 'Cotizada') { 
+        // Resetear campos de comisión si el estado vuelve a uno anterior a 'Completada' (y no es 'Cotizada', donde se mantiene el quotedAmount)
+        // Esto es por si un admin revierte un estado, por ejemplo.
+        updateData.platformCommissionRate = null;
+        updateData.platformFeeCalculated = null;
+        updateData.handymanEarnings = null;
+        updateData.commissionPaymentStatus = null;
       }
+
 
       await updateDoc(requestDocRef, updateData);
 
@@ -191,9 +206,11 @@ export default function HandymanDashboardPage() {
         quotedCurrency: "COP", 
         quotationDetails: data.quotationDetails || null,
         updatedAt: serverTimestamp(),
+        // Resetear campos de comisión si se está re-cotizando
         platformCommissionRate: null,
         platformFeeCalculated: null,
         handymanEarnings: null,
+        commissionPaymentStatus: null,
       });
 
       toast({ title: "Cotización Enviada", description: `La cotización para "${requestBeingQuoted.serviceName}" ha sido enviada.` });
@@ -318,7 +335,7 @@ export default function HandymanDashboardPage() {
                     {req.status === 'Completada' && req.quotedAmount != null && (
                       <div className="text-xs mt-1 space-y-0.5">
                         <p className="text-purple-600">Cotizado: ${req.quotedAmount.toLocaleString('es-CO')}</p>
-                        <p className="text-red-600">Comisión ({((req.platformCommissionRate || 0) * 100).toFixed(0)}%): -${(req.platformFeeCalculated || 0).toLocaleString('es-CO')}</p>
+                        <p className="text-red-600">Comisión Plataforma ({((req.platformCommissionRate || 0) * 100).toFixed(0)}%): -${(req.platformFeeCalculated || 0).toLocaleString('es-CO')}</p>
                         <p className="text-green-700 font-medium">Tu Ganancia: ${(req.handymanEarnings || 0).toLocaleString('es-CO')}</p>
                       </div>
                     )}

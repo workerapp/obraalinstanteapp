@@ -6,22 +6,22 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BarChart, DollarSign, Users, ListChecks, Loader2, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { BarChart, DollarSign, Users, ListChecks, Loader2, AlertTriangle, ArrowLeft, CheckCircle, XCircle, CreditCard, CircleDollarSign } from 'lucide-react';
 import { firestore } from '@/firebase/clientApp';
-import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
-import { useQuery } from '@tanstack/react-query';
+import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { QuotationRequest } from '@/types/quotationRequest';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 
 const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
+  console.log("Admin Overview: Fetching all completed requests from Firestore...");
   const requestsRef = collection(firestore, "quotationRequests");
-  // Simplified query: only filter by status and order by update date.
-  // Filtering for quotedAmount > 0 will be done client-side.
   const q = query(
     requestsRef, 
     where("status", "==", "Completada"),
@@ -37,34 +37,43 @@ const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
       ...data,
       requestedAt: data.requestedAt instanceof Timestamp ? data.requestedAt : Timestamp.now(),
       updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
+      commissionPaymentStatus: data.commissionPaymentStatus || undefined, // Ensure field is present
     } as QuotationRequest);
   });
+  console.log(`Admin Overview: Fetched ${requests.length} completed requests.`);
   return requests;
 };
 
 interface CommissionsByHandyman {
   [handymanId: string]: {
     name: string;
-    totalPlatformFee: number; // Renamed for clarity, this is the sum of platformFeeCalculated
+    totalPlatformFee: number;
+    totalPendingPlatformFee: number;
+    totalPaidPlatformFee: number;
     requestCount: number;
   };
 }
 
 export default function AdminOverviewPage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isClient, setIsClient] = useState(false);
+  const [isUpdatingCommissionStatusId, setIsUpdatingCommissionStatusId] = useState<string | null>(null);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  const { data: allCompletedRequests, isLoading, error } = useQuery<QuotationRequest[], Error>({
+  const { data: allCompletedRequests, isLoading, error, isError } = useQuery<QuotationRequest[], Error>({
     queryKey: ['allCompletedRequestsForAdmin'],
     queryFn: fetchAllCompletedRequests,
   });
+  
+  console.log("Admin Overview: allCompletedRequests from useQuery:", allCompletedRequests);
 
-  // Filter for valid requests (completed and with a positive quoted amount) client-side
   const validCompletedRequests = allCompletedRequests?.filter(req => req.quotedAmount && req.quotedAmount > 0) || [];
+  console.log("Admin Overview: validCompletedRequests (filtered for quotedAmount > 0):", validCompletedRequests);
   
   const totalPlatformRevenue = validCompletedRequests.reduce((sum, req) => sum + (req.platformFeeCalculated || 0), 0);
   const totalQuotedAmount = validCompletedRequests.reduce((sum, req) => sum + (req.quotedAmount || 0), 0);
@@ -73,13 +82,45 @@ export default function AdminOverviewPage() {
   const commissionsByHandyman = validCompletedRequests.reduce((acc, req) => {
     if (req.handymanId && req.handymanName && req.platformFeeCalculated) {
       if (!acc[req.handymanId]) {
-        acc[req.handymanId] = { name: req.handymanName, totalPlatformFee: 0, requestCount: 0 };
+        acc[req.handymanId] = { 
+            name: req.handymanName, 
+            totalPlatformFee: 0, 
+            totalPendingPlatformFee: 0,
+            totalPaidPlatformFee: 0,
+            requestCount: 0 
+        };
       }
       acc[req.handymanId].totalPlatformFee += req.platformFeeCalculated;
       acc[req.handymanId].requestCount += 1;
+      if (req.commissionPaymentStatus === "Pendiente") {
+        acc[req.handymanId].totalPendingPlatformFee += req.platformFeeCalculated;
+      } else if (req.commissionPaymentStatus === "Pagada") {
+        acc[req.handymanId].totalPaidPlatformFee += req.platformFeeCalculated;
+      }
     }
     return acc;
   }, {} as CommissionsByHandyman);
+  
+  console.log("Admin Overview: Calculated Metrics:", { totalPlatformRevenue, totalQuotedAmount, totalHandymanPayout, commissionsByHandyman });
+
+  const handleToggleCommissionStatus = async (requestId: string, currentStatus?: "Pendiente" | "Pagada") => {
+    setIsUpdatingCommissionStatusId(requestId);
+    const newStatus = currentStatus === "Pagada" ? "Pendiente" : "Pagada";
+    try {
+      const requestDocRef = doc(firestore, "quotationRequests", requestId);
+      await updateDoc(requestDocRef, {
+        commissionPaymentStatus: newStatus,
+        updatedAt: serverTimestamp(),
+      });
+      toast({ title: "Estado de Comisión Actualizado", description: `La comisión para la solicitud ${requestId.substring(0,6)}... ahora está ${newStatus}.` });
+      queryClient.invalidateQueries({ queryKey: ['allCompletedRequestsForAdmin'] });
+    } catch (e: any) {
+      console.error("Error al actualizar estado de comisión:", e);
+      toast({ title: "Error", description: `No se pudo actualizar el estado de la comisión: ${e.message}`, variant: "destructive" });
+    } finally {
+      setIsUpdatingCommissionStatusId(null);
+    }
+  };
   
   if (!isClient) {
     return (
@@ -99,6 +140,7 @@ export default function AdminOverviewPage() {
   }
 
   if (error) {
+    console.error("Admin Overview: Error from useQuery:", error);
     return (
       <div className="max-w-4xl mx-auto py-10">
         <Alert variant="destructive">
@@ -159,25 +201,29 @@ export default function AdminOverviewPage() {
         </Card>
 
         <Card className="lg:col-span-2 shadow-xl">
-            <CardHeader><CardTitle>Comisiones Generadas para la Plataforma por Operario</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Estado de Comisiones por Operario</CardTitle></CardHeader>
             <CardContent>
             {Object.keys(commissionsByHandyman).length > 0 ? (
                 <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Operario</TableHead>
-                            <TableHead className="text-right">Servicios Completados</TableHead>
-                            <TableHead className="text-right">Comisión Total para Plataforma</TableHead>
+                            <TableHead className="text-right">Servicios</TableHead>
+                            <TableHead className="text-right">Comisión Total</TableHead>
+                            <TableHead className="text-right">Pendiente</TableHead>
+                            <TableHead className="text-right">Pagada</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {Object.entries(commissionsByHandyman)
-                            .sort(([, a], [, b]) => b.totalPlatformFee - a.totalPlatformFee) // Sort by highest commission
+                            .sort(([, a], [, b]) => b.totalPlatformFee - a.totalPlatformFee) 
                             .map(([id, data]) => (
                             <TableRow key={id}>
                                 <TableCell className="font-medium">{data.name} <span className="text-xs text-muted-foreground">({id.substring(0,6)}...)</span></TableCell>
                                 <TableCell className="text-right">{data.requestCount}</TableCell>
-                                <TableCell className="text-right font-semibold text-green-600">${data.totalPlatformFee.toLocaleString('es-CO')}</TableCell>
+                                <TableCell className="text-right font-semibold text-gray-700">${data.totalPlatformFee.toLocaleString('es-CO')}</TableCell>
+                                <TableCell className="text-right font-semibold text-orange-600">${data.totalPendingPlatformFee.toLocaleString('es-CO')}</TableCell>
+                                <TableCell className="text-right font-semibold text-green-600">${data.totalPaidPlatformFee.toLocaleString('es-CO')}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -204,9 +250,11 @@ export default function AdminOverviewPage() {
                   <TableHead>Operario</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead className="text-right">Monto Cotizado</TableHead>
-                  <TableHead className="text-right">Tasa Comisión</TableHead>
-                  <TableHead className="text-right">Comisión Plataforma</TableHead>
-                  <TableHead className="text-right">Ganancia Operario</TableHead>
+                  <TableHead className="text-right">Tasa</TableHead>
+                  <TableHead className="text-right">Com. Plataforma</TableHead>
+                  <TableHead className="text-right">G. Operario</TableHead>
+                  <TableHead>Estado Comisión</TableHead>
+                  <TableHead>Acción</TableHead>
                   <TableHead>Fecha Completado</TableHead>
                 </TableRow>
               </TableHeader>
@@ -220,6 +268,32 @@ export default function AdminOverviewPage() {
                     <TableCell className="text-right">{((req.platformCommissionRate || 0) * 100).toFixed(0)}%</TableCell>
                     <TableCell className="text-right text-red-600">${(req.platformFeeCalculated || 0).toLocaleString('es-CO')}</TableCell>
                     <TableCell className="text-right text-green-700">${(req.handymanEarnings || 0).toLocaleString('es-CO')}</TableCell>
+                    <TableCell>
+                        <Badge 
+                            variant={req.commissionPaymentStatus === "Pagada" ? "default" : (req.commissionPaymentStatus === "Pendiente" ? "secondary" : "outline")}
+                            className={
+                                req.commissionPaymentStatus === "Pagada" ? "bg-green-600 text-white" : 
+                                (req.commissionPaymentStatus === "Pendiente" ? "bg-orange-500 text-white" : "")
+                            }
+                        >
+                            {req.commissionPaymentStatus || 'N/A'}
+                        </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {req.platformFeeCalculated && req.platformFeeCalculated > 0 && (
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleToggleCommissionStatus(req.id, req.commissionPaymentStatus)}
+                          disabled={isUpdatingCommissionStatusId === req.id}
+                        >
+                          {isUpdatingCommissionStatusId === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 
+                            req.commissionPaymentStatus === "Pagada" ? <XCircle className="mr-1.5 h-4 w-4"/> : <CheckCircle className="mr-1.5 h-4 w-4"/>
+                          }
+                          {req.commissionPaymentStatus === "Pagada" ? "Marcar Pendiente" : "Marcar Pagada"}
+                        </Button>
+                      )}
+                    </TableCell>
                     <TableCell>{req.updatedAt?.toDate ? format(req.updatedAt.toDate(), 'PP', { locale: es }) : 'N/A'}</TableCell>
                   </TableRow>
                 ))}
@@ -231,7 +305,8 @@ export default function AdminOverviewPage() {
         </CardContent>
         <CardFooter>
             <p className="text-xs text-muted-foreground">
-                Los cálculos de comisión y ganancias se basan en la tasa vigente y el monto cotizado al momento de marcar el servicio como completado.
+                Los cálculos de comisión y ganancias se basan en la tasa vigente y el monto cotizado al momento de marcar el servicio como completado. 
+                El estado de pago de la comisión se actualiza manualmente.
             </p>
         </CardFooter>
       </Card>
@@ -239,8 +314,3 @@ export default function AdminOverviewPage() {
   );
 }
     
-
-    
-
-    
-
