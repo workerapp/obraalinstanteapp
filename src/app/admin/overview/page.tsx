@@ -21,12 +21,12 @@ import { useRouter } from 'next/navigation';
 
 const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
   const requestsRef = collection(firestore, "quotationRequests");
+  // Consulta simplificada: solo filtra por estado y ordena por fecha de actualización.
+  // El filtrado de quotedAmount > 0 se hará en el cliente.
   const q = query(
     requestsRef, 
     where("status", "==", "Completada"),
-    where("quotedAmount", ">", 0), // Solo las que tienen monto cotizado > 0
-    orderBy("quotedAmount", "desc"), // Ordenar por este campo requiere índice
-    orderBy("updatedAt", "desc") // Y luego por fecha de actualización
+    orderBy("updatedAt", "desc")
   );
   
   const querySnapshot = await getDocs(q);
@@ -59,16 +59,19 @@ export default function AdminOverviewPage() {
     setIsClient(true); // Component is now mounted on client
   }, []);
 
-  const { data: completedRequests, isLoading, error } = useQuery<QuotationRequest[], Error>({
+  const { data: allCompletedRequests, isLoading, error } = useQuery<QuotationRequest[], Error>({
     queryKey: ['allCompletedRequestsForAdmin'],
     queryFn: fetchAllCompletedRequests,
   });
 
-  const totalPlatformRevenue = completedRequests?.reduce((sum, req) => sum + (req.platformFeeCalculated || 0), 0) || 0;
-  const totalQuotedAmount = completedRequests?.reduce((sum, req) => sum + (req.quotedAmount || 0), 0) || 0;
-  const totalHandymanPayout = completedRequests?.reduce((sum, req) => sum + (req.handymanEarnings || 0), 0) || 0;
+  // Filtrar por quotedAmount > 0 aquí en el cliente
+  const validCompletedRequests = allCompletedRequests?.filter(req => req.quotedAmount && req.quotedAmount > 0) || [];
 
-  const commissionsByHandyman = completedRequests?.reduce((acc, req) => {
+  const totalPlatformRevenue = validCompletedRequests.reduce((sum, req) => sum + (req.platformFeeCalculated || 0), 0);
+  const totalQuotedAmount = validCompletedRequests.reduce((sum, req) => sum + (req.quotedAmount || 0), 0);
+  const totalHandymanPayout = validCompletedRequests.reduce((sum, req) => sum + (req.handymanEarnings || 0), 0);
+
+  const commissionsByHandyman = validCompletedRequests.reduce((acc, req) => {
     if (req.handymanId && req.handymanName && req.platformFeeCalculated) {
       if (!acc[req.handymanId]) {
         acc[req.handymanId] = { name: req.handymanName, totalCommission: 0, requestCount: 0 };
@@ -77,7 +80,7 @@ export default function AdminOverviewPage() {
       acc[req.handymanId].requestCount += 1;
     }
     return acc;
-  }, {} as CommissionsByHandyman) || {};
+  }, {} as CommissionsByHandyman);
 
   if (!isClient) {
     // Render a basic skeleton or null on the server, or during the very first client render pass
@@ -107,7 +110,7 @@ export default function AdminOverviewPage() {
           <AlertDescription>
             No pudimos cargar la información del panel de administración.
             {error.message.toLowerCase().includes('index') || error.message.toLowerCase().includes('failed-precondition') 
-              ? " Firestore necesita un índice compuesto para esta consulta. Por favor, revisa la consola del navegador o los logs del servidor. Generalmente Firebase provee un enlace para crear el índice automáticamente. El índice probablemente necesite ser sobre 'status' (asc), 'quotedAmount' (desc), y 'updatedAt' (desc) en la colección 'quotationRequests'."
+              ? " Firestore podría necesitar un índice para esta consulta. Por favor, revisa la consola del navegador o los logs del servidor. Generalmente Firebase provee un enlace para crear el índice automáticamente si es complejo. Un índice simple sobre 'status' (asc) y 'updatedAt' (desc) en 'quotationRequests' podría ser necesario."
               : ` Detalle: ${error.message}`
             }
           </AlertDescription>
@@ -135,11 +138,11 @@ export default function AdminOverviewPage() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="shadow-lg">
           <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="text-green-500"/>Ingresos Totales (Plataforma)</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-primary">${totalPlatformRevenue.toLocaleString('es-CO')}</p><p className="text-xs text-muted-foreground">Comisiones de servicios completados.</p></CardContent>
+          <CardContent><p className="text-3xl font-bold text-primary">${totalPlatformRevenue.toLocaleString('es-CO')}</p><p className="text-xs text-muted-foreground">Comisiones de servicios completados y cotizados.</p></CardContent>
         </Card>
         <Card className="shadow-lg">
-          <CardHeader><CardTitle className="flex items-center gap-2"><ListChecks className="text-blue-500"/>Servicios Completados</CardTitle></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-primary">{completedRequests?.length || 0}</p><p className="text-xs text-muted-foreground">Total de trabajos finalizados y cotizados.</p></CardContent>
+          <CardHeader><CardTitle className="flex items-center gap-2"><ListChecks className="text-blue-500"/>Servicios Gestionados</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold text-primary">{validCompletedRequests.length || 0}</p><p className="text-xs text-muted-foreground">Total de trabajos completados y cotizados.</p></CardContent>
         </Card>
          <Card className="shadow-lg">
           <CardHeader><CardTitle className="flex items-center gap-2"><Users className="text-purple-500"/>Operarios Activos (Conceptual)</CardTitle></CardHeader>
@@ -151,7 +154,7 @@ export default function AdminOverviewPage() {
         <Card className="lg:col-span-1 shadow-xl">
             <CardHeader><CardTitle>Resumen Financiero Global</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between"><span>Monto Total Cotizado (Global):</span> <span className="font-medium">${totalQuotedAmount.toLocaleString('es-CO')}</span></div>
+                <div className="flex justify-between"><span>Monto Total Cotizado (Válido):</span> <span className="font-medium">${totalQuotedAmount.toLocaleString('es-CO')}</span></div>
                 <div className="flex justify-between"><span>Total Pagado a Operarios (Neto):</span> <span className="font-medium">${totalHandymanPayout.toLocaleString('es-CO')}</span></div>
                 <Separator/>
                 <div className="flex justify-between text-base"><strong>Ingresos Plataforma:</strong> <strong className="text-green-600">${totalPlatformRevenue.toLocaleString('es-CO')}</strong></div>
@@ -193,10 +196,10 @@ export default function AdminOverviewPage() {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle>Detalle de Servicios Completados y Comisiones</CardTitle>
-          <CardDescription>Lista de todos los servicios completados que generaron comisión.</CardDescription>
+          <CardDescription>Lista de todos los servicios completados que generaron comisión (monto cotizado > 0).</CardDescription>
         </CardHeader>
         <CardContent>
-          {completedRequests && completedRequests.length > 0 ? (
+          {validCompletedRequests && validCompletedRequests.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -204,13 +207,13 @@ export default function AdminOverviewPage() {
                   <TableHead>Operario</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead className="text-right">Monto Cotizado</TableHead>
-                  <TableHead className="text-right">Comisión ({ (completedRequests[0]?.platformCommissionRate || 0) * 100 }%)</TableHead>
+                  <TableHead className="text-right">Comisión ({ (validCompletedRequests[0]?.platformCommissionRate || 0) * 100 }%)</TableHead>
                   <TableHead className="text-right">Ganancia Operario</TableHead>
                   <TableHead>Fecha Completado</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {completedRequests.map((req) => (
+                {validCompletedRequests.map((req) => (
                   <TableRow key={req.id}>
                     <TableCell className="font-medium">{req.serviceName}</TableCell>
                     <TableCell>{req.handymanName || 'N/A'}</TableCell>
@@ -229,10 +232,11 @@ export default function AdminOverviewPage() {
         </CardContent>
         <CardFooter>
             <p className="text-xs text-muted-foreground">
-                Los cálculos se basan en una tasa de comisión fija del { (completedRequests && completedRequests.length > 0 && completedRequests[0]?.platformCommissionRate ? completedRequests[0]?.platformCommissionRate : 0) * 100 }% sobre el monto cotizado.
+                Los cálculos se basan en una tasa de comisión fija del { (validCompletedRequests.length > 0 && validCompletedRequests[0]?.platformCommissionRate ? validCompletedRequests[0]?.platformCommissionRate : 0) * 100 }% sobre el monto cotizado.
             </p>
         </CardFooter>
       </Card>
     </div>
   );
 }
+
