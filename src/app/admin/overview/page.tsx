@@ -18,10 +18,10 @@ import { Separator } from '@/components/ui/separator';
 import { useRouter } from 'next/navigation';
 
 
-// Consulta simplificada: solo filtra por estado y ordena por fecha de actualización.
-// El filtrado de quotedAmount > 0 se hará en el cliente.
 const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
   const requestsRef = collection(firestore, "quotationRequests");
+  // Simplified query: only filter by status and order by update date.
+  // Filtering for quotedAmount > 0 will be done client-side.
   const q = query(
     requestsRef, 
     where("status", "==", "Completada"),
@@ -45,7 +45,7 @@ const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
 interface CommissionsByHandyman {
   [handymanId: string]: {
     name: string;
-    totalCommission: number;
+    totalPlatformFee: number; // Renamed for clarity, this is the sum of platformFeeCalculated
     requestCount: number;
   };
 }
@@ -63,7 +63,7 @@ export default function AdminOverviewPage() {
     queryFn: fetchAllCompletedRequests,
   });
 
-  // Filtrar por quotedAmount > 0 aquí en el cliente
+  // Filter for valid requests (completed and with a positive quoted amount) client-side
   const validCompletedRequests = allCompletedRequests?.filter(req => req.quotedAmount && req.quotedAmount > 0) || [];
   
   const totalPlatformRevenue = validCompletedRequests.reduce((sum, req) => sum + (req.platformFeeCalculated || 0), 0);
@@ -73,9 +73,9 @@ export default function AdminOverviewPage() {
   const commissionsByHandyman = validCompletedRequests.reduce((acc, req) => {
     if (req.handymanId && req.handymanName && req.platformFeeCalculated) {
       if (!acc[req.handymanId]) {
-        acc[req.handymanId] = { name: req.handymanName, totalCommission: 0, requestCount: 0 };
+        acc[req.handymanId] = { name: req.handymanName, totalPlatformFee: 0, requestCount: 0 };
       }
-      acc[req.handymanId].totalCommission += req.platformFeeCalculated;
+      acc[req.handymanId].totalPlatformFee += req.platformFeeCalculated;
       acc[req.handymanId].requestCount += 1;
     }
     return acc;
@@ -159,7 +159,7 @@ export default function AdminOverviewPage() {
         </Card>
 
         <Card className="lg:col-span-2 shadow-xl">
-            <CardHeader><CardTitle>Comisiones Generadas por Operario</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Comisiones Generadas para la Plataforma por Operario</CardTitle></CardHeader>
             <CardContent>
             {Object.keys(commissionsByHandyman).length > 0 ? (
                 <Table>
@@ -172,12 +172,12 @@ export default function AdminOverviewPage() {
                     </TableHeader>
                     <TableBody>
                         {Object.entries(commissionsByHandyman)
-                            .sort(([, a], [, b]) => b.totalCommission - a.totalCommission) // Sort by highest commission
+                            .sort(([, a], [, b]) => b.totalPlatformFee - a.totalPlatformFee) // Sort by highest commission
                             .map(([id, data]) => (
                             <TableRow key={id}>
                                 <TableCell className="font-medium">{data.name} <span className="text-xs text-muted-foreground">({id.substring(0,6)}...)</span></TableCell>
                                 <TableCell className="text-right">{data.requestCount}</TableCell>
-                                <TableCell className="text-right font-semibold text-green-600">${data.totalCommission.toLocaleString('es-CO')}</TableCell>
+                                <TableCell className="text-right font-semibold text-green-600">${data.totalPlatformFee.toLocaleString('es-CO')}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -204,7 +204,8 @@ export default function AdminOverviewPage() {
                   <TableHead>Operario</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead className="text-right">Monto Cotizado</TableHead>
-                  <TableHead className="text-right">Comisión ({ (validCompletedRequests[0]?.platformCommissionRate || 0) * 100 }%)</TableHead>
+                  <TableHead className="text-right">Tasa Comisión</TableHead>
+                  <TableHead className="text-right">Comisión Plataforma</TableHead>
                   <TableHead className="text-right">Ganancia Operario</TableHead>
                   <TableHead>Fecha Completado</TableHead>
                 </TableRow>
@@ -216,6 +217,7 @@ export default function AdminOverviewPage() {
                     <TableCell>{req.handymanName || 'N/A'}</TableCell>
                     <TableCell>{req.contactFullName}</TableCell>
                     <TableCell className="text-right">${(req.quotedAmount || 0).toLocaleString('es-CO')}</TableCell>
+                    <TableCell className="text-right">{((req.platformCommissionRate || 0) * 100).toFixed(0)}%</TableCell>
                     <TableCell className="text-right text-red-600">${(req.platformFeeCalculated || 0).toLocaleString('es-CO')}</TableCell>
                     <TableCell className="text-right text-green-700">${(req.handymanEarnings || 0).toLocaleString('es-CO')}</TableCell>
                     <TableCell>{req.updatedAt?.toDate ? format(req.updatedAt.toDate(), 'PP', { locale: es }) : 'N/A'}</TableCell>
@@ -229,7 +231,7 @@ export default function AdminOverviewPage() {
         </CardContent>
         <CardFooter>
             <p className="text-xs text-muted-foreground">
-                Los cálculos se basan en una tasa de comisión fija del { (validCompletedRequests.length > 0 && validCompletedRequests[0]?.platformCommissionRate ? validCompletedRequests[0]?.platformCommissionRate : 0) * 100 }% sobre el monto cotizado.
+                Los cálculos de comisión y ganancias se basan en la tasa vigente y el monto cotizado al momento de marcar el servicio como completado.
             </p>
         </CardFooter>
       </Card>
