@@ -15,7 +15,6 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import Link from 'next/link'; // No usado directamente, pero puede ser útil
 import { useRouter } from 'next/navigation';
 
 
