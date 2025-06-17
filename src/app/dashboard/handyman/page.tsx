@@ -50,8 +50,8 @@ import { es } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 
-// Tasa de comisión de la plataforma (ej. 15%)
-const PLATFORM_COMMISSION_RATE = 0.15;
+// Tasa de comisión de la plataforma (ej. 10%)
+const PLATFORM_COMMISSION_RATE = 0.10;
 
 const fetchHandymanRequests = async (handymanUid: string | undefined): Promise<QuotationRequest[]> => {
   if (!handymanUid) return [];
@@ -149,10 +149,9 @@ export default function HandymanDashboardPage() {
           updateData.platformFeeCalculated = currentRequest.quotedAmount * PLATFORM_COMMISSION_RATE;
           updateData.handymanEarnings = currentRequest.quotedAmount - updateData.platformFeeCalculated;
         } else {
-          // No se calculan comisiones si no hay monto cotizado o es cero.
           updateData.platformCommissionRate = null;
           updateData.platformFeeCalculated = null;
-          updateData.handymanEarnings = currentRequest?.quotedAmount ?? 0; // O simplemente el quotedAmount si es 0 o null
+          updateData.handymanEarnings = currentRequest?.quotedAmount ?? 0; 
         }
       }
 
@@ -160,6 +159,7 @@ export default function HandymanDashboardPage() {
 
       toast({ title: "Estado Actualizado", description: `La solicitud ahora está "${newStatus}".` });
       queryClient.invalidateQueries({ queryKey: ['handymanRequests', typedUser.uid] });
+      queryClient.invalidateQueries({ queryKey: ['allCompletedRequestsForAdmin'] }); // Invalidate admin overview
     } catch (error: any) {
       console.error("Error al actualizar estado de solicitud:", error);
       toast({ title: "Error al Actualizar", description: error.message || "No se pudo actualizar el estado.", variant: "destructive" });
@@ -191,7 +191,6 @@ export default function HandymanDashboardPage() {
         quotedCurrency: "COP", 
         quotationDetails: data.quotationDetails || null,
         updatedAt: serverTimestamp(),
-        // Limpiar campos de comisión si se re-cotiza
         platformCommissionRate: null,
         platformFeeCalculated: null,
         handymanEarnings: null,
@@ -246,7 +245,6 @@ export default function HandymanDashboardPage() {
         </Card>
       </div>
 
-      {/* Quotation Dialog */}
       <Dialog open={isQuoteDialogOpen} onOpenChange={setIsQuoteDialogOpen}>
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
