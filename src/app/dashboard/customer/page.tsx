@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ListChecks, MessageSquarePlus, History, UserCircle, Loader2, Trash2, CheckCircle2, CalendarPlus, Eye } from 'lucide-react'; // Added Eye icon
+import { ListChecks, MessageSquarePlus, History, UserCircle, Loader2, Trash2, CheckCircle2, CalendarPlus, Eye, Settings } from 'lucide-react'; // Added Settings icon
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
@@ -184,18 +184,32 @@ export default function CustomerDashboardPage() {
         </p>
       </section>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        <Card className="md:col-span-3 lg:col-span-1 shadow-lg">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="shadow-lg">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><MessageSquarePlus className="text-primary"/>Nueva Solicitud de Servicio</CardTitle>
-                <CardDescription>¿Necesitas que algo se repare o instale?</CardDescription>
+                <CardTitle className="flex items-center gap-2"><MessageSquarePlus className="text-primary"/>Nueva Solicitud</CardTitle>
+                <CardDescription>¿Necesitas algo reparado o instalado?</CardDescription>
             </CardHeader>
             <CardContent>
-                <p>Solicita rápidamente un nuevo servicio de nuestro catálogo u obtén una cotización personalizada.</p>
+                <p>Solicita rápidamente un nuevo servicio o pide una cotización personalizada.</p>
             </CardContent>
             <CardFooter>
                  <Button asChild className="w-full">
                     <Link href="/request-quotation">Solicitar Nuevo Servicio</Link>
+                </Button>
+            </CardFooter>
+        </Card>
+        <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Settings className="text-primary"/>Mi Perfil</CardTitle>
+                <CardDescription>Actualiza tu información de contacto.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p>Mantén tus datos al día para una mejor comunicación y servicio.</p>
+            </CardContent>
+            <CardFooter>
+                 <Button asChild variant="outline" className="w-full">
+                    <Link href="/dashboard/customer/profile">Editar Mi Perfil</Link>
                 </Button>
             </CardFooter>
         </Card>
