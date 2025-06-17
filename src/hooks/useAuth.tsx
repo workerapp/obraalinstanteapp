@@ -6,7 +6,7 @@ import type React from 'react';
 import { useState, useEffect, createContext, useContext, type PropsWithChildren } from 'react';
 import { type User as FirebaseUser, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import { auth, firestore } from '@/firebase/clientApp';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'; // Added serverTimestamp
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,6 +24,10 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Define el correo del administrador aquí.
+// ¡¡IMPORTANTE!! Reemplaza 'admin@obraalinstante.com' con tu correo electrónico real.
+const ADMIN_EMAIL = 'admin@obraalinstante.com'; 
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -88,7 +92,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
         role: role,
       };
       setUser(appUser); // Update context state
-      router.push(role === 'handyman' ? '/dashboard/handyman' : '/dashboard/customer'); 
+      
+      // Redirección basada en el rol (incluyendo admin si es el email)
+      if (email === ADMIN_EMAIL) {
+        router.push('/admin/overview');
+      } else {
+        router.push(role === 'handyman' ? '/dashboard/handyman' : '/dashboard/customer'); 
+      }
       return appUser;
     } catch (error: any) {
       console.error("Error al registrarse:", error);
@@ -103,19 +113,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle fetching Firestore data and setting the user state
       toast({ title: "¡Sesión Iniciada!", description: "¡Bienvenido/a de nuevo!" });
       
-      // We still need to determine role for redirection immediately after sign-in
-      // as onAuthStateChanged might take a moment
-      const userDocRef = doc(firestore, "users", userCredential.user.uid);
-      const userDocSnap = await getDoc(userDocRef);
-      let role = 'customer'; 
-      if (userDocSnap.exists()) {
-        role = userDocSnap.data().role || 'customer';
+      if (userCredential.user.email === ADMIN_EMAIL) {
+        router.push('/admin/overview');
+      } else {
+        const userDocRef = doc(firestore, "users", userCredential.user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        let role = 'customer'; 
+        if (userDocSnap.exists()) {
+          role = userDocSnap.data().role || 'customer';
+        }
+        router.push(role === 'handyman' ? '/dashboard/handyman' : '/dashboard/customer');
       }
-      
-      router.push(role === 'handyman' ? '/dashboard/handyman' : '/dashboard/customer');
       // The user state will be updated by onAuthStateChanged listener
       return userCredential.user as AppUser; // Cast for return type, actual full AppUser from context
     } catch (error: any) {
