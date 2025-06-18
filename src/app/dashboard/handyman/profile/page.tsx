@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation';
 const profileFormSchema = z.object({
   displayName: z.string().min(2, "El nombre completo es requerido.").max(50),
   tagline: z.string().max(100, "El lema no debe exceder los 100 caracteres.").optional().or(z.literal('')),
+  aboutMe: z.string().max(1000, "La descripción 'Sobre Mí' no debe exceder los 1000 caracteres.").optional().or(z.literal('')),
   location: z.string().max(100, "La ubicación no debe exceder los 100 caracteres.").optional().or(z.literal('')),
   phone: z.string().regex(/^[+]?[0-9\s-()]*$/, "Número de teléfono inválido.").max(20).optional().or(z.literal('')),
   skills: z.string().optional().or(z.literal('')), // Comma-separated or one per line
@@ -44,6 +45,7 @@ export default function HandymanProfilePage() {
     defaultValues: {
       displayName: "",
       tagline: "",
+      aboutMe: "",
       location: "",
       phone: "",
       skills: "",
@@ -63,6 +65,7 @@ export default function HandymanProfilePage() {
             form.reset({
               displayName: data.displayName || typedUser.displayName || "",
               tagline: data.tagline || "",
+              aboutMe: data.aboutMe || "",
               location: data.location || "",
               phone: data.phone || "",
               skills: Array.isArray(data.skills) ? data.skills.join('\n') : (data.skills || ""),
@@ -73,6 +76,7 @@ export default function HandymanProfilePage() {
             form.reset({
                 displayName: typedUser.displayName || "",
                 tagline: "",
+                aboutMe: "",
                 location: "",
                 phone: "",
                 skills: "",
@@ -106,6 +110,7 @@ export default function HandymanProfilePage() {
       const firestoreUpdateData: any = {
         displayName: data.displayName,
         tagline: data.tagline || null,
+        aboutMe: data.aboutMe || null,
         location: data.location || null,
         phone: data.phone || null,
         skills: skillsArray,
@@ -228,6 +233,24 @@ export default function HandymanProfilePage() {
               />
               <FormField
                 control={form.control}
+                name="aboutMe"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sobre Mí / Mi Empresa (Opcional)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Describe tu experiencia, especialidades, años en el negocio, etc. (máx. 1000 caracteres)" 
+                        rows={5} 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>Una descripción más detallada sobre ti o tu empresa.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="location"
                 render={({ field }) => (
                   <FormItem>
@@ -286,3 +309,4 @@ export default function HandymanProfilePage() {
     </div>
   );
 }
+

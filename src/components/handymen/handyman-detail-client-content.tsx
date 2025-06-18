@@ -11,7 +11,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Star, MapPin, CalendarDays, MessageSquare, Phone, CheckCircle, Briefcase, Tag, Loader2 } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, CalendarDays, MessageSquare, Phone, CheckCircle, Briefcase, Tag, Loader2, UserCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; 
 import { Separator } from '@/components/ui/separator'; 
@@ -187,7 +187,6 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
               {handyman.memberSince && (
                 <p className="flex items-center gap-2"><CalendarDays size={18} className="text-accent" /> {handyman.memberSince}</p>
               )}
-              {/* Teléfono del operario ya no se muestra públicamente aquí para centralizar contacto */}
             </div>
 
             <section className="mb-6">
@@ -201,11 +200,17 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
               </div>
             </section>
             
-            <section>
-              <h2 className="text-xl font-semibold font-headline mb-3">Sobre Mí (Ejemplo)</h2>
-              <p className="text-foreground/80 leading-relaxed">
-                {handyman.tagline || 'Con experiencia en el campo, me dedico a proporcionar mano de obra de alta calidad y un excelente servicio al cliente. Me especializo en una variedad de tareas de reparación y mejora del hogar, asegurando que cada trabajo se haga bien a la primera. Mi objetivo es ayudarte a mantener y mejorar tu hogar con un servicio confiable y eficiente.'}
-              </p>
+            <section className="mb-6">
+              <h2 className="text-xl font-semibold font-headline mb-3 flex items-center">
+                <UserCircle2 size={22} className="mr-2 text-accent"/> Sobre Mí
+              </h2>
+              {handyman.aboutMe ? (
+                <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">{handyman.aboutMe}</p>
+              ) : (
+                <p className="text-muted-foreground">
+                  Este operario aún no ha añadido una descripción detallada sobre sí mismo o su empresa.
+                </p>
+              )}
             </section>
           </div>
         </div>
@@ -254,7 +259,7 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
                             />
                         </div>
                     )}
-                    <p className="text-sm text-foreground/80 mb-3 line-clamp-3" title={service.description}>{service.description}</p>
+                    <p className="text-sm text-foreground/80 mb-3 line-clamp-3 whitespace-pre-wrap" title={service.description}>{service.description}</p>
                   </CardContent>
                   <CardFooter className="flex justify-end">
                     <Button asChild size="sm">

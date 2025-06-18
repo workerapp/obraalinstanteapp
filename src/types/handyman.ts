@@ -12,4 +12,6 @@ export interface Handyman {
   memberSince?: string; 
   dataAiHint?: string;
   phone?: string;
+  aboutMe?: string; // Nueva descripción detallada sobre el operario
 }
+

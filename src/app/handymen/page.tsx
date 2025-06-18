@@ -36,6 +36,7 @@ const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman =>
     id: uid, // Crucial: use the document ID (Firebase UID)
     name: userData.displayName || `Operario ${uid.substring(0, 6)}`,
     tagline: userData.tagline || 'Operario profesional y confiable',
+    aboutMe: userData.aboutMe || undefined, // Map the new aboutMe field
     skills: Array.isArray(userData.skills) && userData.skills.length > 0 ? userData.skills : ['Servicios Generales'],
     rating: typeof userData.rating === 'number' ? userData.rating : 4.0, // Default or fetched
     reviewsCount: typeof userData.reviewsCount === 'number' ? userData.reviewsCount : 0, // Default or fetched
@@ -120,3 +121,4 @@ export async function generateMetadata() {
     description: "Explora nuestro directorio de operarios calificados.",
   };
 }
+

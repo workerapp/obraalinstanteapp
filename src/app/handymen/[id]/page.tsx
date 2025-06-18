@@ -56,6 +56,7 @@ const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null
     id: uid,
     name: userData.displayName || `Operario ${uid.substring(0, 6)}`,
     tagline: userData.tagline || 'Operario profesional y confiable',
+    aboutMe: userData.aboutMe || undefined, // Map the new aboutMe field
     skills: Array.isArray(userData.skills) && userData.skills.length > 0 ? userData.skills : ['Servicios Generales'],
     rating: typeof userData.rating === 'number' ? userData.rating : 4.0,
     reviewsCount: typeof userData.reviewsCount === 'number' ? userData.reviewsCount : 0,
@@ -84,7 +85,7 @@ export async function generateMetadata({ params }: HandymanDetailPageProps) {
       if (userData.role === 'handyman') { // Check role here
         return {
           title: `${userData.displayName || 'Operario'} - Perfil | Obra al Instante`,
-          description: `Perfil de ${userData.displayName || 'Operario'} (${userData.skills?.slice(0,3).join(', ') || 'Servicios varios'}). Contacta para servicios.`,
+          description: userData.aboutMe || `Perfil de ${userData.displayName || 'Operario'} (${userData.skills?.slice(0,3).join(', ') || 'Servicios varios'}). Contacta para servicios.`,
         };
       }
     }
@@ -151,3 +152,4 @@ export default async function HandymanDetailPage({ params }: HandymanDetailPageP
     notFound(); // Re-throw or call notFound() to ensure the page correctly 404s
   }
 }
+

@@ -72,6 +72,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         role: email === ADMIN_EMAIL ? 'admin' : role, // Asignar rol 'admin' si el email coincide
         createdAt: serverTimestamp(),
         tagline: null,
+        aboutMe: null, // Initialize aboutMe field
         skills: [],
         location: null,
         phone: null,
