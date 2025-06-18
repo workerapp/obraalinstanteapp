@@ -59,7 +59,6 @@ export default function RequestQuotationPage() {
   const typedUser = user as AppUser | null;
   const searchParams = useSearchParams();
   
-  // Store File objects for upload, and their ObjectURLs for preview
   const [selectedFileObjects, setSelectedFileObjects] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -88,18 +87,17 @@ export default function RequestQuotationPage() {
   });
 
  useEffect(() => {
-    const { getValues, reset, setValue } = form;
+    const { getValues, reset } = form;
     const currentFormValues = getValues();
     let newProblemDescription = currentFormValues.problemDescription || "";
     if (problemFromQuery && !serviceIdFromQuery) {
       newProblemDescription = decodeURIComponent(problemFromQuery);
     } else if (serviceIdFromQuery) {
-      // If a service is selected via query, problem description might be less relevant or cleared
-      newProblemDescription = currentFormValues.problemDescription || ""; // Keep if already filled
+      newProblemDescription = currentFormValues.problemDescription || "";
     }
 
     reset({
-      ...currentFormValues, // Preserve other fields that might have been changed
+      ...currentFormValues,
       contactFullName: typedUser?.displayName || currentFormValues.contactFullName || "",
       contactEmail: typedUser?.email || currentFormValues.contactEmail || "",
       serviceId: serviceIdFromQuery || currentFormValues.serviceId || "",
@@ -107,34 +105,38 @@ export default function RequestQuotationPage() {
       problemDescription: newProblemDescription,
       handymanId: handymanIdFromQuery || currentFormValues.handymanId || "",
       handymanName: handymanNameFromQuery || currentFormValues.handymanName || "",
-      attachments: currentFormValues.attachments, // Preserve RHF's FileList
+      attachments: currentFormValues.attachments,
     });
     
-    // Update local state if RHF's attachments change (e.g. on form reset)
     const currentAttachments = getValues("attachments");
     if (currentAttachments) {
         const filesArray = Array.from(currentAttachments);
         setSelectedFileObjects(filesArray);
         const previews = filesArray.map(file => URL.createObjectURL(file));
         setFilePreviews(previews);
+         // Clean up old previews
+        return () => {
+          previews.forEach(URL.revokeObjectURL);
+        };
     } else {
         setSelectedFileObjects([]);
         setFilePreviews([]);
     }
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typedUser, serviceIdFromQuery, serviceNameFromQuery, handymanIdFromQuery, handymanNameFromQuery, problemFromQuery, form.reset, form.getValues]);
+  }, [typedUser, serviceIdFromQuery, serviceNameFromQuery, handymanIdFromQuery, handymanNameFromQuery, problemFromQuery, form.reset, form.getValues, form]);
 
 
-  // Handles new file selections from the input element
   const handleFileSelectionChange = (
     event: React.ChangeEvent<HTMLInputElement>,
-    rhfOnChange: (value: FileList | null) => void
+    rhfOnChangeCallback: (value: FileList | null) => void // Correct RHF onChange callback
   ) => {
     const newFilesFromInput = event.target.files;
     if (!newFilesFromInput || newFilesFromInput.length === 0) {
-      if (fileInputRef.current) fileInputRef.current.value = ""; // Clear input
-      return; // No new files selected
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      // If clearing selection, ensure RHF is updated if no files remain
+      if (selectedFileObjects.length === 0) {
+        rhfOnChangeCallback(null);
+      }
+      return;
     }
 
     let combinedFiles = [...selectedFileObjects];
@@ -143,7 +145,7 @@ export default function RequestQuotationPage() {
     Array.from(newFilesFromInput).forEach(file => {
       if (combinedFiles.length >= MAX_FILES) {
         toast({ title: "Límite Alcanzado", description: `Ya has alcanzado el máximo de ${MAX_FILES} archivos.`, variant: "default" });
-        return; // Stop adding if max is reached
+        return;
       }
       if (!combinedFiles.some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified)) {
         if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -162,12 +164,18 @@ export default function RequestQuotationPage() {
     if (combinedFiles.length > MAX_FILES) {
         toast({ title: "Límite de Archivos Excedido", description: `Puedes subir un máximo de ${MAX_FILES} archivos. Algunos no se añadieron.`, variant: "destructive" });
         combinedFiles = combinedFiles.slice(0, MAX_FILES);
-        // Rebuild previews for the truncated list
         const finalPreviews = combinedFiles.map(f => {
-            const existingPreview = filePreviews[selectedFileObjects.indexOf(f)];
-            return existingPreview || URL.createObjectURL(f); // Fallback, should not happen if f was in selectedFileObjects
+            const existingPreviewIndex = selectedFileObjects.findIndex(sf => sf.name === f.name && sf.size === f.size && sf.lastModified === f.lastModified);
+            if (existingPreviewIndex !== -1 && filePreviews[existingPreviewIndex]) {
+              return filePreviews[existingPreviewIndex];
+            }
+            const newPreviewIndex = newFilesFromInput ? Array.from(newFilesFromInput).findIndex(nf => nf.name === f.name && nf.size === f.size && nf.lastModified === f.lastModified) : -1;
+            if (newPreviewIndex !== -1 && newPreviewsToAdd[newPreviewIndex]) {
+               return newPreviewsToAdd[newPreviewIndex];
+            }
+            // Fallback if somehow the preview was lost, recreate (should be rare)
+            return URL.createObjectURL(f); 
         });
-         // Revoke URLs for files that were in newPreviewsToAdd but got sliced off
         newPreviewsToAdd.forEach(previewUrl => {
             if (!finalPreviews.includes(previewUrl) && !filePreviews.includes(previewUrl)) {
                 URL.revokeObjectURL(previewUrl);
@@ -175,26 +183,28 @@ export default function RequestQuotationPage() {
         });
         setFilePreviews(finalPreviews);
     } else {
-        setFilePreviews(prev => [...prev, ...newPreviewsToAdd]);
+        setFilePreviews(prev => {
+          const currentValidPreviews = prev.filter(p => selectedFileObjects.some(f => URL.createObjectURL(f) === p || filePreviews.includes(p) )); // ensure old ones are valid
+          return [...currentValidPreviews, ...newPreviewsToAdd];
+        });
     }
 
     setSelectedFileObjects(combinedFiles);
 
-    // Update RHF
     const dataTransfer = new DataTransfer();
     combinedFiles.forEach(f => dataTransfer.items.add(f));
-    rhfOnChange(dataTransfer.files.length > 0 ? dataTransfer.files : null);
+    rhfOnChangeCallback(dataTransfer.files.length > 0 ? dataTransfer.files : null);
 
-    if (fileInputRef.current) fileInputRef.current.value = ""; // Clear input to allow re-selecting same file
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Removes a file by index
   const removeFile = (
     indexToRemove: number,
-    rhfOnChange: (value: FileList | null) => void
+    rhfOnChangeCallback: (value: FileList | null) => void // Correct RHF onChange callback
   ) => {
-    // Revoke object URL of the removed file
-    URL.revokeObjectURL(filePreviews[indexToRemove]);
+    if (filePreviews[indexToRemove]) {
+      URL.revokeObjectURL(filePreviews[indexToRemove]);
+    }
 
     const updatedSelectedFiles = selectedFileObjects.filter((_, index) => index !== indexToRemove);
     const updatedFilePreviews = filePreviews.filter((_, index) => index !== indexToRemove);
@@ -202,10 +212,9 @@ export default function RequestQuotationPage() {
     setSelectedFileObjects(updatedSelectedFiles);
     setFilePreviews(updatedFilePreviews);
 
-    // Update RHF
     const dataTransfer = new DataTransfer();
     updatedSelectedFiles.forEach(f => dataTransfer.items.add(f));
-    rhfOnChange(dataTransfer.files.length > 0 ? dataTransfer.files : null);
+    rhfOnChangeCallback(dataTransfer.files.length > 0 ? dataTransfer.files : null);
     
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -239,7 +248,6 @@ export default function RequestQuotationPage() {
     }
 
     const attachmentUrls: string[] = [];
-    // Use selectedFileObjects for upload, which is synced with RHF's FileList
     if (selectedFileObjects.length > 0) {
       toast({ title: "Subiendo Archivos...", description: `Preparando ${selectedFileObjects.length} archivo(s). Esto puede tomar un momento.` });
       try {
@@ -304,11 +312,11 @@ export default function RequestQuotationPage() {
         serviceName: serviceNameFromQuery || "",
         handymanId: handymanIdFromQuery || "",
         handymanName: handymanNameFromQuery || "",
-        attachments: null, // Reset RHF attachments to null
+        attachments: null,
       });
-      setSelectedFileObjects([]); // Reset local File array
-      filePreviews.forEach(URL.revokeObjectURL); // Revoke existing preview URLs
-      setFilePreviews([]); // Reset local previews array
+      filePreviews.forEach(URL.revokeObjectURL);
+      setSelectedFileObjects([]);
+      setFilePreviews([]);
        if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -321,6 +329,13 @@ export default function RequestQuotationPage() {
   };
   
   const displayServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : (form.getValues("serviceName") || null);
+
+  useEffect(() => {
+    // Cleanup object URLs on component unmount
+    return () => {
+      filePreviews.forEach(URL.revokeObjectURL);
+    };
+  }, [filePreviews]);
 
   return (
     <div className="max-w-2xl mx-auto py-8">
@@ -357,35 +372,40 @@ export default function RequestQuotationPage() {
               <FormField
                 control={form.control}
                 name="attachments"
-                render={({ field }) => (
+                render={({ field: { onChange: rhfOnChange, onBlur, name, ref: rhfRef } }) => (
                   <FormItem>
                     <FormLabel>Adjuntar Imágenes (Opcional)</FormLabel>
+                    {/* Button is now outside FormControl but triggers the hidden input */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={selectedFileObjects.length >= MAX_FILES || isLoading}
+                    >
+                      <Upload className="mr-2 h-4 w-4" /> 
+                      Seleccionar Archivos ({selectedFileObjects.length}/{MAX_FILES})
+                    </Button>
                     <FormControl>
-                      <div className="flex flex-col gap-2">
-                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={selectedFileObjects.length >= MAX_FILES || isLoading}>
-                          <Upload className="mr-2 h-4 w-4" /> 
-                          Seleccionar Archivos ({selectedFileObjects.length}/{MAX_FILES})
-                        </Button>
-                        <input
-                          type="file"
-                          ref={(instance) => {
-                            field.ref(instance); // RHF ref
-                            fileInputRef.current = instance; // Local ref
-                          }}
-                          multiple
-                          accept={ALLOWED_FILE_TYPES.join(',')}
-                          onChange={(e) => handleFileSelectionChange(e, field.onChange)}
-                          onBlur={field.onBlur} // RHF onBlur
-                          name={field.name} // RHF name
-                          className="hidden"
-                          disabled={isLoading}
-                        />
-                      </div>
+                      {/* The hidden input is the direct child of FormControl */}
+                      <input
+                        type="file"
+                        ref={(e) => {
+                          rhfRef(e); // Pass RHF's ref
+                          fileInputRef.current = e; // Keep local ref
+                        }}
+                        multiple
+                        accept={ALLOWED_FILE_TYPES.join(',')}
+                        onChange={(e) => handleFileSelectionChange(e, rhfOnChange)}
+                        onBlur={onBlur}
+                        name={name}
+                        className="hidden"
+                        disabled={isLoading}
+                      />
                     </FormControl>
                     <FormDescription>
                       Sube hasta {MAX_FILES} imágenes (JPG, PNG, GIF, WEBP). Máx. {MAX_FILE_SIZE_MB}MB por archivo.
                     </FormDescription>
-                    <FormMessage /> {/* This will show Zod validation errors for attachments */}
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -408,7 +428,13 @@ export default function RequestQuotationPage() {
                           variant="destructive"
                           size="icon"
                           className="absolute top-1 right-1 h-6 w-6 opacity-75 group-hover:opacity-100"
-                          onClick={() => removeFile(index, form.setValue.bind(null, 'attachments'))} // Pass RHF's setValue for attachments
+                          onClick={() => {
+                            // Get the current onChange from RHF for the attachments field
+                            const attachmentsOnChange = form.control._fields.attachments?._f.onChange;
+                            if (attachmentsOnChange) {
+                              removeFile(index, attachmentsOnChange as (value: FileList | null) => void);
+                            }
+                          }}
                           disabled={isLoading}
                         >
                           <X className="h-4 w-4" />
@@ -435,3 +461,4 @@ export default function RequestQuotationPage() {
     </div>
   );
 }
+
