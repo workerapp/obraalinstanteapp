@@ -15,7 +15,7 @@ import { Loader2, UserCircle, ArrowLeft, Save } from 'lucide-react';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore, auth } from '@/firebase/clientApp'; // Added auth import
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { updateProfile as updateFirebaseAuthProfile } from 'firebase/auth';
+import { updateProfile as updateFirebaseAuthProfile, type User as FirebaseUser } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -33,7 +33,7 @@ const profileFormSchema = z.object({
 type ProfileFormData = z.infer<typeof profileFormSchema>;
 
 export default function HandymanProfilePage() {
-  const { user, loading: authLoading, setUser: setAuthUser } = useAuth(); // Assuming setUser is available from useAuth to update context
+  const { user, loading: authLoading, setUser: setAuthUser } = useAuth(); 
   const typedUser = user as AppUser | null;
   const router = useRouter();
   const { toast } = useToast();
@@ -72,7 +72,6 @@ export default function HandymanProfilePage() {
               photoURL: data.photoURL || typedUser.photoURL || "",
             });
           } else {
-             // Pre-fill with auth data if no Firestore doc yet for these fields
             form.reset({
                 displayName: typedUser.displayName || "",
                 tagline: "",
@@ -93,7 +92,7 @@ export default function HandymanProfilePage() {
       };
       fetchProfileData();
     } else if (!authLoading) {
-        setIsFetchingProfile(false); // Not logged in or still loading auth
+        setIsFetchingProfile(false); 
     }
   }, [typedUser, form, toast, authLoading]);
 
@@ -120,27 +119,20 @@ export default function HandymanProfilePage() {
 
       await updateDoc(userDocRef, firestoreUpdateData);
 
-      // Update Firebase Auth profile (only displayName and photoURL can be updated here)
       await updateFirebaseAuthProfile(auth.currentUser, {
         displayName: data.displayName,
-        photoURL: data.photoURL || null, // Ensure photoURL can be set to null
+        photoURL: data.photoURL || null, 
       });
       
-      // Optimistically update local auth state if setUser is available in useAuth
-      // This provides immediate feedback in the UI (e.g., navbar)
       if (setAuthUser && auth.currentUser) {
         const updatedAuthUser: AppUser = {
-          // It's important to spread the existing user from Firebase Auth, then override
-          // FirebaseUser type doesn't have `role`, so we need careful typing or casting
-          ...(auth.currentUser as FirebaseUser), // Get the base FirebaseUser
+          ...(auth.currentUser as FirebaseUser), 
           displayName: data.displayName,
           photoURL: data.photoURL || null,
-          role: typedUser.role, // Preserve role from our AppUser type
-          // Other AppUser specific fields if necessary
-        } as AppUser; // Assert the final shape matches AppUser
+          role: typedUser.role, 
+        } as AppUser; 
         setAuthUser(updatedAuthUser);
       }
-
 
       toast({ title: "Perfil Actualizado", description: "Tu información de perfil ha sido guardada." });
     } catch (error: any) {
