@@ -1,4 +1,3 @@
-
 // src/app/dashboard/requests/[id]/page.tsx
 "use client";
 
@@ -12,10 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
+import NextImage from 'next/image'; 
+import Link from 'next/link';
 
 const fetchRequestDetails = async (requestId: string | undefined, userId: string | undefined): Promise<QuotationRequest | null> => {
   if (!requestId || !userId) {
@@ -26,13 +27,17 @@ const fetchRequestDetails = async (requestId: string | undefined, userId: string
   const requestDocSnap = await getDoc(requestDocRef);
 
   if (!requestDocSnap.exists()) {
-    return null; // O lanzar un error específico de "no encontrado"
+    return null; 
   }
 
   const requestData = requestDocSnap.data() as Omit<QuotationRequest, 'id'>;
   
-  // Basic permission check: user must be the one who created it OR the handyman assigned
-  if (requestData.userId !== userId && requestData.handymanId !== userId) {
+  // Check permissions: user must be the one who created it, assigned to it, or an admin
+  const userDocRef = doc(firestore, "users", userId);
+  const userDocSnap = await getDoc(userDocRef);
+  const userRole = userDocSnap.exists() ? userDocSnap.data()?.role : null;
+
+  if (requestData.userId !== userId && requestData.handymanId !== userId && userRole !== 'admin') {
     throw new Error("No tienes permiso para ver esta solicitud.");
   }
 
@@ -41,6 +46,7 @@ const fetchRequestDetails = async (requestId: string | undefined, userId: string
     ...requestData,
     requestedAt: requestData.requestedAt instanceof Timestamp ? requestData.requestedAt : Timestamp.now(),
     updatedAt: requestData.updatedAt instanceof Timestamp ? requestData.updatedAt : Timestamp.now(),
+    attachmentUrls: requestData.attachmentUrls || [], 
   } as QuotationRequest;
 };
 
@@ -55,7 +61,7 @@ export default function RequestDetailPage() {
     queryKey: ['quotationRequestDetails', requestId, typedUser?.uid],
     queryFn: () => fetchRequestDetails(requestId, typedUser?.uid),
     enabled: !!requestId && !!typedUser?.uid,
-    retry: 1, // No reintentar muchas veces si no se encuentra o no hay permisos
+    retry: 1, 
   });
 
   const getStatusColorClass = (status: QuotationRequest['status']): string => {
@@ -115,9 +121,6 @@ export default function RequestDetailPage() {
     );
   }
 
-  const isUserCustomer = typedUser?.uid === request.userId;
-  const isUserHandyman = typedUser?.uid === request.handymanId;
-
   return (
     <div className="max-w-3xl mx-auto py-8 space-y-6">
       <Button variant="outline" onClick={() => router.back()} className="mb-4">
@@ -140,7 +143,6 @@ export default function RequestDetailPage() {
         <CardContent className="space-y-6">
           <Separator />
           
-          {/* Sección de Servicio */}
           <div>
             <h3 className="text-xl font-semibold mb-2 flex items-center"><Wrench className="mr-2 text-accent h-5 w-5"/>Información del Servicio</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -151,9 +153,39 @@ export default function RequestDetailPage() {
             <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">{request.problemDescription}</p>
           </div>
           
-          <Separator />
+          {request.attachmentUrls && request.attachmentUrls.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <h3 className="text-xl font-semibold mb-3 flex items-center">
+                  <Paperclip className="mr-2 text-accent h-5 w-5"/>Archivos Adjuntos
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {request.attachmentUrls.map((url, index) => (
+                    <Link key={index} href={url} target="_blank" rel="noopener noreferrer" className="group">
+                      <Card className="overflow-hidden hover:shadow-md transition-shadow">
+                        <CardContent className="p-0 aspect-square flex items-center justify-center bg-muted group-hover:bg-muted/80">
+                          {url.match(/\.(jpeg|jpg|gif|png|webp)(\?|$)/i) ? ( // Improved regex to handle query params
+                             <div className="relative w-full h-full">
+                              <NextImage src={url} alt={`Adjunto ${index + 1}`} layout="fill" objectFit="cover" />
+                            </div>
+                          ) : (
+                            <FileText className="h-10 w-10 text-muted-foreground" />
+                          )}
+                        </CardContent>
+                        <CardFooter className="p-1.5 bg-background border-t">
+                           <p className="text-xs text-center text-muted-foreground truncate w-full">Adjunto {index + 1}</p>
+                        </CardFooter>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
-          {/* Sección de Contacto y Ubicación */}
+          <Separator />
+          
           <div>
             <h3 className="text-xl font-semibold mb-2 flex items-center"><User className="mr-2 text-accent h-5 w-5"/>Información de Contacto y Ubicación</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -166,7 +198,6 @@ export default function RequestDetailPage() {
 
           <Separator />
 
-          {/* Sección de Fechas y Estado */}
           <div>
             <h3 className="text-xl font-semibold mb-2 flex items-center"><Calendar className="mr-2 text-accent h-5 w-5"/>Fechas y Estado</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -176,7 +207,6 @@ export default function RequestDetailPage() {
             </div>
           </div>
           
-          {/* Sección de Cotización (si existe y el estado es apropiado) */}
           {(request.status === 'Cotizada' || request.status === 'Programada' || request.status === 'Completada') && request.quotedAmount != null && (
             <>
               <Separator />
@@ -197,11 +227,9 @@ export default function RequestDetailPage() {
           
         </CardContent>
         <CardFooter className="border-t pt-6">
-            {/* Aquí podrían ir acciones futuras específicas para la página de detalles si es necesario */}
             <p className="text-xs text-muted-foreground text-center w-full">Si necesitas realizar alguna acción sobre esta solicitud (ej. cancelar, aceptar cotización), por favor hazlo desde tu panel principal.</p>
         </CardFooter>
       </Card>
     </div>
   );
 }
-

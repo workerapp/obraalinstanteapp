@@ -1,8 +1,9 @@
+
 // src/firebase/clientApp.ts
 import { initializeApp, getApps, getApp, type FirebaseOptions } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'; // Uncommented for Firestore
-// import { getStorage } from 'firebase/storage'; // Uncomment if you use Storage
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage'; // Import getStorage
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -17,10 +18,10 @@ const firebaseConfig: FirebaseOptions = {
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
-const firestore = getFirestore(app); // Initialized Firestore
-// const storage = getStorage(app); // Uncomment if you use Storage
+const firestore = getFirestore(app);
+const storage = getStorage(app); // Initialize Firebase Storage
 
-export { app, auth, firestore /*, storage */ }; // Exported firestore
+export { app, auth, firestore, storage }; // Export storage
 
 // IMPORTANT:
 // 1. Create a Firebase project at https://console.firebase.google.com/
@@ -35,3 +36,4 @@ export { app, auth, firestore /*, storage */ }; // Exported firestore
 //    ...and so on for all keys in firebaseConfig.
 // 7. Ensure .env.local is in your .gitignore file to keep your credentials secure.
 // 8. Enable Firestore in your Firebase project console (Build > Firestore Database > Create database - start in test mode for now).
+// 9. Enable Firebase Storage in your Firebase project console (Build > Storage > Get started - set up rules).
