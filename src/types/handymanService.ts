@@ -9,11 +9,13 @@ export interface HandymanService {
   handymanUid: string;
   name: string;
   category: string;
-  description: string;
+  description: string; // This will be the detailed description
   priceType: PriceType;
-  priceValue?: string | null; // Can be string or null
-  currency?: string; // e.g., "COP" - por ahora lo dejaremos opcional
+  priceValue?: string | null;
+  currency?: string;
   isActive: boolean;
+  imageUrl?: string; // Optional: URL for an example image of the service
+  dataAiHint?: string; // Optional: Hint for AI if imageUrl is a placeholder
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

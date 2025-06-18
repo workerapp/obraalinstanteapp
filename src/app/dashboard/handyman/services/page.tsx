@@ -30,7 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { PlusCircle, ListChecks, ArrowLeft, Loader2, Trash2 } from 'lucide-react';
+import { PlusCircle, ListChecks, ArrowLeft, Loader2, Trash2, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
@@ -43,17 +43,20 @@ import type { HandymanService, PriceType } from '@/types/handymanService';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import Image from 'next/image';
 
 
 const serviceFormSchema = z.object({
   name: z.string().min(3, "El nombre del servicio debe tener al menos 3 caracteres.").max(100),
   category: z.string().min(3, "La categoría debe tener al menos 3 caracteres.").max(50),
-  description: z.string().min(10, "La descripción debe tener al menos 10 caracteres.").max(500),
+  description: z.string().min(10, "La descripción debe tener al menos 10 caracteres.").max(1000, "La descripción detallada no debe exceder 1000 caracteres."),
   priceType: z.enum(["fijo", "porHora", "porProyecto", "consultar"], {
     required_error: "Selecciona un tipo de precio.",
   }),
   priceValue: z.string().optional(),
   isActive: z.boolean().default(true),
+  imageUrl: z.string().url("Debe ser una URL válida para la imagen.").optional().or(z.literal('')),
+  dataAiHint: z.string().max(50, "La pista de IA para la imagen no debe exceder 50 caracteres.").optional().or(z.literal('')),
 });
 
 type ServiceFormData = z.infer<typeof serviceFormSchema>;
@@ -103,6 +106,8 @@ export default function HandymanServicesPage() {
       priceType: "consultar",
       priceValue: "",
       isActive: true,
+      imageUrl: "",
+      dataAiHint: "",
     },
   });
 
@@ -142,6 +147,8 @@ export default function HandymanServicesPage() {
         priceType: "consultar",
         priceValue: "",
         isActive: true,
+        imageUrl: "",
+        dataAiHint: "",
       });
     }
   }, [isDialogOpen, form, isLoading]);
@@ -159,21 +166,18 @@ export default function HandymanServicesPage() {
         priceType: service.priceType,
         priceValue: service.priceValue || "",
         isActive: service.isActive,
+        imageUrl: service.imageUrl || "",
+        dataAiHint: service.dataAiHint || "",
     });
     setIsDialogOpen(true);
   };
 
   const onSubmit: SubmitHandler<ServiceFormData> = async (data) => {
-    console.log("onSubmit triggered. EditingServiceId:", editingServiceId, "User UID:", typedUser?.uid);
-    console.log("Form data:", data);
-
     if (!typedUser?.uid) {
       toast({ title: "Error", description: "Debes iniciar sesión para gestionar servicios.", variant: "destructive"});
-      console.error("onSubmit: Aborting, User not logged in.");
       return;
     }
 
-    console.log("onSubmit: Setting isLoading to true.");
     setIsLoading(true);
 
     try {
@@ -185,12 +189,13 @@ export default function HandymanServicesPage() {
         priceType: data.priceType as PriceType,
         priceValue: data.priceType !== 'consultar' ? (data.priceValue || null) : null,
         isActive: data.isActive,
-        currency: "COP", // Assuming COP, adjust if needed
+        imageUrl: data.imageUrl || null,
+        dataAiHint: data.dataAiHint || null,
+        currency: "COP",
         updatedAt: serverTimestamp() as Timestamp,
       };
 
       if (editingServiceId) {
-        console.log(`onSubmit: Attempting to update service with ID: ${editingServiceId}`);
         const serviceDocRef = doc(firestore, "handymanServices", editingServiceId);
         await updateDoc(serviceDocRef, serviceDataForFirestore);
         
@@ -198,31 +203,25 @@ export default function HandymanServicesPage() {
           title: "Servicio Actualizado",
           description: `El servicio "${data.name}" ha sido actualizado exitosamente.`,
         });
-        console.log(`onSubmit: Service "${data.name}" (ID: ${editingServiceId}) updated successfully.`);
-        
         setOfferedServices(prev => prev.map(s => s.id === editingServiceId ? { ...s, ...serviceDataForFirestore, id: editingServiceId, updatedAt: Timestamp.now() } as HandymanService : s));
         
       } else {
-        console.log("onSubmit: Attempting to add new service.");
         serviceDataForFirestore.createdAt = serverTimestamp() as Timestamp;
         const docRef = await addDoc(collection(firestore, "handymanServices"), serviceDataForFirestore);
         toast({
           title: "Servicio Añadido",
           description: `El servicio "${data.name}" ha sido añadido exitosamente.`,
         });
-        console.log(`onSubmit: New service "${data.name}" added successfully with ID: ${docRef.id}.`);
-        
         const newService: HandymanService = {
             id: docRef.id,
             ...serviceDataForFirestore,
-            priceValue: serviceDataForFirestore.priceValue,
+            priceValue: serviceDataForFirestore.priceValue, // Ensure priceValue is correctly typed
             createdAt: Timestamp.now(), 
             updatedAt: Timestamp.now(),
         };
         setOfferedServices(prev => [newService, ...prev]);
       }
       
-      console.log("onSubmit: Setting isDialogOpen to false.");
       setIsDialogOpen(false); 
     } catch (error: any) {
       console.error("onSubmit: Error saving service:", error);
@@ -236,7 +235,6 @@ export default function HandymanServicesPage() {
        }
       toast({ title: `Error al ${editingServiceId ? 'Actualizar' : 'Añadir'} Servicio`, description, variant: "destructive", duration: 10000 });
     } finally {
-      console.log("onSubmit: Setting isLoading to false in finally block.");
       setIsLoading(false);
     }
   };
@@ -302,6 +300,8 @@ export default function HandymanServicesPage() {
         priceType: "consultar",
         priceValue: "",
         isActive: true,
+        imageUrl: "",
+        dataAiHint: "",
     });
     setIsDialogOpen(true);
   };
@@ -329,7 +329,7 @@ export default function HandymanServicesPage() {
           <DialogHeader>
             <DialogTitle>{editingServiceId ? "Editar Servicio" : "Añadir Nuevo Servicio"}</DialogTitle>
             <DialogDescription>
-              {editingServiceId ? "Modifica los detalles de tu servicio." : "Completa los detalles del servicio que ofreces."}
+              {editingServiceId ? "Modifica los detalles de tu servicio." : "Completa los detalles del servicio que ofreces, incluyendo una descripción detallada y una imagen si lo deseas."}
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[calc(80vh-160px)] pr-5">
@@ -363,8 +363,8 @@ export default function HandymanServicesPage() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Descripción</FormLabel>
-                      <FormControl><Textarea placeholder="Describe brevemente el servicio..." rows={3} {...field} /></FormControl>
+                      <FormLabel>Descripción Detallada</FormLabel>
+                      <FormControl><Textarea placeholder="Describe detalladamente el servicio: qué incluye, materiales comunes, proceso típico, beneficios, etc." rows={5} {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -404,6 +404,30 @@ export default function HandymanServicesPage() {
                 </div>
                 <FormField
                   control={form.control}
+                  name="imageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>URL de Imagen de Ejemplo (Opcional)</FormLabel>
+                      <FormControl><Input type="url" placeholder="https://ejemplo.com/imagen_servicio.png" {...field} value={field.value || ''} /></FormControl>
+                      <FormDescription>Pega un enlace a una imagen que represente este servicio.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="dataAiHint"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Pista para IA (si usas placeholder en URL)</FormLabel>
+                      <FormControl><Input placeholder="Ej: 'plomero trabajando', 'cocina renovada'" {...field} value={field.value || ''} /></FormControl>
+                      <FormDescription>Si la URL es de un placeholder (ej. placehold.co), escribe 1-2 palabras clave para la imagen real.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="isActive"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
@@ -426,7 +450,6 @@ export default function HandymanServicesPage() {
             </DialogClose>
             <Button 
               onClick={() => {
-                console.log("Save button in DialogFooter clicked. Attempting to submit form. isLoading:", isLoading);
                 if (!isLoading) {
                    form.handleSubmit(onSubmit)();
                 }
@@ -471,7 +494,7 @@ export default function HandymanServicesPage() {
       <Card className="shadow-xl">
         <CardHeader>
             <CardTitle className="flex items-center gap-2"><ListChecks className="text-primary" /> Tus Servicios Actuales</CardTitle>
-            <CardDescription>Aquí puedes ver y gestionar los servicios que has añadido.</CardDescription>
+            <CardDescription>Aquí puedes ver y gestionar los servicios que has añadido. Incluye imágenes y descripciones detalladas para atraer más clientes.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoadingServices && (
@@ -493,7 +516,18 @@ export default function HandymanServicesPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground mb-1 truncate" title={service.description}>{service.description}</p>
+                    {service.imageUrl && (
+                      <div className="mb-3 relative h-32 w-full sm:w-48 overflow-hidden rounded-md border">
+                        <Image
+                          src={service.imageUrl}
+                          alt={`Imagen para ${service.name}`}
+                          layout="fill"
+                          objectFit="cover"
+                          data-ai-hint={service.dataAiHint || "servicio ejemplo"}
+                        />
+                      </div>
+                    )}
+                    <p className="text-sm text-muted-foreground mb-1 line-clamp-3" title={service.description}>{service.description}</p>
                     <p className="text-sm">
                       <strong>Precio:</strong> {priceTypeTranslations[service.priceType]}
                       {service.priceType !== 'consultar' && service.priceValue && ` - $${Number(service.priceValue).toLocaleString('es-CO')} ${service.currency || 'COP'}`}
@@ -509,8 +543,8 @@ export default function HandymanServicesPage() {
                     <Button 
                       variant="destructive" 
                       size="sm" 
-                      onClick={() => openDeleteConfirmDialog(service.id!)} // service.id debería existir aquí
-                      disabled={!service.id} // Deshabilitar si no hay ID, aunque no debería pasar
+                      onClick={() => openDeleteConfirmDialog(service.id!)}
+                      disabled={!service.id}
                     >
                       <Trash2 className="mr-1.5 h-4 w-4" />
                       Eliminar
@@ -534,3 +568,4 @@ export default function HandymanServicesPage() {
   );
 }
     
+
