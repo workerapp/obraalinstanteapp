@@ -243,6 +243,17 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
                     <CardDescription className="text-muted-foreground">{service.category}</CardDescription>
                   </CardHeader>
                   <CardContent>
+                    {service.imageUrl && (
+                        <div className="mb-3 relative h-40 w-full sm:w-56 overflow-hidden rounded-md border">
+                            <Image
+                            src={service.imageUrl}
+                            alt={`Imagen para ${service.name}`}
+                            layout="fill"
+                            objectFit="cover"
+                            data-ai-hint={service.dataAiHint || "servicio handyman"}
+                            />
+                        </div>
+                    )}
                     <p className="text-sm text-foreground/80 mb-3 line-clamp-3" title={service.description}>{service.description}</p>
                   </CardContent>
                   <CardFooter className="flex justify-end">
