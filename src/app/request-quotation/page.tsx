@@ -83,30 +83,25 @@ export default function RequestQuotationPage() {
       preferredDate: "",
       handymanId: "",
       handymanName: "",
-      attachments: null, // Ensure attachments default to null
+      attachments: null,
     },
   });
 
  useEffect(() => {
-    const { reset, getValues } = form; // getValues for reading current state if needed BEFORE reset
-    const currentFormValues = getValues(); // Read existing values once
+    const { reset, getValues } = form;
+    const currentFormValues = getValues();
 
     let newProblemDescription = problemFromQuery 
         ? decodeURIComponent(problemFromQuery) 
         : currentFormValues.problemDescription || "";
     
-    // If a specific service is coming from query, it might override the problem description
-    // or complement it. Current logic keeps problem if service is also from query.
     if (serviceIdFromQuery && problemFromQuery) {
         newProblemDescription = decodeURIComponent(problemFromQuery);
     } else if (serviceIdFromQuery && !problemFromQuery) {
-        // If only serviceId is present, maybe clear problem or keep existing, based on UX choice.
-        // For now, we keep existing problem description if any.
         newProblemDescription = currentFormValues.problemDescription || "";
     }
 
-
-    const resetValues = {
+    const resetValues: Partial<FormData> = {
       contactFullName: typedUser?.displayName || currentFormValues.contactFullName || "",
       contactEmail: typedUser?.email || currentFormValues.contactEmail || "",
       contactPhone: currentFormValues.contactPhone || "",
@@ -116,7 +111,7 @@ export default function RequestQuotationPage() {
       problemDescription: newProblemDescription,
       handymanId: handymanIdFromQuery || currentFormValues.handymanId || "",
       handymanName: handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (currentFormValues.handymanName || ""),
-      attachments: null, // Explicitly set attachments to null in RHF's state on reset
+      attachments: null, // Ensure RHF attachments field is reset to null
     };
     
     reset(resetValues);
@@ -137,7 +132,7 @@ export default function RequestQuotationPage() {
       handymanIdFromQuery, 
       handymanNameFromQuery, 
       problemFromQuery, 
-      form.reset // form.reset is stable, but include if ESLint complains
+      form.reset 
     ]);
   
 
@@ -258,11 +253,15 @@ export default function RequestQuotationPage() {
   const displayHandymanName = handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (form.watch("handymanName") || null);
 
   useEffect(() => {
+    // Cleanup for object URLs when component unmounts
     return () => {
       filePreviews.forEach(URL.revokeObjectURL);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // filePreviews is not needed in dep array, it's managed inside
+
+  // Create a key that changes when relevant query params change
+  const attachmentsFieldKey = `attachments-${serviceIdFromQuery}-${handymanIdFromQuery}-${problemFromQuery}`;
 
   return (
     <div className="max-w-2xl mx-auto py-8">
@@ -297,33 +296,33 @@ export default function RequestQuotationPage() {
               <FormField control={form.control} name="problemDescription" render={({ field }) => ( <FormItem> <FormLabel>Descripción del Problema</FormLabel> <FormControl> <Textarea placeholder="Describe el problema en detalle..." rows={5} className="resize-none" {...field}/> </FormControl> <FormMessage /> </FormItem> )}/>
               
               <FormField
+                key={attachmentsFieldKey} // Dynamic key for re-mounting
                 control={form.control}
                 name="attachments"
-                render={({ field: { onChange, onBlur, name, ref } }) => {
+                render={({ field: { ref: rhfRef, name: rhfName, onBlur: rhfOnBlur, onChange: rhfOnChange } }) => {
                   const handleFileSelectionChangeInternal = (event: React.ChangeEvent<HTMLInputElement>) => {
                     const newFilesFromInput = event.target.files;
                     if (!newFilesFromInput || newFilesFromInput.length === 0) {
-                      if (fileInputRef.current) fileInputRef.current.value = "";
-                      if (selectedFileObjects.length === 0) {
-                        onChange(null); // RHF field onChange
-                      }
-                      return;
+                        if (fileInputRef.current) fileInputRef.current.value = ""; // Clear display
+                        if (selectedFileObjects.length === 0) rhfOnChange(null); // Update RHF if truly empty
+                        return;
                     }
 
                     let combinedFiles = [...selectedFileObjects];
                     Array.from(newFilesFromInput).forEach(file => {
                       if (combinedFiles.length >= MAX_FILES) {
                         toast({ title: "Límite Alcanzado", description: `Ya has alcanzado el máximo de ${MAX_FILES} archivos.`, variant: "default" });
-                        return;
+                        return; // Stop processing further files from this selection
                       }
+                      // Avoid duplicates based on name, size, and lastModified
                       if (!combinedFiles.some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified)) {
                         if (file.size > MAX_FILE_SIZE_BYTES) {
                           toast({ title: "Archivo Demasiado Grande", description: `El archivo "${file.name}" excede ${MAX_FILE_SIZE_MB}MB.`, variant: "destructive" });
-                          return;
+                          return; // Skip this file
                         }
                         if (!ALLOWED_FILE_TYPES.includes(file.type)) {
                           toast({ title: "Tipo de Archivo no Permitido", description: `"${file.name}" no es válido. Solo imágenes.`, variant: "destructive" });
-                          return;
+                          return; // Skip this file
                         }
                         combinedFiles.push(file);
                       }
@@ -331,36 +330,39 @@ export default function RequestQuotationPage() {
                     
                     if (combinedFiles.length > MAX_FILES) {
                         toast({ title: "Límite de Archivos Excedido", description: `Puedes subir un máximo de ${MAX_FILES} archivos. Algunos no se añadieron.`, variant: "destructive" });
-                        combinedFiles = combinedFiles.slice(0, MAX_FILES);
+                        combinedFiles = combinedFiles.slice(0, MAX_FILES); // Trim to max
                     } 
                     
+                    // Update local state for previews
+                    const oldPreviews = [...filePreviews]; // Keep a reference to revoke later
                     const newFilePreviews = combinedFiles.map(f => URL.createObjectURL(f));
-                    setFilePreviews(prevPreviews => {
-                        prevPreviews.forEach(URL.revokeObjectURL); // Revoke all old previews
-                        return newFilePreviews;
-                    });
+                    
                     setSelectedFileObjects(combinedFiles);
+                    setFilePreviews(newFilePreviews);
+                    oldPreviews.forEach(URL.revokeObjectURL); // Revoke old previews after new ones are set
 
+                    // Update RHF
                     const dataTransfer = new DataTransfer();
                     combinedFiles.forEach(f => dataTransfer.items.add(f));
-                    onChange(dataTransfer.files.length > 0 ? dataTransfer.files : null); // RHF field onChange
+                    rhfOnChange(dataTransfer.files.length > 0 ? dataTransfer.files : null);
 
+                    // Clear the native file input so the same file can be selected again if removed and re-added
                     if (fileInputRef.current) fileInputRef.current.value = "";
                   };
 
                   const removeFileInternal = (indexToRemove: number) => {
-                    if (filePreviews[indexToRemove]) {
-                      URL.revokeObjectURL(filePreviews[indexToRemove]);
-                    }
-                    const updatedSelectedFiles = selectedFileObjects.filter((_, index) => index !== indexToRemove);
-                    const updatedFilePreviews = filePreviews.filter((_, index) => index !== indexToRemove);
+                    const newSelectedFiles = selectedFileObjects.filter((_, index) => index !== indexToRemove);
+                    const newFilePreviews = newSelectedFiles.map(f => URL.createObjectURL(f)); // Recreate previews
 
-                    setSelectedFileObjects(updatedSelectedFiles);
-                    setFilePreviews(updatedFilePreviews);
+                    // Revoke all previous previews before setting new ones
+                    filePreviews.forEach(URL.revokeObjectURL);
 
+                    setSelectedFileObjects(newSelectedFiles);
+                    setFilePreviews(newFilePreviews);
+                    
                     const dataTransfer = new DataTransfer();
-                    updatedSelectedFiles.forEach(f => dataTransfer.items.add(f));
-                    onChange(dataTransfer.files.length > 0 ? dataTransfer.files : null); // RHF field onChange
+                    newSelectedFiles.forEach(f => dataTransfer.items.add(f));
+                    rhfOnChange(dataTransfer.files.length > 0 ? dataTransfer.files : null);
                     
                     if (fileInputRef.current) fileInputRef.current.value = "";
                   };
@@ -381,11 +383,11 @@ export default function RequestQuotationPage() {
                         <input
                           type="file"
                           ref={(e) => {
-                            ref(e); // RHF's ref
-                            fileInputRef.current = e; // Local ref
+                            rhfRef(e); 
+                            fileInputRef.current = e; 
                           }}
-                          name={name} // RHF's name
-                          onBlur={onBlur} // RHF's onBlur
+                          name={rhfName} 
+                          onBlur={rhfOnBlur} 
                           onChange={handleFileSelectionChangeInternal}
                           multiple
                           accept={ALLOWED_FILE_TYPES.join(',')}
@@ -402,7 +404,7 @@ export default function RequestQuotationPage() {
                           <p className="text-sm font-medium text-muted-foreground">Archivos seleccionados:</p>
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                             {filePreviews.map((previewUrl, index) => (
-                              <div key={previewUrl} className="relative group border rounded-md p-1">
+                              <div key={`${previewUrl}-${index}`} className="relative group border rounded-md p-1">
                                 <NextImage
                                   src={previewUrl}
                                   alt={`Vista previa ${index + 1}`}
