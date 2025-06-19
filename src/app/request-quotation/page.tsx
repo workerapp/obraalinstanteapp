@@ -1,3 +1,4 @@
+
 // src/app/request-quotation/page.tsx
 "use client";
 
@@ -87,54 +88,59 @@ export default function RequestQuotationPage() {
   });
 
  useEffect(() => {
-    const { getValues, reset } = form;
+    const { getValues, reset, setValue } = form;
     const currentFormValues = getValues();
     let newProblemDescription = currentFormValues.problemDescription || "";
     if (problemFromQuery && !serviceIdFromQuery) {
       newProblemDescription = decodeURIComponent(problemFromQuery);
     } else if (serviceIdFromQuery) {
-      newProblemDescription = currentFormValues.problemDescription || "";
+      // Preserve existing description if a service is pre-selected,
+      // unless problemFromQuery is also present (then AI problem takes precedence)
+      newProblemDescription = (problemFromQuery && serviceIdFromQuery) 
+                              ? decodeURIComponent(problemFromQuery) 
+                              : (currentFormValues.problemDescription || "");
     }
+
 
     reset({
       ...currentFormValues,
       contactFullName: typedUser?.displayName || currentFormValues.contactFullName || "",
       contactEmail: typedUser?.email || currentFormValues.contactEmail || "",
       serviceId: serviceIdFromQuery || currentFormValues.serviceId || "",
-      serviceName: serviceNameFromQuery || currentFormValues.serviceName || "",
+      serviceName: serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : (currentFormValues.serviceName || ""),
       problemDescription: newProblemDescription,
       handymanId: handymanIdFromQuery || currentFormValues.handymanId || "",
-      handymanName: handymanNameFromQuery || currentFormValues.handymanName || "",
-      attachments: currentFormValues.attachments,
+      handymanName: handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (currentFormValues.handymanName || ""),
     });
     
+    // Re-evaluate attachments if they were already in form state
     const currentAttachments = getValues("attachments");
-    if (currentAttachments) {
+    if (currentAttachments && currentAttachments.length > 0) {
         const filesArray = Array.from(currentAttachments);
         setSelectedFileObjects(filesArray);
-        const previews = filesArray.map(file => URL.createObjectURL(file));
-        setFilePreviews(previews);
-         // Clean up old previews
-        return () => {
-          previews.forEach(URL.revokeObjectURL);
-        };
+        // Revoke old previews before creating new ones
+        filePreviews.forEach(URL.revokeObjectURL);
+        const newPreviews = filesArray.map(file => URL.createObjectURL(file));
+        setFilePreviews(newPreviews);
     } else {
+        // Ensure previews are cleared if attachments are reset or initially null
+        filePreviews.forEach(URL.revokeObjectURL);
         setSelectedFileObjects([]);
         setFilePreviews([]);
     }
-  }, [typedUser, serviceIdFromQuery, serviceNameFromQuery, handymanIdFromQuery, handymanNameFromQuery, problemFromQuery, form.reset, form.getValues, form]);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typedUser, serviceIdFromQuery, serviceNameFromQuery, handymanIdFromQuery, handymanNameFromQuery, problemFromQuery, form.reset, form.getValues]);
 
 
   const handleFileSelectionChange = (
     event: React.ChangeEvent<HTMLInputElement>,
-    rhfOnChangeCallback: (value: FileList | null) => void // Correct RHF onChange callback
+    rhfNativeOnChangeCallback: (value: FileList | null) => void 
   ) => {
     const newFilesFromInput = event.target.files;
     if (!newFilesFromInput || newFilesFromInput.length === 0) {
       if (fileInputRef.current) fileInputRef.current.value = "";
-      // If clearing selection, ensure RHF is updated if no files remain
       if (selectedFileObjects.length === 0) {
-        rhfOnChangeCallback(null);
+        rhfNativeOnChangeCallback(null);
       }
       return;
     }
@@ -164,43 +170,53 @@ export default function RequestQuotationPage() {
     if (combinedFiles.length > MAX_FILES) {
         toast({ title: "Límite de Archivos Excedido", description: `Puedes subir un máximo de ${MAX_FILES} archivos. Algunos no se añadieron.`, variant: "destructive" });
         combinedFiles = combinedFiles.slice(0, MAX_FILES);
-        const finalPreviews = combinedFiles.map(f => {
-            const existingPreviewIndex = selectedFileObjects.findIndex(sf => sf.name === f.name && sf.size === f.size && sf.lastModified === f.lastModified);
-            if (existingPreviewIndex !== -1 && filePreviews[existingPreviewIndex]) {
-              return filePreviews[existingPreviewIndex];
-            }
-            const newPreviewIndex = newFilesFromInput ? Array.from(newFilesFromInput).findIndex(nf => nf.name === f.name && nf.size === f.size && nf.lastModified === f.lastModified) : -1;
-            if (newPreviewIndex !== -1 && newPreviewsToAdd[newPreviewIndex]) {
-               return newPreviewsToAdd[newPreviewIndex];
-            }
-            // Fallback if somehow the preview was lost, recreate (should be rare)
-            return URL.createObjectURL(f); 
-        });
+        // Clean up previews for files that were sliced off
+        const slicedFileNames = combinedFiles.map(f => f.name);
         newPreviewsToAdd.forEach(previewUrl => {
-            if (!finalPreviews.includes(previewUrl) && !filePreviews.includes(previewUrl)) {
-                URL.revokeObjectURL(previewUrl);
+          const associatedFile = newFilesFromInput ? Array.from(newFilesFromInput).find(nf => URL.createObjectURL(nf) === previewUrl) : null;
+          if (associatedFile && !slicedFileNames.includes(associatedFile.name)) {
+            URL.revokeObjectURL(previewUrl);
+          }
+        });
+    } 
+    
+    setFilePreviews(prev => {
+        // Revoke old previews that are no longer in combinedFiles
+        prev.forEach(oldPreviewUrl => {
+            const isStillSelected = combinedFiles.some(cf => {
+                try { return URL.createObjectURL(cf) === oldPreviewUrl; } catch (e) { return false; }
+            });
+            if (!isStillSelected && !newPreviewsToAdd.includes(oldPreviewUrl)) {
+                URL.revokeObjectURL(oldPreviewUrl);
             }
         });
-        setFilePreviews(finalPreviews);
-    } else {
-        setFilePreviews(prev => {
-          const currentValidPreviews = prev.filter(p => selectedFileObjects.some(f => URL.createObjectURL(f) === p || filePreviews.includes(p) )); // ensure old ones are valid
-          return [...currentValidPreviews, ...newPreviewsToAdd];
+        // Create new previews only for the files actually in combinedFiles now
+        return combinedFiles.map(f => {
+           const existingPreview = selectedFileObjects.findIndex(sf => sf.name === f.name && sf.size === f.size && sf.lastModified === f.lastModified);
+           if(existingPreview !== -1 && prev[existingPreview]){
+             return prev[existingPreview];
+           }
+           const newPreview = newPreviewsToAdd.find(np => {
+             const fileForNewPreview = newFilesFromInput ? Array.from(newFilesFromInput).find(nfi => URL.createObjectURL(nfi) === np) : null;
+             return fileForNewPreview?.name === f.name && fileForNewPreview?.size === f.size && fileForNewPreview?.lastModified === f.lastModified;
+           });
+           return newPreview || URL.createObjectURL(f); // Fallback, should ideally find new or existing
         });
-    }
+    });
+
 
     setSelectedFileObjects(combinedFiles);
 
     const dataTransfer = new DataTransfer();
     combinedFiles.forEach(f => dataTransfer.items.add(f));
-    rhfOnChangeCallback(dataTransfer.files.length > 0 ? dataTransfer.files : null);
+    rhfNativeOnChangeCallback(dataTransfer.files.length > 0 ? dataTransfer.files : null);
 
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeFile = (
     indexToRemove: number,
-    rhfOnChangeCallback: (value: FileList | null) => void // Correct RHF onChange callback
+    rhfNativeOnChangeCallback: (value: FileList | null) => void 
   ) => {
     if (filePreviews[indexToRemove]) {
       URL.revokeObjectURL(filePreviews[indexToRemove]);
@@ -214,7 +230,7 @@ export default function RequestQuotationPage() {
 
     const dataTransfer = new DataTransfer();
     updatedSelectedFiles.forEach(f => dataTransfer.items.add(f));
-    rhfOnChangeCallback(dataTransfer.files.length > 0 ? dataTransfer.files : null);
+    rhfNativeOnChangeCallback(dataTransfer.files.length > 0 ? dataTransfer.files : null);
     
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -232,9 +248,11 @@ export default function RequestQuotationPage() {
     let finalServiceName = data.serviceName;
     let finalServiceId = data.serviceId;
 
-    if (serviceIdFromQuery && serviceNameFromQuery) {
+    const queryServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : null;
+
+    if (serviceIdFromQuery && queryServiceName) {
       finalServiceId = serviceIdFromQuery;
-      finalServiceName = decodeURIComponent(serviceNameFromQuery);
+      finalServiceName = queryServiceName;
     } else if (data.serviceId && availableServices.find(s => s.id === data.serviceId)) {
       finalServiceId = data.serviceId;
       finalServiceName = availableServices.find(s => s.id === data.serviceId)?.name || 'Servicio no especificado';
@@ -266,6 +284,8 @@ export default function RequestQuotationPage() {
         return;
       }
     }
+    
+    const queryHandymanName = handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : null;
 
     const quotationData = {
       userId: typedUser.uid,
@@ -279,8 +299,8 @@ export default function RequestQuotationPage() {
       serviceName: finalServiceName,
       problemDescription: data.problemDescription,
       preferredDate: data.preferredDate || null,
-      handymanId: data.handymanId || null,
-      handymanName: data.handymanName ? decodeURIComponent(data.handymanName) : null,
+      handymanId: handymanIdFromQuery || data.handymanId || null,
+      handymanName: queryHandymanName || (data.handymanName ? decodeURIComponent(data.handymanName) : null),
       status: "Enviada" as const,
       attachmentUrls: attachmentUrls,
       requestedAt: serverTimestamp(),
@@ -291,7 +311,7 @@ export default function RequestQuotationPage() {
       const docRef = await addDoc(collection(firestore, "quotationRequests"), quotationData);
       console.log("Solicitud de cotización guardada con ID: ", docRef.id);
       let descriptionToast = `Servicio: ${quotationData.serviceName}.`;
-      if (data.handymanName) descriptionToast += ` Solicitud para ${decodeURIComponent(data.handymanName)}.`;
+      if (quotationData.handymanName) descriptionToast += ` Solicitud para ${quotationData.handymanName}.`;
       descriptionToast += " Hemos recibido tu solicitud y nos pondremos en contacto pronto.";
       toast({
         title: "¡Solicitud Enviada!",
@@ -306,14 +326,22 @@ export default function RequestQuotationPage() {
         contactFullName: typedUser?.displayName || "",
         contactEmail: typedUser?.email || "",
         contactPhone: "", address: "",
-        problemDescription: (problemFromQuery && !serviceIdFromQuery) ? decodeURIComponent(problemFromQuery) : "",
+        problemDescription: "", // Clear problem description after successful submission
         preferredDate: "",
-        serviceId: serviceIdFromQuery || "", 
-        serviceName: serviceNameFromQuery || "",
-        handymanId: handymanIdFromQuery || "",
-        handymanName: handymanNameFromQuery || "",
+        serviceId: "", // Clear selected service
+        serviceName: "",
+        handymanId: "", // Clear handyman if any was set by form not query
+        handymanName: "",
         attachments: null,
       });
+      // Also reset query param related defaults if they were used
+        if (serviceIdFromQuery) form.setValue('serviceId', '');
+        if (serviceNameFromQuery) form.setValue('serviceName', '');
+        if (handymanIdFromQuery) form.setValue('handymanId', '');
+        if (handymanNameFromQuery) form.setValue('handymanName', '');
+        if (problemFromQuery) form.setValue('problemDescription', '');
+
+
       filePreviews.forEach(URL.revokeObjectURL);
       setSelectedFileObjects([]);
       setFilePreviews([]);
@@ -328,14 +356,17 @@ export default function RequestQuotationPage() {
     }
   };
   
-  const displayServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : (form.getValues("serviceName") || null);
+  const displayServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : (form.watch("serviceName") || null);
+  const displayHandymanName = handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (form.watch("handymanName") || null);
+
 
   useEffect(() => {
     // Cleanup object URLs on component unmount
     return () => {
       filePreviews.forEach(URL.revokeObjectURL);
     };
-  }, [filePreviews]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only on mount and unmount
 
   return (
     <div className="max-w-2xl mx-auto py-8">
@@ -345,7 +376,7 @@ export default function RequestQuotationPage() {
           <CardTitle className="text-3xl font-headline">Solicitar una Cotización</CardTitle>
           <CardDescription>
             Completa el formulario para obtener una cotización. Puedes adjuntar imágenes para dar más detalles.
-            {handymanNameFromQuery && ` Estás solicitando una cotización específicamente a ${decodeURIComponent(handymanNameFromQuery)}.`}
+            {displayHandymanName && ` Estás solicitando una cotización específicamente a ${displayHandymanName}.`}
             {problemFromQuery && !serviceIdFromQuery && " La descripción de tu problema ha sido pre-llenada por nuestro Asistente IA."}
           </CardDescription>
         </CardHeader>
@@ -360,8 +391,8 @@ export default function RequestQuotationPage() {
               <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección del Servicio</FormLabel> <FormControl><Input placeholder="Calle 123, Ciudad, Provincia" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
 
               {serviceIdFromQuery ? ( 
-                <FormItem> <FormLabel>Servicio Requerido</FormLabel> <div className="flex items-center gap-2 p-3 rounded-md border bg-muted"> <Package className="h-5 w-5 text-muted-foreground" /> <span className="text-sm text-foreground">{displayServiceName || 'Servicio Específico'}</span> </div> <FormDescription> {handymanNameFromQuery ? `Solicitando cotización para ${displayServiceName} de ${decodeURIComponent(handymanNameFromQuery)}.` : `Solicitando cotización para ${displayServiceName}.`} </FormDescription> </FormItem>
-              ) : problemFromQuery ? ( 
+                <FormItem> <FormLabel>Servicio Requerido</FormLabel> <div className="flex items-center gap-2 p-3 rounded-md border bg-muted"> <Package className="h-5 w-5 text-muted-foreground" /> <span className="text-sm text-foreground">{displayServiceName || 'Servicio Específico'}</span> </div> <FormDescription> {displayHandymanName ? `Solicitando cotización para ${displayServiceName} de ${displayHandymanName}.` : `Solicitando cotización para ${displayServiceName}.`} </FormDescription> </FormItem>
+              ) : problemFromQuery && !serviceIdFromQuery ? ( 
                  <FormItem> <FormLabel>Servicio Requerido</FormLabel> <div className="flex items-center gap-2 p-3 rounded-md border bg-muted"> <FileText className="h-5 w-5 text-muted-foreground" /> <span className="text-sm text-foreground">Consulta General (basada en tu descripción)</span> </div> <FormDescription>Tu problema descrito a la IA se usará como base para la cotización.</FormDescription> </FormItem>
               ) : ( 
                   <FormField control={form.control} name="serviceId" render={({ field }) => ( <FormItem> <FormLabel>Servicio Requerido</FormLabel> <Select onValueChange={(value) => { field.onChange(value); const selectedService = availableServices.find(s => s.id === value); form.setValue('serviceName', selectedService?.name || ''); }} value={field.value || ""} > <FormControl> <SelectTrigger> <SelectValue placeholder="Selecciona un servicio" /> </SelectTrigger> </FormControl> <SelectContent> {availableServices.map(service => ( <SelectItem key={service.id} value={service.id}> {service.name} </SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
@@ -372,10 +403,9 @@ export default function RequestQuotationPage() {
               <FormField
                 control={form.control}
                 name="attachments"
-                render={({ field: { onChange: rhfOnChange, onBlur, name, ref: rhfRef } }) => (
+                render={({ field: { ref, name, onBlur, onChange: rhfOnChangeCallback } }) => (
                   <FormItem>
                     <FormLabel>Adjuntar Imágenes (Opcional)</FormLabel>
-                    {/* Button is now outside FormControl but triggers the hidden input */}
                     <Button
                       type="button"
                       variant="outline"
@@ -386,20 +416,20 @@ export default function RequestQuotationPage() {
                       Seleccionar Archivos ({selectedFileObjects.length}/{MAX_FILES})
                     </Button>
                     <FormControl>
-                      {/* The hidden input is the direct child of FormControl */}
                       <input
                         type="file"
-                        ref={(e) => {
-                          rhfRef(e); // Pass RHF's ref
-                          fileInputRef.current = e; // Keep local ref
+                        ref={(e) => { // Combine refs
+                          ref(e); // RHF's ref
+                          fileInputRef.current = e; // Local ref for programmatic click
                         }}
+                        name={name} // RHF's name
+                        onBlur={onBlur} // RHF's onBlur
+                        onChange={(e) => handleFileSelectionChange(e, rhfOnChangeCallback)} // Custom handler calling RHF's onChange
                         multiple
                         accept={ALLOWED_FILE_TYPES.join(',')}
-                        onChange={(e) => handleFileSelectionChange(e, rhfOnChange)}
-                        onBlur={onBlur}
-                        name={name}
-                        className="hidden"
+                        className="hidden" // Keep it hidden, triggered by the button
                         disabled={isLoading}
+                        // DO NOT pass field.value here
                       />
                     </FormControl>
                     <FormDescription>
@@ -409,6 +439,7 @@ export default function RequestQuotationPage() {
                   </FormItem>
                 )}
               />
+
 
               {filePreviews.length > 0 && (
                 <div className="space-y-2">
@@ -429,10 +460,21 @@ export default function RequestQuotationPage() {
                           size="icon"
                           className="absolute top-1 right-1 h-6 w-6 opacity-75 group-hover:opacity-100"
                           onClick={() => {
-                            // Get the current onChange from RHF for the attachments field
-                            const attachmentsOnChange = form.control._fields.attachments?._f.onChange;
-                            if (attachmentsOnChange) {
-                              removeFile(index, attachmentsOnChange as (value: FileList | null) => void);
+                            const attachmentsField = form.control._fields.attachments;
+                            if (attachmentsField && attachmentsField._f && attachmentsField._f.onChange) {
+                                removeFile(index, attachmentsField._f.onChange as (value: FileList | null) => void);
+                            } else {
+                                console.warn("RHF onChange for attachments not found directly for removeFile, check field registration.");
+                                // As a fallback, try to get it from the current render scope (if `removeFile` was defined there)
+                                // This part is tricky if `removeFile` is outside the render prop scope.
+                                // The solution is to ensure removeFile uses the rhfOnChangeCallback passed if it's from `render`
+                                // For this fix, assuming form.control._fields access is the current attempt:
+                                const fieldFromRender = form.getFieldState("attachments"); // getFieldState doesn't give onChange
+                                // The logic below is now part of the 'render' prop directly for rhfOnChangeCallback
+                                 const fieldDef = form.control._fields.attachments;
+                                 if (fieldDef?._f.onChange) {
+                                   removeFile(index, fieldDef._f.onChange as (value: FileList | null) => void);
+                                 }
                             }
                           }}
                           disabled={isLoading}
@@ -462,3 +504,4 @@ export default function RequestQuotationPage() {
   );
 }
 
+    
