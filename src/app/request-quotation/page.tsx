@@ -94,13 +94,10 @@ export default function RequestQuotationPage() {
     if (problemFromQuery && !serviceIdFromQuery) {
       newProblemDescription = decodeURIComponent(problemFromQuery);
     } else if (serviceIdFromQuery) {
-      // Preserve existing description if a service is pre-selected,
-      // unless problemFromQuery is also present (then AI problem takes precedence)
       newProblemDescription = (problemFromQuery && serviceIdFromQuery) 
                               ? decodeURIComponent(problemFromQuery) 
                               : (currentFormValues.problemDescription || "");
     }
-
 
     reset({
       ...currentFormValues,
@@ -113,127 +110,20 @@ export default function RequestQuotationPage() {
       handymanName: handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (currentFormValues.handymanName || ""),
     });
     
-    // Re-evaluate attachments if they were already in form state
     const currentAttachments = getValues("attachments");
     if (currentAttachments && currentAttachments.length > 0) {
         const filesArray = Array.from(currentAttachments);
         setSelectedFileObjects(filesArray);
-        // Revoke old previews before creating new ones
         filePreviews.forEach(URL.revokeObjectURL);
-        const newPreviews = filesArray.map(file => URL.createObjectURL(file));
-        setFilePreviews(newPreviews);
+        const newPreviewsArray = filesArray.map(file => URL.createObjectURL(file));
+        setFilePreviews(newPreviewsArray);
     } else {
-        // Ensure previews are cleared if attachments are reset or initially null
         filePreviews.forEach(URL.revokeObjectURL);
         setSelectedFileObjects([]);
         setFilePreviews([]);
     }
  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typedUser, serviceIdFromQuery, serviceNameFromQuery, handymanIdFromQuery, handymanNameFromQuery, problemFromQuery, form.reset, form.getValues]);
-
-
-  const handleFileSelectionChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-    rhfNativeOnChangeCallback: (value: FileList | null) => void 
-  ) => {
-    const newFilesFromInput = event.target.files;
-    if (!newFilesFromInput || newFilesFromInput.length === 0) {
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      if (selectedFileObjects.length === 0) {
-        rhfNativeOnChangeCallback(null);
-      }
-      return;
-    }
-
-    let combinedFiles = [...selectedFileObjects];
-    const newPreviewsToAdd: string[] = [];
-
-    Array.from(newFilesFromInput).forEach(file => {
-      if (combinedFiles.length >= MAX_FILES) {
-        toast({ title: "Límite Alcanzado", description: `Ya has alcanzado el máximo de ${MAX_FILES} archivos.`, variant: "default" });
-        return;
-      }
-      if (!combinedFiles.some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified)) {
-        if (file.size > MAX_FILE_SIZE_BYTES) {
-          toast({ title: "Archivo Demasiado Grande", description: `El archivo "${file.name}" excede ${MAX_FILE_SIZE_MB}MB.`, variant: "destructive" });
-          return;
-        }
-        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-          toast({ title: "Tipo de Archivo no Permitido", description: `"${file.name}" no es válido. Solo imágenes.`, variant: "destructive" });
-          return;
-        }
-        combinedFiles.push(file);
-        newPreviewsToAdd.push(URL.createObjectURL(file));
-      }
-    });
-    
-    if (combinedFiles.length > MAX_FILES) {
-        toast({ title: "Límite de Archivos Excedido", description: `Puedes subir un máximo de ${MAX_FILES} archivos. Algunos no se añadieron.`, variant: "destructive" });
-        combinedFiles = combinedFiles.slice(0, MAX_FILES);
-        // Clean up previews for files that were sliced off
-        const slicedFileNames = combinedFiles.map(f => f.name);
-        newPreviewsToAdd.forEach(previewUrl => {
-          const associatedFile = newFilesFromInput ? Array.from(newFilesFromInput).find(nf => URL.createObjectURL(nf) === previewUrl) : null;
-          if (associatedFile && !slicedFileNames.includes(associatedFile.name)) {
-            URL.revokeObjectURL(previewUrl);
-          }
-        });
-    } 
-    
-    setFilePreviews(prev => {
-        // Revoke old previews that are no longer in combinedFiles
-        prev.forEach(oldPreviewUrl => {
-            const isStillSelected = combinedFiles.some(cf => {
-                try { return URL.createObjectURL(cf) === oldPreviewUrl; } catch (e) { return false; }
-            });
-            if (!isStillSelected && !newPreviewsToAdd.includes(oldPreviewUrl)) {
-                URL.revokeObjectURL(oldPreviewUrl);
-            }
-        });
-        // Create new previews only for the files actually in combinedFiles now
-        return combinedFiles.map(f => {
-           const existingPreview = selectedFileObjects.findIndex(sf => sf.name === f.name && sf.size === f.size && sf.lastModified === f.lastModified);
-           if(existingPreview !== -1 && prev[existingPreview]){
-             return prev[existingPreview];
-           }
-           const newPreview = newPreviewsToAdd.find(np => {
-             const fileForNewPreview = newFilesFromInput ? Array.from(newFilesFromInput).find(nfi => URL.createObjectURL(nfi) === np) : null;
-             return fileForNewPreview?.name === f.name && fileForNewPreview?.size === f.size && fileForNewPreview?.lastModified === f.lastModified;
-           });
-           return newPreview || URL.createObjectURL(f); // Fallback, should ideally find new or existing
-        });
-    });
-
-
-    setSelectedFileObjects(combinedFiles);
-
-    const dataTransfer = new DataTransfer();
-    combinedFiles.forEach(f => dataTransfer.items.add(f));
-    rhfNativeOnChangeCallback(dataTransfer.files.length > 0 ? dataTransfer.files : null);
-
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const removeFile = (
-    indexToRemove: number,
-    rhfNativeOnChangeCallback: (value: FileList | null) => void 
-  ) => {
-    if (filePreviews[indexToRemove]) {
-      URL.revokeObjectURL(filePreviews[indexToRemove]);
-    }
-
-    const updatedSelectedFiles = selectedFileObjects.filter((_, index) => index !== indexToRemove);
-    const updatedFilePreviews = filePreviews.filter((_, index) => index !== indexToRemove);
-
-    setSelectedFileObjects(updatedSelectedFiles);
-    setFilePreviews(updatedFilePreviews);
-
-    const dataTransfer = new DataTransfer();
-    updatedSelectedFiles.forEach(f => dataTransfer.items.add(f));
-    rhfNativeOnChangeCallback(dataTransfer.files.length > 0 ? dataTransfer.files : null);
-    
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
   
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
@@ -326,21 +216,19 @@ export default function RequestQuotationPage() {
         contactFullName: typedUser?.displayName || "",
         contactEmail: typedUser?.email || "",
         contactPhone: "", address: "",
-        problemDescription: "", // Clear problem description after successful submission
+        problemDescription: "",
         preferredDate: "",
-        serviceId: "", // Clear selected service
+        serviceId: "", 
         serviceName: "",
-        handymanId: "", // Clear handyman if any was set by form not query
+        handymanId: "", 
         handymanName: "",
         attachments: null,
       });
-      // Also reset query param related defaults if they were used
         if (serviceIdFromQuery) form.setValue('serviceId', '');
         if (serviceNameFromQuery) form.setValue('serviceName', '');
         if (handymanIdFromQuery) form.setValue('handymanId', '');
         if (handymanNameFromQuery) form.setValue('handymanName', '');
         if (problemFromQuery) form.setValue('problemDescription', '');
-
 
       filePreviews.forEach(URL.revokeObjectURL);
       setSelectedFileObjects([]);
@@ -359,14 +247,12 @@ export default function RequestQuotationPage() {
   const displayServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : (form.watch("serviceName") || null);
   const displayHandymanName = handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (form.watch("handymanName") || null);
 
-
   useEffect(() => {
-    // Cleanup object URLs on component unmount
     return () => {
       filePreviews.forEach(URL.revokeObjectURL);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only on mount and unmount
+  }, []);
 
   return (
     <div className="max-w-2xl mx-auto py-8">
@@ -403,93 +289,140 @@ export default function RequestQuotationPage() {
               <FormField
                 control={form.control}
                 name="attachments"
-                render={({ field: { ref, name, onBlur, onChange: rhfOnChangeCallback } }) => (
-                  <FormItem>
-                    <FormLabel>Adjuntar Imágenes (Opcional)</FormLabel>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={selectedFileObjects.length >= MAX_FILES || isLoading}
-                    >
-                      <Upload className="mr-2 h-4 w-4" /> 
-                      Seleccionar Archivos ({selectedFileObjects.length}/{MAX_FILES})
-                    </Button>
-                    <FormControl>
-                      <input
-                        type="file"
-                        ref={(e) => { // Combine refs
-                          ref(e); // RHF's ref
-                          fileInputRef.current = e; // Local ref for programmatic click
-                        }}
-                        name={name} // RHF's name
-                        onBlur={onBlur} // RHF's onBlur
-                        onChange={(e) => handleFileSelectionChange(e, rhfOnChangeCallback)} // Custom handler calling RHF's onChange
-                        multiple
-                        accept={ALLOWED_FILE_TYPES.join(',')}
-                        className="hidden" // Keep it hidden, triggered by the button
-                        disabled={isLoading}
-                        // DO NOT pass field.value here
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Sube hasta {MAX_FILES} imágenes (JPG, PNG, GIF, WEBP). Máx. {MAX_FILE_SIZE_MB}MB por archivo.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                render={({ field }) => {
+                  const handleFileSelectionChangeInternal = (event: React.ChangeEvent<HTMLInputElement>) => {
+                    const newFilesFromInput = event.target.files;
+                    if (!newFilesFromInput || newFilesFromInput.length === 0) {
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                      if (selectedFileObjects.length === 0) {
+                        field.onChange(null);
+                      }
+                      return;
+                    }
 
+                    let combinedFiles = [...selectedFileObjects];
+                    Array.from(newFilesFromInput).forEach(file => {
+                      if (combinedFiles.length >= MAX_FILES) {
+                        toast({ title: "Límite Alcanzado", description: `Ya has alcanzado el máximo de ${MAX_FILES} archivos.`, variant: "default" });
+                        return;
+                      }
+                      if (!combinedFiles.some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified)) {
+                        if (file.size > MAX_FILE_SIZE_BYTES) {
+                          toast({ title: "Archivo Demasiado Grande", description: `El archivo "${file.name}" excede ${MAX_FILE_SIZE_MB}MB.`, variant: "destructive" });
+                          return;
+                        }
+                        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+                          toast({ title: "Tipo de Archivo no Permitido", description: `"${file.name}" no es válido. Solo imágenes.`, variant: "destructive" });
+                          return;
+                        }
+                        combinedFiles.push(file);
+                      }
+                    });
+                    
+                    if (combinedFiles.length > MAX_FILES) {
+                        toast({ title: "Límite de Archivos Excedido", description: `Puedes subir un máximo de ${MAX_FILES} archivos. Algunos no se añadieron.`, variant: "destructive" });
+                        combinedFiles = combinedFiles.slice(0, MAX_FILES);
+                    } 
+                    
+                    setFilePreviews(prevPreviews => {
+                        prevPreviews.forEach(URL.revokeObjectURL); // Revoke all old previews
+                        return combinedFiles.map(f => URL.createObjectURL(f)); // Create new ones
+                    });
+                    setSelectedFileObjects(combinedFiles);
 
-              {filePreviews.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Archivos seleccionados:</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                    {filePreviews.map((previewUrl, index) => (
-                      <div key={previewUrl} className="relative group border rounded-md p-1">
-                        <NextImage
-                          src={previewUrl}
-                          alt={`Vista previa ${index + 1}`}
-                          width={100}
-                          height={100}
-                          className="aspect-square object-cover rounded"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1 right-1 h-6 w-6 opacity-75 group-hover:opacity-100"
-                          onClick={() => {
-                            const attachmentsField = form.control._fields.attachments;
-                            if (attachmentsField && attachmentsField._f && attachmentsField._f.onChange) {
-                                removeFile(index, attachmentsField._f.onChange as (value: FileList | null) => void);
-                            } else {
-                                console.warn("RHF onChange for attachments not found directly for removeFile, check field registration.");
-                                // As a fallback, try to get it from the current render scope (if `removeFile` was defined there)
-                                // This part is tricky if `removeFile` is outside the render prop scope.
-                                // The solution is to ensure removeFile uses the rhfOnChangeCallback passed if it's from `render`
-                                // For this fix, assuming form.control._fields access is the current attempt:
-                                const fieldFromRender = form.getFieldState("attachments"); // getFieldState doesn't give onChange
-                                // The logic below is now part of the 'render' prop directly for rhfOnChangeCallback
-                                 const fieldDef = form.control._fields.attachments;
-                                 if (fieldDef?._f.onChange) {
-                                   removeFile(index, fieldDef._f.onChange as (value: FileList | null) => void);
-                                 }
-                            }
+                    const dataTransfer = new DataTransfer();
+                    combinedFiles.forEach(f => dataTransfer.items.add(f));
+                    field.onChange(dataTransfer.files.length > 0 ? dataTransfer.files : null);
+
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  };
+
+                  const removeFileInternal = (indexToRemove: number) => {
+                    if (filePreviews[indexToRemove]) {
+                      URL.revokeObjectURL(filePreviews[indexToRemove]);
+                    }
+                    const updatedSelectedFiles = selectedFileObjects.filter((_, index) => index !== indexToRemove);
+                    const updatedFilePreviews = filePreviews.filter((_, index) => index !== indexToRemove);
+
+                    setSelectedFileObjects(updatedSelectedFiles);
+                    setFilePreviews(updatedFilePreviews);
+
+                    const dataTransfer = new DataTransfer();
+                    updatedSelectedFiles.forEach(f => dataTransfer.items.add(f));
+                    field.onChange(dataTransfer.files.length > 0 ? dataTransfer.files : null);
+                    
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  };
+
+                  return (
+                    <FormItem>
+                      <FormLabel>Adjuntar Imágenes (Opcional)</FormLabel>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={selectedFileObjects.length >= MAX_FILES || isLoading}
+                      >
+                        <Upload className="mr-2 h-4 w-4" /> 
+                        Seleccionar Archivos ({selectedFileObjects.length}/{MAX_FILES})
+                      </Button>
+                      <FormControl>
+                        <input
+                          type="file"
+                          ref={(e) => {
+                            field.ref(e); // RHF's ref
+                            fileInputRef.current = e; // Local ref
                           }}
+                          name={field.name} // RHF's name
+                          onBlur={field.onBlur} // RHF's onBlur
+                          onChange={handleFileSelectionChangeInternal} // Use internal handler
+                          multiple
+                          accept={ALLOWED_FILE_TYPES.join(',')}
+                          className="hidden"
                           disabled={isLoading}
-                        >
-                          <X className="h-4 w-4" />
-                          <span className="sr-only">Eliminar archivo</span>
-                        </Button>
-                        <p className="text-xs text-muted-foreground truncate mt-1" title={selectedFileObjects[index]?.name}>
-                          {selectedFileObjects[index]?.name}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                          // DO NOT pass field.value here
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Sube hasta {MAX_FILES} imágenes (JPG, PNG, GIF, WEBP). Máx. {MAX_FILE_SIZE_MB}MB por archivo.
+                      </FormDescription>
+                      <FormMessage />
+                      {filePreviews.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <p className="text-sm font-medium text-muted-foreground">Archivos seleccionados:</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                            {filePreviews.map((previewUrl, index) => (
+                              <div key={previewUrl} className="relative group border rounded-md p-1">
+                                <NextImage
+                                  src={previewUrl}
+                                  alt={`Vista previa ${index + 1}`}
+                                  width={100}
+                                  height={100}
+                                  className="aspect-square object-cover rounded"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="destructive"
+                                  size="icon"
+                                  className="absolute top-1 right-1 h-6 w-6 opacity-75 group-hover:opacity-100"
+                                  onClick={() => removeFileInternal(index)}
+                                  disabled={isLoading}
+                                >
+                                  <X className="h-4 w-4" />
+                                  <span className="sr-only">Eliminar archivo</span>
+                                </Button>
+                                <p className="text-xs text-muted-foreground truncate mt-1" title={selectedFileObjects[index]?.name}>
+                                  {selectedFileObjects[index]?.name}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </FormItem>
+                  );
+                }}
+              />
 
               <FormField control={form.control} name="preferredDate" render={({ field }) => ( <FormItem> <FormLabel>Fecha Preferida (Opcional)</FormLabel> <FormControl><Input type="date" {...field} min={new Date().toISOString().split("T")[0]}/></FormControl> <FormDescription>Indícanos si tienes una fecha preferida para el servicio.</FormDescription> <FormMessage /> </FormItem> )}/>
               
@@ -503,5 +436,4 @@ export default function RequestQuotationPage() {
     </div>
   );
 }
-
     
