@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2, Send, FileText, Package } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { services as availableServices } from '@/data/services';
 import { useSearchParams } from 'next/navigation';
@@ -69,9 +69,16 @@ export default function RequestQuotationPage() {
     },
   });
 
- useEffect(() => {
-    const { reset, getValues } = form;
-    const currentFormValues = getValues();
+  const { reset, getValues, setValue, watch, control } = form;
+  const watchedServiceId = watch("serviceId");
+
+  const stableGetValues = useCallback(getValues, [getValues]);
+  const stableReset = useCallback(reset, [reset]);
+  const stableSetValue = useCallback(setValue, [setValue]);
+
+
+  useEffect(() => {
+    const currentFormValues = stableGetValues();
 
     let newProblemDescription = problemFromQuery
         ? decodeURIComponent(problemFromQuery)
@@ -80,8 +87,10 @@ export default function RequestQuotationPage() {
     if (serviceIdFromQuery && problemFromQuery) {
         newProblemDescription = decodeURIComponent(problemFromQuery);
     } else if (serviceIdFromQuery && !problemFromQuery) {
+        // If serviceId is from query but problem is not, keep existing problem or clear it
         newProblemDescription = currentFormValues.problemDescription || "";
     }
+
 
     const resetValues: Partial<FormData> = {
       contactFullName: typedUser?.displayName || currentFormValues.contactFullName || "",
@@ -93,11 +102,11 @@ export default function RequestQuotationPage() {
       problemDescription: newProblemDescription,
       handymanId: handymanIdFromQuery || currentFormValues.handymanId || "",
       handymanName: handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (currentFormValues.handymanName || ""),
+      preferredDate: currentFormValues.preferredDate || "",
     };
+    
+    stableReset(resetValues);
 
-    reset(resetValues);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
       typedUser,
       serviceIdFromQuery,
@@ -105,8 +114,28 @@ export default function RequestQuotationPage() {
       handymanIdFromQuery,
       handymanNameFromQuery,
       problemFromQuery,
-      form.reset
+      stableGetValues,
+      stableReset
     ]);
+
+  // Effect to update serviceName when serviceId changes (and not pre-filled by query)
+  useEffect(() => {
+    if (serviceIdFromQuery && serviceNameFromQuery) {
+      // If serviceName is directly from query, prioritize it initially.
+      // The main reset effect already handles this.
+      return;
+    }
+
+    if (watchedServiceId) {
+      const selectedService = availableServices.find(s => s.id === watchedServiceId);
+      stableSetValue('serviceName', selectedService?.name || '', { shouldDirty: true, shouldTouch: true });
+    } else {
+      // Only clear serviceName if it's not being set by serviceNameFromQuery
+      if (!serviceNameFromQuery) {
+         stableSetValue('serviceName', '', { shouldDirty: true, shouldTouch: true });
+      }
+    }
+  }, [watchedServiceId, stableSetValue, serviceIdFromQuery, serviceNameFromQuery]);
 
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
@@ -117,23 +146,29 @@ export default function RequestQuotationPage() {
       setIsLoading(false);
       return;
     }
-
+    
     let finalServiceName = data.serviceName;
     let finalServiceId = data.serviceId;
 
+    // Prefer query params if they initiated this flow for a specific service
     const queryServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : null;
-
     if (serviceIdFromQuery && queryServiceName) {
       finalServiceId = serviceIdFromQuery;
       finalServiceName = queryServiceName;
     } else if (data.serviceId && availableServices.find(s => s.id === data.serviceId)) {
+      // If user selected from dropdown, data.serviceName should be up-to-date via useEffect
       finalServiceId = data.serviceId;
-      finalServiceName = availableServices.find(s => s.id === data.serviceId)?.name || 'Servicio no especificado';
-    } else if (data.problemDescription && !data.serviceId) {
+      finalServiceName = data.serviceName || availableServices.find(s => s.id === data.serviceId)?.name || 'Servicio no especificado';
+    } else if (data.problemDescription && (!data.serviceId || data.serviceId === 'general-consultation')) {
       finalServiceName = 'Consulta General (Problema Detallado)';
       finalServiceId = 'general-consultation';
-    } else {
-      toast({ title: "Error de Servicio", description: "Debes seleccionar un servicio del listado o si es una consulta general, asegúrate que la descripción del problema esté completa.", variant: "destructive" });
+    } else if (!data.serviceId && !finalServiceId && data.problemDescription) {
+        // Catch-all for problem description without serviceId
+        finalServiceName = 'Consulta General (Problema Detallado)';
+        finalServiceId = 'general-consultation';
+    }
+     else {
+      toast({ title: "Error de Servicio", description: "Por favor, selecciona un servicio o describe tu problema.", variant: "destructive" });
       setIsLoading(false);
       return;
     }
@@ -161,7 +196,6 @@ export default function RequestQuotationPage() {
 
     try {
       const docRef = await addDoc(collection(firestore, "quotationRequests"), quotationData);
-      console.log("Solicitud de cotización guardada con ID: ", docRef.id);
       let descriptionToast = `Servicio: ${quotationData.serviceName}.`;
       if (quotationData.handymanName) descriptionToast += ` Solicitud para ${quotationData.handymanName}.`;
       descriptionToast += " Hemos recibido tu solicitud y nos pondremos en contacto pronto.";
@@ -174,7 +208,7 @@ export default function RequestQuotationPage() {
           </Button>
         ) : undefined,
       });
-      form.reset({
+      form.reset({ // Reset to initial defaults, not current values
         contactFullName: typedUser?.displayName || "",
         contactEmail: typedUser?.email || "",
         contactPhone: "", address: "",
@@ -193,7 +227,8 @@ export default function RequestQuotationPage() {
     }
   };
 
-  const displayServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : (form.watch("serviceName") || null);
+  const displayServiceNameFromState = form.watch("serviceName");
+  const displayServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : (displayServiceNameFromState || null);
   const displayHandymanName = handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (form.watch("handymanName") || null);
 
 
@@ -213,23 +248,72 @@ export default function RequestQuotationPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField control={form.control} name="contactFullName" render={({ field }) => ( <FormItem> <FormLabel>Nombre Completo</FormLabel> <FormControl><Input placeholder="Tu nombre completo" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                <FormField control={form.control} name="contactEmail" render={({ field }) => ( <FormItem> <FormLabel>Correo Electrónico</FormLabel> <FormControl><Input type="email" placeholder="tu@ejemplo.com" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={control} name="contactFullName" render={({ field }) => ( <FormItem> <FormLabel>Nombre Completo</FormLabel> <FormControl><Input placeholder="Tu nombre completo" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={control} name="contactEmail" render={({ field }) => ( <FormItem> <FormLabel>Correo Electrónico</FormLabel> <FormControl><Input type="email" placeholder="tu@ejemplo.com" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               </div>
-              <FormField control={form.control} name="contactPhone" render={({ field }) => ( <FormItem> <FormLabel>Número de Teléfono (Opcional)</FormLabel> <FormControl><Input type="tel" placeholder="Tu número de teléfono" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección del Servicio</FormLabel> <FormControl><Input placeholder="Calle 123, Ciudad, Provincia" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+              <FormField control={control} name="contactPhone" render={({ field }) => ( <FormItem> <FormLabel>Número de Teléfono (Opcional)</FormLabel> <FormControl><Input type="tel" placeholder="Tu número de teléfono" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+              <FormField control={control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección del Servicio</FormLabel> <FormControl><Input placeholder="Calle 123, Ciudad, Provincia" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
 
               {serviceIdFromQuery ? (
                 <FormItem> <FormLabel>Servicio Requerido</FormLabel> <div className="flex items-center gap-2 p-3 rounded-md border bg-muted"> <Package className="h-5 w-5 text-muted-foreground" /> <span className="text-sm text-foreground">{displayServiceName || 'Servicio Específico'}</span> </div> <FormDescription> {displayHandymanName ? `Solicitando cotización para ${displayServiceName} de ${displayHandymanName}.` : `Solicitando cotización para ${displayServiceName}.`} </FormDescription> </FormItem>
               ) : problemFromQuery && !serviceIdFromQuery ? (
                  <FormItem> <FormLabel>Servicio Requerido</FormLabel> <div className="flex items-center gap-2 p-3 rounded-md border bg-muted"> <FileText className="h-5 w-5 text-muted-foreground" /> <span className="text-sm text-foreground">Consulta General (basada en tu descripción)</span> </div> <FormDescription>Tu problema descrito a la IA se usará como base para la cotización.</FormDescription> </FormItem>
               ) : (
-                  <FormField control={form.control} name="serviceId" render={({ field }) => ( <FormItem> <FormLabel>Servicio Requerido</FormLabel> <Select onValueChange={(value) => { field.onChange(value); const selectedService = availableServices.find(s => s.id === value); form.setValue('serviceName', selectedService?.name || ''); }} value={field.value || ""} > <FormControl> <SelectTrigger> <SelectValue placeholder="Selecciona un servicio" /> </SelectTrigger> </FormControl> <SelectContent> {availableServices.map(service => ( <SelectItem key={service.id} value={service.id}> {service.name} </SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
+                  <FormField 
+                    control={control} 
+                    name="serviceId" 
+                    render={({ field }) => ( 
+                      <FormItem> 
+                        <FormLabel>Servicio Requerido</FormLabel> 
+                        <Select 
+                          onValueChange={field.onChange} // Only update serviceId here
+                          value={field.value || ""} 
+                        > 
+                          <FormControl> 
+                            <SelectTrigger> 
+                              <SelectValue placeholder="Selecciona un servicio" /> 
+                            </SelectTrigger> 
+                          </FormControl> 
+                          <SelectContent> 
+                            {availableServices.map(service => ( 
+                              <SelectItem key={service.id} value={service.id}> 
+                                {service.name} 
+                              </SelectItem> 
+                            ))} 
+                          </SelectContent> 
+                        </Select> 
+                        <FormMessage /> 
+                      </FormItem> 
+                    )}
+                  />
               )}
 
-              <FormField control={form.control} name="problemDescription" render={({ field }) => ( <FormItem> <FormLabel>Descripción del Problema</FormLabel> <FormControl> <Textarea placeholder="Describe el problema en detalle..." rows={5} className="resize-none" {...field}/> </FormControl> <FormMessage /> </FormItem> )}/>
+              <FormField 
+                control={control} 
+                name="problemDescription" 
+                render={({ field }) => ( 
+                  <FormItem> 
+                    <FormLabel>Descripción del Problema</FormLabel> 
+                    <FormControl> 
+                      <Textarea placeholder="Describe el problema en detalle..." rows={5} className="resize-none" {...field}/> 
+                    </FormControl> 
+                    <FormMessage /> 
+                  </FormItem> 
+                )}
+              />
 
-              <FormField control={form.control} name="preferredDate" render={({ field }) => ( <FormItem> <FormLabel>Fecha Preferida (Opcional)</FormLabel> <FormControl><Input type="date" {...field} min={new Date().toISOString().split("T")[0]}/></FormControl> <FormDescription>Indícanos si tienes una fecha preferida para el servicio.</FormDescription> <FormMessage /> </FormItem> )}/>
+              <FormField 
+                control={control} 
+                name="preferredDate" 
+                render={({ field }) => ( 
+                  <FormItem> 
+                    <FormLabel>Fecha Preferida (Opcional)</FormLabel> 
+                    <FormControl><Input type="date" {...field} min={new Date().toISOString().split("T")[0]}/></FormControl> 
+                    <FormDescription>Indícanos si tienes una fecha preferida para el servicio.</FormDescription> 
+                    <FormMessage /> 
+                  </FormItem> 
+                )}
+              />
 
               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading ? ( <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando Solicitud...</> ) : ( <><Send className="mr-2 h-4 w-4" /> Enviar Solicitud</> )}
