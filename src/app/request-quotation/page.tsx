@@ -73,57 +73,72 @@ export default function RequestQuotationPage() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      contactFullName: typedUser?.displayName || "",
-      contactEmail: typedUser?.email || "",
+      contactFullName: "",
+      contactEmail: "",
       contactPhone: "",
       address: "",
-      serviceId: serviceIdFromQuery || "",
-      serviceName: serviceNameFromQuery || "",
-      problemDescription: (problemFromQuery && !serviceIdFromQuery) ? decodeURIComponent(problemFromQuery) : "",
+      serviceId: "",
+      serviceName: "",
+      problemDescription: "",
       preferredDate: "",
-      handymanId: handymanIdFromQuery || "",
-      handymanName: handymanNameFromQuery || "",
-      attachments: null,
+      handymanId: "",
+      handymanName: "",
+      attachments: null, // Ensure attachments default to null
     },
   });
 
  useEffect(() => {
-    const { getValues, reset, setValue } = form;
-    const currentFormValues = getValues();
-    let newProblemDescription = currentFormValues.problemDescription || "";
-    if (problemFromQuery && !serviceIdFromQuery) {
-      newProblemDescription = decodeURIComponent(problemFromQuery);
-    } else if (serviceIdFromQuery) {
-      newProblemDescription = (problemFromQuery && serviceIdFromQuery) 
-                              ? decodeURIComponent(problemFromQuery) 
-                              : (currentFormValues.problemDescription || "");
+    const { reset, getValues } = form; // getValues for reading current state if needed BEFORE reset
+    const currentFormValues = getValues(); // Read existing values once
+
+    let newProblemDescription = problemFromQuery 
+        ? decodeURIComponent(problemFromQuery) 
+        : currentFormValues.problemDescription || "";
+    
+    // If a specific service is coming from query, it might override the problem description
+    // or complement it. Current logic keeps problem if service is also from query.
+    if (serviceIdFromQuery && problemFromQuery) {
+        newProblemDescription = decodeURIComponent(problemFromQuery);
+    } else if (serviceIdFromQuery && !problemFromQuery) {
+        // If only serviceId is present, maybe clear problem or keep existing, based on UX choice.
+        // For now, we keep existing problem description if any.
+        newProblemDescription = currentFormValues.problemDescription || "";
     }
 
-    reset({
-      ...currentFormValues,
+
+    const resetValues = {
       contactFullName: typedUser?.displayName || currentFormValues.contactFullName || "",
       contactEmail: typedUser?.email || currentFormValues.contactEmail || "",
+      contactPhone: currentFormValues.contactPhone || "",
+      address: currentFormValues.address || "",
       serviceId: serviceIdFromQuery || currentFormValues.serviceId || "",
       serviceName: serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : (currentFormValues.serviceName || ""),
       problemDescription: newProblemDescription,
       handymanId: handymanIdFromQuery || currentFormValues.handymanId || "",
       handymanName: handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (currentFormValues.handymanName || ""),
-    });
+      attachments: null, // Explicitly set attachments to null in RHF's state on reset
+    };
     
-    const currentAttachments = getValues("attachments");
-    if (currentAttachments && currentAttachments.length > 0) {
-        const filesArray = Array.from(currentAttachments);
-        setSelectedFileObjects(filesArray);
-        filePreviews.forEach(URL.revokeObjectURL);
-        const newPreviewsArray = filesArray.map(file => URL.createObjectURL(file));
-        setFilePreviews(newPreviewsArray);
-    } else {
-        filePreviews.forEach(URL.revokeObjectURL);
-        setSelectedFileObjects([]);
-        setFilePreviews([]);
+    reset(resetValues);
+
+    // Clean up local state for file previews
+    filePreviews.forEach(URL.revokeObjectURL);
+    setFilePreviews([]);
+    setSelectedFileObjects([]);
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Attempt to clear the native file input
     }
- // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typedUser, serviceIdFromQuery, serviceNameFromQuery, handymanIdFromQuery, handymanNameFromQuery, problemFromQuery, form.reset, form.getValues]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+      typedUser, 
+      serviceIdFromQuery, 
+      serviceNameFromQuery, 
+      handymanIdFromQuery, 
+      handymanNameFromQuery, 
+      problemFromQuery, 
+      form.reset // form.reset is stable, but include if ESLint complains
+    ]);
   
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
@@ -224,11 +239,6 @@ export default function RequestQuotationPage() {
         handymanName: "",
         attachments: null,
       });
-        if (serviceIdFromQuery) form.setValue('serviceId', '');
-        if (serviceNameFromQuery) form.setValue('serviceName', '');
-        if (handymanIdFromQuery) form.setValue('handymanId', '');
-        if (handymanNameFromQuery) form.setValue('handymanName', '');
-        if (problemFromQuery) form.setValue('problemDescription', '');
 
       filePreviews.forEach(URL.revokeObjectURL);
       setSelectedFileObjects([]);
@@ -289,13 +299,13 @@ export default function RequestQuotationPage() {
               <FormField
                 control={form.control}
                 name="attachments"
-                render={({ field }) => {
+                render={({ field: { onChange, onBlur, name, ref } }) => {
                   const handleFileSelectionChangeInternal = (event: React.ChangeEvent<HTMLInputElement>) => {
                     const newFilesFromInput = event.target.files;
                     if (!newFilesFromInput || newFilesFromInput.length === 0) {
                       if (fileInputRef.current) fileInputRef.current.value = "";
                       if (selectedFileObjects.length === 0) {
-                        field.onChange(null);
+                        onChange(null); // RHF field onChange
                       }
                       return;
                     }
@@ -324,15 +334,16 @@ export default function RequestQuotationPage() {
                         combinedFiles = combinedFiles.slice(0, MAX_FILES);
                     } 
                     
+                    const newFilePreviews = combinedFiles.map(f => URL.createObjectURL(f));
                     setFilePreviews(prevPreviews => {
                         prevPreviews.forEach(URL.revokeObjectURL); // Revoke all old previews
-                        return combinedFiles.map(f => URL.createObjectURL(f)); // Create new ones
+                        return newFilePreviews;
                     });
                     setSelectedFileObjects(combinedFiles);
 
                     const dataTransfer = new DataTransfer();
                     combinedFiles.forEach(f => dataTransfer.items.add(f));
-                    field.onChange(dataTransfer.files.length > 0 ? dataTransfer.files : null);
+                    onChange(dataTransfer.files.length > 0 ? dataTransfer.files : null); // RHF field onChange
 
                     if (fileInputRef.current) fileInputRef.current.value = "";
                   };
@@ -349,7 +360,7 @@ export default function RequestQuotationPage() {
 
                     const dataTransfer = new DataTransfer();
                     updatedSelectedFiles.forEach(f => dataTransfer.items.add(f));
-                    field.onChange(dataTransfer.files.length > 0 ? dataTransfer.files : null);
+                    onChange(dataTransfer.files.length > 0 ? dataTransfer.files : null); // RHF field onChange
                     
                     if (fileInputRef.current) fileInputRef.current.value = "";
                   };
@@ -357,7 +368,7 @@ export default function RequestQuotationPage() {
                   return (
                     <FormItem>
                       <FormLabel>Adjuntar Imágenes (Opcional)</FormLabel>
-                      <Button
+                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => fileInputRef.current?.click()}
@@ -370,17 +381,16 @@ export default function RequestQuotationPage() {
                         <input
                           type="file"
                           ref={(e) => {
-                            field.ref(e); // RHF's ref
+                            ref(e); // RHF's ref
                             fileInputRef.current = e; // Local ref
                           }}
-                          name={field.name} // RHF's name
-                          onBlur={field.onBlur} // RHF's onBlur
-                          onChange={handleFileSelectionChangeInternal} // Use internal handler
+                          name={name} // RHF's name
+                          onBlur={onBlur} // RHF's onBlur
+                          onChange={handleFileSelectionChangeInternal}
                           multiple
                           accept={ALLOWED_FILE_TYPES.join(',')}
                           className="hidden"
                           disabled={isLoading}
-                          // DO NOT pass field.value here
                         />
                       </FormControl>
                       <FormDescription>
