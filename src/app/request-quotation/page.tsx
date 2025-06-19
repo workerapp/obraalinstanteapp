@@ -1,4 +1,3 @@
-
 // src/app/request-quotation/page.tsx
 "use client";
 
@@ -9,25 +8,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Send, FileText, Package, Upload, X } from 'lucide-react'; 
-import { useState, useEffect, useRef } from 'react';
+import { Loader2, Send, FileText, Package } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { services as availableServices } from '@/data/services';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import NextImage from 'next/image'; 
 import { useAuth, type AppUser } from '@/hooks/useAuth';
-import { firestore, storage } from '@/firebase/clientApp';
+import { firestore } from '@/firebase/clientApp';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-
-const MAX_FILES = 5;
-const MAX_FILE_SIZE_MB = 5;
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-
 
 const formSchema = z.object({
   contactFullName: z.string().min(2, "El nombre completo es requerido."),
@@ -35,15 +26,11 @@ const formSchema = z.object({
   contactPhone: z.string().min(7, "Se requiere un número de teléfono válido.").optional().or(z.literal('')),
   address: z.string().min(5, "La dirección es requerida."),
   serviceId: z.string().optional(),
-  serviceName: z.string().optional(), 
+  serviceName: z.string().optional(),
   problemDescription: z.string().min(20, "Por favor, describe tu problema en al menos 20 caracteres.").max(1000),
   preferredDate: z.string().optional(),
   handymanId: z.string().optional(),
   handymanName: z.string().optional(),
-  attachments: z.instanceof(FileList).optional().nullable()
-    .refine(files => !files || files.length <= MAX_FILES, `No puedes subir más de ${MAX_FILES} archivos.`)
-    .refine(files => !files || Array.from(files).every(file => file.size <= MAX_FILE_SIZE_BYTES), `Cada archivo no debe exceder ${MAX_FILE_SIZE_MB}MB.`)
-    .refine(files => !files || Array.from(files).every(file => ALLOWED_FILE_TYPES.includes(file.type)), 'Solo se permiten imágenes (JPG, PNG, GIF, WEBP).'),
 }).refine(data => {
     return data.serviceId || data.problemDescription;
 }, {
@@ -59,10 +46,6 @@ export default function RequestQuotationPage() {
   const { user } = useAuth();
   const typedUser = user as AppUser | null;
   const searchParams = useSearchParams();
-  
-  const [selectedFileObjects, setSelectedFileObjects] = useState<File[]>([]);
-  const [filePreviews, setFilePreviews] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const serviceIdFromQuery = searchParams.get('serviceId');
   const serviceNameFromQuery = searchParams.get('serviceName');
@@ -83,7 +66,6 @@ export default function RequestQuotationPage() {
       preferredDate: "",
       handymanId: "",
       handymanName: "",
-      attachments: null,
     },
   });
 
@@ -91,10 +73,10 @@ export default function RequestQuotationPage() {
     const { reset, getValues } = form;
     const currentFormValues = getValues();
 
-    let newProblemDescription = problemFromQuery 
-        ? decodeURIComponent(problemFromQuery) 
+    let newProblemDescription = problemFromQuery
+        ? decodeURIComponent(problemFromQuery)
         : currentFormValues.problemDescription || "";
-    
+
     if (serviceIdFromQuery && problemFromQuery) {
         newProblemDescription = decodeURIComponent(problemFromQuery);
     } else if (serviceIdFromQuery && !problemFromQuery) {
@@ -111,30 +93,21 @@ export default function RequestQuotationPage() {
       problemDescription: newProblemDescription,
       handymanId: handymanIdFromQuery || currentFormValues.handymanId || "",
       handymanName: handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (currentFormValues.handymanName || ""),
-      attachments: null, // Ensure RHF attachments field is reset to null
     };
-    
+
     reset(resetValues);
 
-    // Clean up local state for file previews
-    filePreviews.forEach(URL.revokeObjectURL);
-    setFilePreviews([]);
-    setSelectedFileObjects([]);
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // Attempt to clear the native file input
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-      typedUser, 
-      serviceIdFromQuery, 
-      serviceNameFromQuery, 
-      handymanIdFromQuery, 
-      handymanNameFromQuery, 
-      problemFromQuery, 
-      form.reset 
+      typedUser,
+      serviceIdFromQuery,
+      serviceNameFromQuery,
+      handymanIdFromQuery,
+      handymanNameFromQuery,
+      problemFromQuery,
+      form.reset
     ]);
-  
+
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     setIsLoading(true);
@@ -144,7 +117,7 @@ export default function RequestQuotationPage() {
       setIsLoading(false);
       return;
     }
-    
+
     let finalServiceName = data.serviceName;
     let finalServiceId = data.serviceId;
 
@@ -158,33 +131,13 @@ export default function RequestQuotationPage() {
       finalServiceName = availableServices.find(s => s.id === data.serviceId)?.name || 'Servicio no especificado';
     } else if (data.problemDescription && !data.serviceId) {
       finalServiceName = 'Consulta General (Problema Detallado)';
-      finalServiceId = 'general-consultation'; 
+      finalServiceId = 'general-consultation';
     } else {
       toast({ title: "Error de Servicio", description: "Debes seleccionar un servicio del listado o si es una consulta general, asegúrate que la descripción del problema esté completa.", variant: "destructive" });
       setIsLoading(false);
       return;
     }
 
-    const attachmentUrls: string[] = [];
-    if (selectedFileObjects.length > 0) {
-      toast({ title: "Subiendo Archivos...", description: `Preparando ${selectedFileObjects.length} archivo(s). Esto puede tomar un momento.` });
-      try {
-        for (const file of selectedFileObjects) {
-          const uniqueFileName = `${typedUser.uid}_${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-          const fileStorageRef = storageRef(storage, `quotation_attachments/${typedUser.uid}/${uniqueFileName}`);
-          await uploadBytes(fileStorageRef, file);
-          const downloadURL = await getDownloadURL(fileStorageRef);
-          attachmentUrls.push(downloadURL);
-        }
-         toast({ title: "Archivos Subidos", description: `${attachmentUrls.length} archivo(s) subido(s) con éxito.`});
-      } catch (uploadError: any) {
-        console.error("Error al subir archivos: ", uploadError);
-        toast({ title: "Error al Subir Adjuntos", description: "No se pudieron subir los archivos. Por favor, inténtalo de nuevo o envía la solicitud sin ellos.", variant: "destructive" });
-        setIsLoading(false);
-        return;
-      }
-    }
-    
     const queryHandymanName = handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : null;
 
     const quotationData = {
@@ -202,7 +155,6 @@ export default function RequestQuotationPage() {
       handymanId: handymanIdFromQuery || data.handymanId || null,
       handymanName: queryHandymanName || (data.handymanName ? decodeURIComponent(data.handymanName) : null),
       status: "Enviada" as const,
-      attachmentUrls: attachmentUrls,
       requestedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -222,25 +174,17 @@ export default function RequestQuotationPage() {
           </Button>
         ) : undefined,
       });
-      form.reset({ 
+      form.reset({
         contactFullName: typedUser?.displayName || "",
         contactEmail: typedUser?.email || "",
         contactPhone: "", address: "",
         problemDescription: "",
         preferredDate: "",
-        serviceId: "", 
+        serviceId: "",
         serviceName: "",
-        handymanId: "", 
+        handymanId: "",
         handymanName: "",
-        attachments: null,
       });
-
-      filePreviews.forEach(URL.revokeObjectURL);
-      setSelectedFileObjects([]);
-      setFilePreviews([]);
-       if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     } catch (e) {
       console.error("Error al añadir documento: ", e);
       toast({ title: "Error al Enviar Solicitud", description: "Hubo un problema al guardar tu solicitud.", variant: "destructive" });
@@ -248,20 +192,10 @@ export default function RequestQuotationPage() {
       setIsLoading(false);
     }
   };
-  
+
   const displayServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : (form.watch("serviceName") || null);
   const displayHandymanName = handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (form.watch("handymanName") || null);
 
-  useEffect(() => {
-    // Cleanup for object URLs when component unmounts
-    return () => {
-      filePreviews.forEach(URL.revokeObjectURL);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // filePreviews is not needed in dep array, it's managed inside
-
-  // Create a key that changes when relevant query params change
-  const attachmentsFieldKey = `attachments-${serviceIdFromQuery}-${handymanIdFromQuery}-${problemFromQuery}`;
 
   return (
     <div className="max-w-2xl mx-auto py-8">
@@ -270,7 +204,7 @@ export default function RequestQuotationPage() {
           <FileText className="mx-auto h-16 w-16 text-accent mb-4" />
           <CardTitle className="text-3xl font-headline">Solicitar una Cotización</CardTitle>
           <CardDescription>
-            Completa el formulario para obtener una cotización. Puedes adjuntar imágenes para dar más detalles.
+            Completa el formulario para obtener una cotización.
             {displayHandymanName && ` Estás solicitando una cotización específicamente a ${displayHandymanName}.`}
             {problemFromQuery && !serviceIdFromQuery && " La descripción de tu problema ha sido pre-llenada por nuestro Asistente IA."}
           </CardDescription>
@@ -285,159 +219,18 @@ export default function RequestQuotationPage() {
               <FormField control={form.control} name="contactPhone" render={({ field }) => ( <FormItem> <FormLabel>Número de Teléfono (Opcional)</FormLabel> <FormControl><Input type="tel" placeholder="Tu número de teléfono" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección del Servicio</FormLabel> <FormControl><Input placeholder="Calle 123, Ciudad, Provincia" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
 
-              {serviceIdFromQuery ? ( 
+              {serviceIdFromQuery ? (
                 <FormItem> <FormLabel>Servicio Requerido</FormLabel> <div className="flex items-center gap-2 p-3 rounded-md border bg-muted"> <Package className="h-5 w-5 text-muted-foreground" /> <span className="text-sm text-foreground">{displayServiceName || 'Servicio Específico'}</span> </div> <FormDescription> {displayHandymanName ? `Solicitando cotización para ${displayServiceName} de ${displayHandymanName}.` : `Solicitando cotización para ${displayServiceName}.`} </FormDescription> </FormItem>
-              ) : problemFromQuery && !serviceIdFromQuery ? ( 
+              ) : problemFromQuery && !serviceIdFromQuery ? (
                  <FormItem> <FormLabel>Servicio Requerido</FormLabel> <div className="flex items-center gap-2 p-3 rounded-md border bg-muted"> <FileText className="h-5 w-5 text-muted-foreground" /> <span className="text-sm text-foreground">Consulta General (basada en tu descripción)</span> </div> <FormDescription>Tu problema descrito a la IA se usará como base para la cotización.</FormDescription> </FormItem>
-              ) : ( 
+              ) : (
                   <FormField control={form.control} name="serviceId" render={({ field }) => ( <FormItem> <FormLabel>Servicio Requerido</FormLabel> <Select onValueChange={(value) => { field.onChange(value); const selectedService = availableServices.find(s => s.id === value); form.setValue('serviceName', selectedService?.name || ''); }} value={field.value || ""} > <FormControl> <SelectTrigger> <SelectValue placeholder="Selecciona un servicio" /> </SelectTrigger> </FormControl> <SelectContent> {availableServices.map(service => ( <SelectItem key={service.id} value={service.id}> {service.name} </SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
               )}
-              
+
               <FormField control={form.control} name="problemDescription" render={({ field }) => ( <FormItem> <FormLabel>Descripción del Problema</FormLabel> <FormControl> <Textarea placeholder="Describe el problema en detalle..." rows={5} className="resize-none" {...field}/> </FormControl> <FormMessage /> </FormItem> )}/>
-              
-              <FormField
-                key={attachmentsFieldKey} // Dynamic key for re-mounting
-                control={form.control}
-                name="attachments"
-                render={({ field: { ref: rhfRef, name: rhfName, onBlur: rhfOnBlur, onChange: rhfOnChange } }) => {
-                  const handleFileSelectionChangeInternal = (event: React.ChangeEvent<HTMLInputElement>) => {
-                    const newFilesFromInput = event.target.files;
-                    if (!newFilesFromInput || newFilesFromInput.length === 0) {
-                        if (fileInputRef.current) fileInputRef.current.value = ""; // Clear display
-                        if (selectedFileObjects.length === 0) rhfOnChange(null); // Update RHF if truly empty
-                        return;
-                    }
-
-                    let combinedFiles = [...selectedFileObjects];
-                    Array.from(newFilesFromInput).forEach(file => {
-                      if (combinedFiles.length >= MAX_FILES) {
-                        toast({ title: "Límite Alcanzado", description: `Ya has alcanzado el máximo de ${MAX_FILES} archivos.`, variant: "default" });
-                        return; // Stop processing further files from this selection
-                      }
-                      // Avoid duplicates based on name, size, and lastModified
-                      if (!combinedFiles.some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified)) {
-                        if (file.size > MAX_FILE_SIZE_BYTES) {
-                          toast({ title: "Archivo Demasiado Grande", description: `El archivo "${file.name}" excede ${MAX_FILE_SIZE_MB}MB.`, variant: "destructive" });
-                          return; // Skip this file
-                        }
-                        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-                          toast({ title: "Tipo de Archivo no Permitido", description: `"${file.name}" no es válido. Solo imágenes.`, variant: "destructive" });
-                          return; // Skip this file
-                        }
-                        combinedFiles.push(file);
-                      }
-                    });
-                    
-                    if (combinedFiles.length > MAX_FILES) {
-                        toast({ title: "Límite de Archivos Excedido", description: `Puedes subir un máximo de ${MAX_FILES} archivos. Algunos no se añadieron.`, variant: "destructive" });
-                        combinedFiles = combinedFiles.slice(0, MAX_FILES); // Trim to max
-                    } 
-                    
-                    // Update local state for previews
-                    const oldPreviews = [...filePreviews]; // Keep a reference to revoke later
-                    const newFilePreviews = combinedFiles.map(f => URL.createObjectURL(f));
-                    
-                    setSelectedFileObjects(combinedFiles);
-                    setFilePreviews(newFilePreviews);
-                    oldPreviews.forEach(URL.revokeObjectURL); // Revoke old previews after new ones are set
-
-                    // Update RHF
-                    const dataTransfer = new DataTransfer();
-                    combinedFiles.forEach(f => dataTransfer.items.add(f));
-                    rhfOnChange(dataTransfer.files.length > 0 ? dataTransfer.files : null);
-
-                    // Clear the native file input so the same file can be selected again if removed and re-added
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                  };
-
-                  const removeFileInternal = (indexToRemove: number) => {
-                    const newSelectedFiles = selectedFileObjects.filter((_, index) => index !== indexToRemove);
-                    const newFilePreviews = newSelectedFiles.map(f => URL.createObjectURL(f)); // Recreate previews
-
-                    // Revoke all previous previews before setting new ones
-                    filePreviews.forEach(URL.revokeObjectURL);
-
-                    setSelectedFileObjects(newSelectedFiles);
-                    setFilePreviews(newFilePreviews);
-                    
-                    const dataTransfer = new DataTransfer();
-                    newSelectedFiles.forEach(f => dataTransfer.items.add(f));
-                    rhfOnChange(dataTransfer.files.length > 0 ? dataTransfer.files : null);
-                    
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                  };
-
-                  return (
-                    <FormItem>
-                      <FormLabel>Adjuntar Imágenes (Opcional)</FormLabel>
-                       <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={selectedFileObjects.length >= MAX_FILES || isLoading}
-                      >
-                        <Upload className="mr-2 h-4 w-4" /> 
-                        Seleccionar Archivos ({selectedFileObjects.length}/{MAX_FILES})
-                      </Button>
-                      <FormControl>
-                        <input
-                          type="file"
-                          ref={(e) => {
-                            rhfRef(e); 
-                            fileInputRef.current = e; 
-                          }}
-                          name={rhfName} 
-                          onBlur={rhfOnBlur} 
-                          onChange={handleFileSelectionChangeInternal}
-                          multiple
-                          accept={ALLOWED_FILE_TYPES.join(',')}
-                          className="hidden"
-                          disabled={isLoading}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Sube hasta {MAX_FILES} imágenes (JPG, PNG, GIF, WEBP). Máx. {MAX_FILE_SIZE_MB}MB por archivo.
-                      </FormDescription>
-                      <FormMessage />
-                      {filePreviews.length > 0 && (
-                        <div className="space-y-2 pt-2">
-                          <p className="text-sm font-medium text-muted-foreground">Archivos seleccionados:</p>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                            {filePreviews.map((previewUrl, index) => (
-                              <div key={`${previewUrl}-${index}`} className="relative group border rounded-md p-1">
-                                <NextImage
-                                  src={previewUrl}
-                                  alt={`Vista previa ${index + 1}`}
-                                  width={100}
-                                  height={100}
-                                  className="aspect-square object-cover rounded"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="icon"
-                                  className="absolute top-1 right-1 h-6 w-6 opacity-75 group-hover:opacity-100"
-                                  onClick={() => removeFileInternal(index)}
-                                  disabled={isLoading}
-                                >
-                                  <X className="h-4 w-4" />
-                                  <span className="sr-only">Eliminar archivo</span>
-                                </Button>
-                                <p className="text-xs text-muted-foreground truncate mt-1" title={selectedFileObjects[index]?.name}>
-                                  {selectedFileObjects[index]?.name}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </FormItem>
-                  );
-                }}
-              />
 
               <FormField control={form.control} name="preferredDate" render={({ field }) => ( <FormItem> <FormLabel>Fecha Preferida (Opcional)</FormLabel> <FormControl><Input type="date" {...field} min={new Date().toISOString().split("T")[0]}/></FormControl> <FormDescription>Indícanos si tienes una fecha preferida para el servicio.</FormDescription> <FormMessage /> </FormItem> )}/>
-              
+
               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading ? ( <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando Solicitud...</> ) : ( <><Send className="mr-2 h-4 w-4" /> Enviar Solicitud</> )}
               </Button>
@@ -448,4 +241,3 @@ export default function RequestQuotationPage() {
     </div>
   );
 }
-    

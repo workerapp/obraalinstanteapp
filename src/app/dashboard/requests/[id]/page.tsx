@@ -11,12 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone, Paperclip } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
-import NextImage from 'next/image'; 
-import Link from 'next/link';
 
 const fetchRequestDetails = async (requestId: string | undefined, userId: string | undefined): Promise<QuotationRequest | null> => {
   if (!requestId || !userId) {
@@ -32,7 +30,6 @@ const fetchRequestDetails = async (requestId: string | undefined, userId: string
 
   const requestData = requestDocSnap.data() as Omit<QuotationRequest, 'id'>;
   
-  // Check permissions: user must be the one who created it, assigned to it, or an admin
   const userDocRef = doc(firestore, "users", userId);
   const userDocSnap = await getDoc(userDocRef);
   const userRole = userDocSnap.exists() ? userDocSnap.data()?.role : null;
@@ -46,7 +43,6 @@ const fetchRequestDetails = async (requestId: string | undefined, userId: string
     ...requestData,
     requestedAt: requestData.requestedAt instanceof Timestamp ? requestData.requestedAt : Timestamp.now(),
     updatedAt: requestData.updatedAt instanceof Timestamp ? requestData.updatedAt : Timestamp.now(),
-    attachmentUrls: requestData.attachmentUrls || [], 
   } as QuotationRequest;
 };
 
@@ -153,37 +149,6 @@ export default function RequestDetailPage() {
             <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">{request.problemDescription}</p>
           </div>
           
-          {request.attachmentUrls && request.attachmentUrls.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <h3 className="text-xl font-semibold mb-3 flex items-center">
-                  <Paperclip className="mr-2 text-accent h-5 w-5"/>Archivos Adjuntos
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {request.attachmentUrls.map((url, index) => (
-                    <Link key={index} href={url} target="_blank" rel="noopener noreferrer" className="group">
-                      <Card className="overflow-hidden hover:shadow-md transition-shadow">
-                        <CardContent className="p-0 aspect-square flex items-center justify-center bg-muted group-hover:bg-muted/80">
-                          {url.match(/\.(jpeg|jpg|gif|png|webp)(\?|$)/i) ? ( // Improved regex to handle query params
-                             <div className="relative w-full h-full">
-                              <NextImage src={url} alt={`Adjunto ${index + 1}`} layout="fill" objectFit="cover" />
-                            </div>
-                          ) : (
-                            <FileText className="h-10 w-10 text-muted-foreground" />
-                          )}
-                        </CardContent>
-                        <CardFooter className="p-1.5 bg-background border-t">
-                           <p className="text-xs text-center text-muted-foreground truncate w-full">Adjunto {index + 1}</p>
-                        </CardFooter>
-                      </Card>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
           <Separator />
           
           <div>
