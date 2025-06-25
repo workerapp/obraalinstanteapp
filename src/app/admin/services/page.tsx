@@ -77,7 +77,7 @@ async function fetchPlatformServices(): Promise<Service[]> {
 
 export default function AdminServicesPage() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -215,7 +215,15 @@ export default function AdminServicesPage() {
     }
   };
   
-  if (user?.role !== 'admin') {
+  if (authLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || user.role !== 'admin') {
      return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
@@ -267,7 +275,9 @@ export default function AdminServicesPage() {
                 <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre del Servicio</FormLabel><FormControl><Input placeholder="Ej: Servicios de Plomería" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="category" render={({ field }) => (<FormItem><FormLabel>Categoría</FormLabel><FormControl><Input placeholder="Ej: Reparación del Hogar" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descripción Corta</FormLabel><FormControl><Textarea placeholder="Describe brevemente el servicio." rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="commonTasks" render={({ field }) => (<FormItem><FormLabel>Tareas Comunes</FormLabel><FormControl><Textarea placeholder="Reparar grifos...&#10;Destapar desagües...&#10;Instalar calentadores..." rows={4} {...field} /></FormControl><FormDescription>Una tarea por línea.</FormDescription><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="commonTasks" render={({ field }) => (<FormItem><FormLabel>Tareas Comunes</FormLabel><FormControl><Textarea placeholder="Reparar grifos...
+Destapar desagües...
+Instalar calentadores..." rows={4} {...field} /></FormControl><FormDescription>Una tarea por línea.</FormDescription><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="iconName" render={({ field }) => (<FormItem><FormLabel>Nombre del Ícono (Lucide)</FormLabel><FormControl><Input placeholder="Ej: Wrench" {...field} /></FormControl><FormDescription>Busca el nombre en lucide.dev</FormDescription><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="imageUrl" render={({ field }) => (<FormItem><FormLabel>URL de Imagen (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/imagen.png" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="dataAiHint" render={({ field }) => (<FormItem><FormLabel>Pista para IA (para placeholders)</FormLabel><FormControl><Input placeholder="Ej: 'plomero trabajando'" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
