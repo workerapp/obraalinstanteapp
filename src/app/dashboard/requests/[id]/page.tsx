@@ -7,7 +7,7 @@ import { doc, getDoc, Timestamp, collection, query, orderBy, addDoc, serverTimes
 import { firestore } from '@/firebase/clientApp';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import type { QuotationRequest } from '@/types/quotationRequest';
-import type { RequestMessage } from '@/types/requestMessage'; // Importar nuevo tipo
+import type { RequestMessage } from '@/types/requestMessage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -60,13 +60,20 @@ const fetchRequestMessages = async (requestId: string | undefined): Promise<Requ
   if (!requestId) return [];
   
   const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
-  const q = query(messagesRef, orderBy("createdAt", "asc"));
+  const q = query(messagesRef);
   
   const querySnapshot = await getDocs(q);
   const messages: RequestMessage[] = [];
   querySnapshot.forEach((doc) => {
     const data = doc.data();
     messages.push({ id: doc.id, ...data } as RequestMessage);
+  });
+  
+  // Client-side sorting because orderBy() might require a composite index
+  messages.sort((a, b) => {
+    const aTime = a.createdAt?.toMillis() || 0;
+    const bTime = b.createdAt?.toMillis() || 0;
+    return aTime - bTime;
   });
 
   return messages;
@@ -95,7 +102,7 @@ export default function RequestDetailPage() {
     retry: 1, 
   });
   
-  const { data: messages, isLoading: messagesLoading } = useQuery<RequestMessage[], Error>({
+  const { data: messages, isLoading: messagesLoading, error: messagesError } = useQuery<RequestMessage[], Error>({
     queryKey: ['requestMessages', requestId],
     queryFn: () => fetchRequestMessages(requestId),
     enabled: !!requestId,
@@ -107,11 +114,7 @@ export default function RequestDetailPage() {
         return;
     }
     setIsSendingMessage(true);
-    messageForm.reset();
-
-    const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
     
-    // Optimistic update
     const newMessage: RequestMessage = {
         id: `temp-${Date.now()}`, // Temporary ID
         text: data.messageText,
@@ -120,6 +123,8 @@ export default function RequestDetailPage() {
         senderRole: typedUser.role as 'customer' | 'handyman' | 'admin' || 'customer',
         createdAt: Timestamp.now(), // Use local timestamp for immediate display
     };
+    
+    messageForm.reset();
 
     // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
     await queryClient.cancelQueries({ queryKey: ['requestMessages', requestId] });
@@ -131,15 +136,18 @@ export default function RequestDetailPage() {
     queryClient.setQueryData<RequestMessage[]>(['requestMessages', requestId], (old = []) => [...old, newMessage]);
 
     try {
-        // Send to Firestore
+        const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
         await addDoc(messagesRef, {
             text: newMessage.text,
             senderId: newMessage.senderId,
             senderName: newMessage.senderName,
             senderRole: newMessage.senderRole,
-            createdAt: serverTimestamp(), // Let the server set the final timestamp
+            createdAt: serverTimestamp(),
         });
-        // The UI is already updated, so no success toast is needed
+        toast({
+            title: "Mensaje Enviado",
+            description: "Tu mensaje ha sido registrado.",
+        });
     } catch (error: any) {
         // If the mutation fails, roll back the optimistic update
         queryClient.setQueryData(['requestMessages', requestId], previousMessages);
@@ -303,10 +311,23 @@ export default function RequestDetailPage() {
         <CardContent className="space-y-4">
           <div className="space-y-4 max-h-96 overflow-y-auto p-4 border rounded-md bg-muted/50">
              {messagesLoading && <div className="flex justify-center p-4"><Loader2 className="animate-spin text-primary"/></div>}
-             {!messagesLoading && messages && messages.length > 0 ? (
+             
+             {messagesError && (
+                <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Error al Cargar Mensajes</AlertTitle>
+                    <AlertDescription>
+                        No se pudo cargar el historial. Esto puede deberse a un problema de permisos en la base de datos (Reglas de Seguridad de Firestore).
+                        <br/>
+                        <small>Detalle: {messagesError.message}</small>
+                    </AlertDescription>
+                </Alert>
+             )}
+
+             {!messagesLoading && !messagesError && messages && messages.length > 0 ? (
                 messages.map(message => (
                     <div key={message.id} className={`flex flex-col ${message.senderId === typedUser?.uid ? 'items-end' : 'items-start'}`}>
-                        <div className={`max-w-md p-3 rounded-lg ${message.senderId === typedUser?.uid ? 'bg-primary text-primary-foreground' : 'bg-background'}`}>
+                        <div className={`max-w-md p-3 rounded-lg ${message.senderId === typedUser?.uid ? 'bg-primary text-primary-foreground' : 'bg-background shadow-sm'}`}>
                             <div className="flex items-center gap-2 mb-1">
                                 <span className="font-bold text-sm">{message.senderName}</span>
                                 <Badge variant="outline" className={`text-xs h-5 ${getRoleBadgeClass(message.senderRole)}`}>{message.senderRole}</Badge>
@@ -319,7 +340,9 @@ export default function RequestDetailPage() {
                     </div>
                 ))
              ) : (
-                !messagesLoading && <p className="text-sm text-center text-muted-foreground py-4">No hay mensajes en esta solicitud. ¡Sé el primero en enviar uno!</p>
+                !messagesLoading && !messagesError && (
+                    <p className="text-sm text-center text-muted-foreground py-4">No hay mensajes en esta solicitud. ¡Sé el primero en enviar uno!</p>
+                )
              )}
           </div>
           
