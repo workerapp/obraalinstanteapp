@@ -103,7 +103,7 @@ export default function RequestQuotationPage() {
     if (handymanNameFromQuery) defaultValues.handymanName = decodeURIComponent(handymanNameFromQuery);
     
     form.reset(defaultValues);
-  }, [typedUser, searchParams, form.reset]);
+  }, [typedUser, searchParams, form]); // form.reset was missing from dependency array
   
   const watchedServiceId = form.watch("serviceId");
 
