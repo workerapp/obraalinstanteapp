@@ -1,4 +1,3 @@
-
 // src/app/dashboard/handyman/page.tsx
 "use client";
 
@@ -37,7 +36,7 @@ import {
   CalendarPlus, 
   CheckCircle2,
   Eye,
-  CreditCard // Added for commission status
+  CreditCard
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -51,7 +50,6 @@ import { es } from 'date-fns/locale';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 
-// Tasa de comisión de la plataforma (ej. 10%)
 const PLATFORM_COMMISSION_RATE = 0.10;
 
 const fetchHandymanRequests = async (handymanUid: string | undefined): Promise<QuotationRequest[]> => {
@@ -112,7 +110,7 @@ export default function HandymanDashboardPage() {
   const { data: quotationRequests, isLoading: requestsLoading, error: requestsError } = useQuery<QuotationRequest[], Error>({
     queryKey: ['handymanRequests', typedUser?.uid],
     queryFn: () => fetchHandymanRequests(typedUser?.uid),
-    enabled: !!typedUser?.uid && typedUser.role === 'handyman', 
+    enabled: !!typedUser?.uid && typedUser.role === 'handyman' && typedUser.isApproved === true, 
   });
 
   const totalHandymanEarnings = quotationRequests
@@ -174,7 +172,6 @@ export default function HandymanDashboardPage() {
         updateData.commissionPaymentStatus = null;
       }
 
-
       await updateDoc(requestDocRef, updateData);
 
       toast({ title: "Estado Actualizado", description: `La solicitud ahora está "${newStatus}".` });
@@ -229,7 +226,6 @@ export default function HandymanDashboardPage() {
     }
   };
 
-
   if (authLoading) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
   }
@@ -240,6 +236,32 @@ export default function HandymanDashboardPage() {
      return <div className="text-center py-10"><h1 className="text-2xl font-bold">Acceso Denegado</h1><p className="text-muted-foreground">Esta sección es solo para operarios.</p><Button asChild className="mt-4"><Link href="/dashboard/customer">Ir al Panel de Cliente</Link></Button></div>;
   }
   
+  if (typedUser && typedUser.role === 'handyman' && typedUser.isApproved !== true) {
+    return (
+        <div className="max-w-2xl mx-auto py-10 text-center">
+            <Card className="shadow-lg">
+                <CardHeader>
+                    <UserCog className="mx-auto h-12 w-12 text-primary mb-4" />
+                    <CardTitle className="text-2xl font-headline">Cuenta en Revisión</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    <p className="text-muted-foreground">
+                        Gracias por registrarte. Tu perfil está siendo revisado por nuestro equipo para garantizar la calidad y seguridad de nuestra plataforma.
+                    </p>
+                    <p className="text-muted-foreground">
+                        Recibirás una notificación por correo electrónico una vez que tu cuenta sea aprobada. Mientras tanto, puedes ir completando tu perfil público. ¡Agradecemos tu paciencia!
+                    </p>
+                </CardContent>
+                <CardFooter>
+                    <Button asChild className="w-full">
+                        <Link href="/dashboard/handyman/profile">Completar Mi Perfil</Link>
+                    </Button>
+                </CardFooter>
+            </Card>
+        </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-primary/10 via-background to-background rounded-lg shadow-md">
@@ -249,161 +271,21 @@ export default function HandymanDashboardPage() {
       </section>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="shadow-lg">
-          <CardHeader><CardTitle className="flex items-center gap-2"><Briefcase className="text-accent"/>Mis Servicios</CardTitle><CardDescription>Gestiona los servicios que ofreces.</CardDescription></CardHeader>
-          <CardContent><p>Añade nuevos servicios, actualiza precios y establece tu disponibilidad.</p></CardContent>
-          <CardFooter><Button asChild variant="outline" className="w-full"><Link href="/dashboard/handyman/services">Gestionar Servicios</Link></Button></CardFooter>
-        </Card>
-         <Card className="shadow-lg">
-          <CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="text-green-500"/>Mis Ganancias (Neto)</CardTitle><CardDescription>Ganancias después de comisión de plataforma.</CardDescription></CardHeader>
-          <CardContent><p className="text-3xl font-bold text-primary">${totalHandymanEarnings.toLocaleString('es-CO')}</p><p className="text-xs text-muted-foreground">Basado en solicitudes completadas.</p></CardContent>
-           <CardFooter><Button asChild variant="outline" className="w-full" disabled><Link href="/dashboard/handyman/earnings">Ver Detalles (Próximamente)</Link></Button></CardFooter>
-        </Card>
-         <Card className="shadow-lg">
-          <CardHeader><CardTitle className="flex items-center gap-2"><Settings2 className="text-muted-foreground"/>Perfil y Configuración</CardTitle><CardDescription>Actualiza tu perfil público y cuenta.</CardDescription></CardHeader>
-          <CardContent><p>Mantén tu información actualizada para los clientes.</p></CardContent>
-          <CardFooter><Button asChild variant="outline" className="w-full"><Link href="/dashboard/handyman/profile">Editar Perfil</Link></Button></CardFooter>
-        </Card>
+        <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Briefcase className="text-accent"/>Mis Servicios</CardTitle><CardDescription>Gestiona los servicios que ofreces.</CardDescription></CardHeader><CardContent><p>Añade nuevos servicios, actualiza precios y establece tu disponibilidad.</p></CardContent><CardFooter><Button asChild variant="outline" className="w-full"><Link href="/dashboard/handyman/services">Gestionar Servicios</Link></Button></CardFooter></Card>
+        <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="text-green-500"/>Mis Ganancias (Neto)</CardTitle><CardDescription>Ganancias después de comisión de plataforma.</CardDescription></CardHeader><CardContent><p className="text-3xl font-bold text-primary">${totalHandymanEarnings.toLocaleString('es-CO')}</p><p className="text-xs text-muted-foreground">Basado en solicitudes completadas.</p></CardContent><CardFooter><Button asChild variant="outline" className="w-full" disabled><Link href="/dashboard/handyman/earnings">Ver Detalles (Próximamente)</Link></Button></CardFooter></Card>
+        <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Settings2 className="text-muted-foreground"/>Perfil y Configuración</CardTitle><CardDescription>Actualiza tu perfil público y cuenta.</CardDescription></CardHeader><CardContent><p>Mantén tu información actualizada para los clientes.</p></CardContent><CardFooter><Button asChild variant="outline" className="w-full"><Link href="/dashboard/handyman/profile">Editar Perfil</Link></Button></CardFooter></Card>
       </div>
 
-      <Dialog open={isQuoteDialogOpen} onOpenChange={setIsQuoteDialogOpen}>
-        <DialogContent className="sm:max-w-[525px]">
-          <DialogHeader>
-            <DialogTitle>Realizar Cotización para "{requestBeingQuoted?.serviceName}"</DialogTitle>
-            <DialogDescription>
-              Ingresa el monto y detalles para la solicitud de {requestBeingQuoted?.contactFullName}.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...quoteForm}>
-            <form onSubmit={quoteForm.handleSubmit(handleQuoteSubmit)} className="space-y-4 py-4">
-              <FormField
-                control={quoteForm.control}
-                name="quotedAmount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Monto Cotizado (COP)</FormLabel>
-                    <FormControl><Input type="number" placeholder="Ej: 150000" {...field} value={field.value ?? ''} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={quoteForm.control}
-                name="quotationDetails"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Detalles Adicionales (Opcional)</FormLabel>
-                    <FormControl><Textarea placeholder="Ej: Incluye materiales y mano de obra. Válido por 15 días." rows={3} {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter className="pt-4">
-                <DialogClose asChild><Button type="button" variant="outline" onClick={() => setIsQuoteDialogOpen(false)}>Cancelar</Button></DialogClose>
-                <Button type="submit" disabled={isSubmittingQuote}>
-                  {isSubmittingQuote ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando...</> : "Enviar Cotización"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
+      <Dialog open={isQuoteDialogOpen} onOpenChange={setIsQuoteDialogOpen}><DialogContent className="sm:max-w-[525px]"><DialogHeader><DialogTitle>Realizar Cotización para "{requestBeingQuoted?.serviceName}"</DialogTitle><DialogDescription>Ingresa el monto y detalles para la solicitud de {requestBeingQuoted?.contactFullName}.</DialogDescription></DialogHeader><Form {...quoteForm}><form onSubmit={quoteForm.handleSubmit(handleQuoteSubmit)} className="space-y-4 py-4"><FormField control={quoteForm.control} name="quotedAmount" render={({ field }) => (<FormItem><FormLabel>Monto Cotizado (COP)</FormLabel><FormControl><Input type="number" placeholder="Ej: 150000" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} /><FormField control={quoteForm.control} name="quotationDetails" render={({ field }) => (<FormItem><FormLabel>Detalles Adicionales (Opcional)</FormLabel><FormControl><Textarea placeholder="Ej: Incluye materiales y mano de obra. Válido por 15 días." rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} /><DialogFooter className="pt-4"><DialogClose asChild><Button type="button" variant="outline" onClick={() => setIsQuoteDialogOpen(false)}>Cancelar</Button></DialogClose><Button type="submit" disabled={isSubmittingQuote}>{isSubmittingQuote ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando...</> : "Enviar Cotización"}</Button></DialogFooter></form></Form></DialogContent></Dialog>
 
       <Card className="shadow-xl">
         <CardHeader><CardTitle className="flex items-center gap-2"><ListChecks className="text-primary" /> Solicitudes de Servicio Recibidas</CardTitle><CardDescription>Gestiona tu agenda y responde a nuevas solicitudes.</CardDescription></CardHeader>
         <CardContent className="space-y-4">
           {requestsLoading && <div className="flex justify-center py-4"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
-          {requestsError && ( 
-             <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error al Cargar Solicitudes</AlertTitle>
-              <AlertDescription>
-                {requestsError.message.toLowerCase().includes('index') || requestsError.message.toLowerCase().includes('failed-precondition') ? 
-                  (<>Firestore necesita un índice para esta consulta. Revisa la consola para un enlace y créalo en Firebase.<br /><small>Detalle: {requestsError.message}</small></>) : 
-                  (<>No pudimos cargar tus solicitudes. Inténtalo más tarde.<br /><small>Detalle: {requestsError.message}</small></>)
-                }
-              </AlertDescription>
-            </Alert>
-          )}
-          {!requestsLoading && !requestsError && quotationRequests && quotationRequests.length > 0 ? quotationRequests.map((req, index) => (
-            <div key={req.id}>
-              <div className="p-4 border rounded-md hover:shadow-md transition-shadow bg-background">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-2">
-                  <div>
-                    <h3 className="font-semibold">{req.serviceName}</h3>
-                    <p className="text-sm text-muted-foreground">Cliente: {req.contactFullName} ({req.contactEmail})</p>
-                    <p className="text-sm text-muted-foreground">Solicitado: {req.requestedAt?.toDate ? format(req.requestedAt.toDate(), 'PPPp', { locale: es }) : 'Fecha no disp.'}</p>
-                    <p className="text-sm text-muted-foreground truncate max-w-md" title={req.problemDescription}>Problema: {req.problemDescription}</p>
-                    
-                    {req.status === 'Completada' && req.quotedAmount != null && (
-                      <div className="text-xs mt-1 space-y-0.5">
-                        <p className="text-purple-600">Cotizado: ${req.quotedAmount.toLocaleString('es-CO')}</p>
-                        <p className="text-red-600">Comisión Plataforma ({((req.platformCommissionRate || 0) * 100).toFixed(0)}%): -${(req.platformFeeCalculated || 0).toLocaleString('es-CO')}</p>
-                        <p className="text-green-700 font-medium">Tu Ganancia: ${(req.handymanEarnings || 0).toLocaleString('es-CO')}</p>
-                        {req.platformFeeCalculated && req.platformFeeCalculated > 0 && (
-                           <div className="flex items-center gap-1.5 mt-1">
-                               <CreditCard className="h-3 w-3 text-muted-foreground" />
-                               <span className="text-xs text-muted-foreground">Comisión:</span>
-                               <Badge 
-                                variant={req.commissionPaymentStatus === "Pagada" ? "default" : "secondary"}
-                                className={`text-xs ${getCommissionStatusColor(req.commissionPaymentStatus)}`}
-                               >
-                                {req.commissionPaymentStatus || 'N/A'}
-                               </Badge>
-                           </div>
-                        )}
-                      </div>
-                    )}
-                    {(req.status === 'Cotizada' || req.status === 'Programada') && req.quotedAmount != null && (
-                        <p className="text-sm text-purple-600 font-medium mt-1">Monto Cotizado: ${req.quotedAmount.toLocaleString('es-CO')} {req.quotedCurrency || 'COP'}</p>
-                    )}
-                  </div>
-                  <Badge className={`mt-2 sm:mt-0 self-start sm:self-end ${getStatusColorClass(req.status)}`}>{req.status}</Badge>
-                </div>
-                 <div className="mt-3 flex flex-wrap gap-2 items-center">
-                    <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:text-accent/80">
-                        <Link href={`/dashboard/requests/${req.id}`}><Eye className="mr-1.5 h-4 w-4" />Ver Detalles</Link>
-                    </Button>
-                    
-                    {req.status === 'Enviada' && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-orange-600 hover:text-orange-700" onClick={() => handleChangeRequestStatus(req.id, 'Revisando')} disabled={isUpdatingRequestId === req.id}>
-                          {isUpdatingRequestId === req.id && req.status === 'Enviada' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Edit3 className="mr-1.5 h-4 w-4" />}Marcar como Revisando
-                        </Button>
-                    }
-                     {(req.status === 'Enviada' || req.status === 'Revisando') && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-destructive hover:text-destructive/70" onClick={() => handleChangeRequestStatus(req.id, 'Cancelada')} disabled={isUpdatingRequestId === req.id}>
-                          {isUpdatingRequestId === req.id && (req.status === 'Enviada' || req.status === 'Revisando') ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <XCircle className="mr-1.5 h-4 w-4" />}Rechazar Solicitud
-                        </Button>
-                    }
-                     {req.status === 'Revisando' &&
-                        <Button variant="link" size="sm" className="p-0 h-auto text-purple-600 hover:text-purple-700" onClick={() => openQuoteDialog(req)} disabled={isUpdatingRequestId === req.id || isQuoteDialogOpen}>
-                           {isUpdatingRequestId === req.id && req.status === 'Revisando' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileSignature className="mr-1.5 h-4 w-4" />}Realizar Cotización
-                        </Button>
-                    }
-                     {req.status === 'Cotizada' && 
-                        <Button variant="link" size="sm" className="p-0 h-auto text-blue-600 hover:text-blue-700" onClick={() => handleChangeRequestStatus(req.id, 'Programada')} disabled={isUpdatingRequestId === req.id}>
-                          {isUpdatingRequestId === req.id && req.status === 'Cotizada' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-1.5 h-4 w-4" />}Marcar como Programada
-                        </Button>
-                    }
-                     {req.status === 'Programada' &&
-                        <Button variant="link" size="sm" className="p-0 h-auto text-green-700 hover:text-green-800" onClick={() => handleChangeRequestStatus(req.id, 'Completada')} disabled={isUpdatingRequestId === req.id}>
-                          {isUpdatingRequestId === req.id && req.status === 'Programada' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-4 w-4" />}Marcar como Completada
-                        </Button>
-                    }
-                </div>
-              </div>
-              {index < quotationRequests.length - 1 && <Separator className="my-4" />}
-            </div>
-          )) : (
-            !requestsLoading && !requestsError && <p className="text-muted-foreground text-center py-6">No tienes solicitudes activas o asignadas.</p>
-          )}
-        </CardContent>
-         <CardFooter className="justify-center">
-            <Button variant="outline" onClick={() => console.log('Ver historial completo')} disabled><CalendarCheck className="mr-2 h-4 w-4"/>Ver Historial (Próximamente)</Button>
-        </CardFooter>
+          {requestsError && (<Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error al Cargar Solicitudes</AlertTitle><AlertDescription>{requestsError.message.toLowerCase().includes('index') || requestsError.message.toLowerCase().includes('failed-precondition') ? (<>Firestore necesita un índice para esta consulta. Revisa la consola para un enlace y créalo en Firebase.<br /><small>Detalle: {requestsError.message}</small></>) : (<>No pudimos cargar tus solicitudes. Inténtalo más tarde.<br /><small>Detalle: {requestsError.message}</small></>)}</AlertDescription></Alert>)}
+          {!requestsLoading && !requestsError && quotationRequests && quotationRequests.length > 0 ? quotationRequests.map((req, index) => (<div key={req.id}><div className="p-4 border rounded-md hover:shadow-md transition-shadow bg-background"><div className="flex flex-col sm:flex-row justify-between sm:items-start gap-2"><div><h3 className="font-semibold">{req.serviceName}</h3><p className="text-sm text-muted-foreground">Cliente: {req.contactFullName} ({req.contactEmail})</p><p className="text-sm text-muted-foreground">Solicitado: {req.requestedAt?.toDate ? format(req.requestedAt.toDate(), 'PPPp', { locale: es }) : 'Fecha no disp.'}</p><p className="text-sm text-muted-foreground truncate max-w-md" title={req.problemDescription}>Problema: {req.problemDescription}</p>{req.status === 'Completada' && req.quotedAmount != null && (<div className="text-xs mt-1 space-y-0.5"><p className="text-purple-600">Cotizado: ${req.quotedAmount.toLocaleString('es-CO')}</p><p className="text-red-600">Comisión Plataforma ({((req.platformCommissionRate || 0) * 100).toFixed(0)}%): -${(req.platformFeeCalculated || 0).toLocaleString('es-CO')}</p><p className="text-green-700 font-medium">Tu Ganancia: ${(req.handymanEarnings || 0).toLocaleString('es-CO')}</p>{req.platformFeeCalculated && req.platformFeeCalculated > 0 && (<div className="flex items-center gap-1.5 mt-1"><CreditCard className="h-3 w-3 text-muted-foreground" /><span className="text-xs text-muted-foreground">Comisión:</span><Badge variant={req.commissionPaymentStatus === "Pagada" ? "default" : "secondary"} className={`text-xs ${getCommissionStatusColor(req.commissionPaymentStatus)}`}>{req.commissionPaymentStatus || 'N/A'}</Badge></div>)}</div>)}{(req.status === 'Cotizada' || req.status === 'Programada') && req.quotedAmount != null && (<p className="text-sm text-purple-600 font-medium mt-1">Monto Cotizado: ${req.quotedAmount.toLocaleString('es-CO')} {req.quotedCurrency || 'COP'}</p>)}</div><Badge className={`mt-2 sm:mt-0 self-start sm:self-end ${getStatusColorClass(req.status)}`}>{req.status}</Badge></div><div className="mt-3 flex flex-wrap gap-2 items-center"><Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:text-accent/80"><Link href={`/dashboard/requests/${req.id}`}><Eye className="mr-1.5 h-4 w-4" />Ver Detalles</Link></Button>{req.status === 'Enviada' && <Button variant="link" size="sm" className="p-0 h-auto text-orange-600 hover:text-orange-700" onClick={() => handleChangeRequestStatus(req.id, 'Revisando')} disabled={isUpdatingRequestId === req.id}>{isUpdatingRequestId === req.id && req.status === 'Enviada' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Edit3 className="mr-1.5 h-4 w-4" />}Marcar como Revisando</Button>}{(req.status === 'Enviada' || req.status === 'Revisando') && <Button variant="link" size="sm" className="p-0 h-auto text-destructive hover:text-destructive/70" onClick={() => handleChangeRequestStatus(req.id, 'Cancelada')} disabled={isUpdatingRequestId === req.id}>{isUpdatingRequestId === req.id && (req.status === 'Enviada' || req.status === 'Revisando') ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <XCircle className="mr-1.5 h-4 w-4" />}Rechazar Solicitud</Button>}{req.status === 'Revisando' &&<Button variant="link" size="sm" className="p-0 h-auto text-purple-600 hover:text-purple-700" onClick={() => openQuoteDialog(req)} disabled={isUpdatingRequestId === req.id || isQuoteDialogOpen}>{isUpdatingRequestId === req.id && req.status === 'Revisando' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileSignature className="mr-1.5 h-4 w-4" />}Realizar Cotización</Button>}{req.status === 'Cotizada' && <Button variant="link" size="sm" className="p-0 h-auto text-blue-600 hover:text-blue-700" onClick={() => handleChangeRequestStatus(req.id, 'Programada')} disabled={isUpdatingRequestId === req.id}>{isUpdatingRequestId === req.id && req.status === 'Cotizada' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <CalendarPlus className="mr-1.5 h-4 w-4" />}Marcar como Programada</Button>}{req.status === 'Programada' &&<Button variant="link" size="sm" className="p-0 h-auto text-green-700 hover:text-green-800" onClick={() => handleChangeRequestStatus(req.id, 'Completada')} disabled={isUpdatingRequestId === req.id}>{isUpdatingRequestId === req.id && req.status === 'Programada' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-4 w-4" />}Marcar como Completada</Button>}</div></div>{index < quotationRequests.length - 1 && <Separator className="my-4" />}</div>)) : (!requestsLoading && !requestsError && <p className="text-muted-foreground text-center py-6">No tienes solicitudes activas o asignadas.</p>)}</CardContent>
+         <CardFooter className="justify-center"><Button variant="outline" onClick={() => console.log('Ver historial completo')} disabled><CalendarCheck className="mr-2 h-4 w-4"/>Ver Historial (Próximamente)</Button></CardFooter>
       </Card>
     </div>
   );
 }
-    

@@ -1,4 +1,3 @@
-
 // src/types/handyman.ts
 export interface Handyman {
   id: string; // Firebase UID
@@ -12,6 +11,6 @@ export interface Handyman {
   memberSince?: string; 
   dataAiHint?: string;
   phone?: string;
-  aboutMe?: string; // Nueva descripción detallada sobre el operario
+  aboutMe?: string;
+  isApproved?: boolean; // Estado de aprobación del operario
 }
-

@@ -1,4 +1,3 @@
-
 // src/app/handymen/page.tsx
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
@@ -8,7 +7,6 @@ import { Users, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Helper function to map Firestore user data to Handyman type
-// Similar to the one in [id]/page.tsx but adapted for listing
 const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman => {
   let memberSince = 'Fecha de registro no disponible';
   if (userData.createdAt) {
@@ -33,33 +31,34 @@ const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman =>
   }
 
   return {
-    id: uid, // Crucial: use the document ID (Firebase UID)
+    id: uid,
     name: userData.displayName || `Operario ${uid.substring(0, 6)}`,
     tagline: userData.tagline || 'Operario profesional y confiable',
-    aboutMe: userData.aboutMe || undefined, // Map the new aboutMe field
+    aboutMe: userData.aboutMe || undefined,
     skills: Array.isArray(userData.skills) && userData.skills.length > 0 ? userData.skills : ['Servicios Generales'],
-    rating: typeof userData.rating === 'number' ? userData.rating : 4.0, // Default or fetched
-    reviewsCount: typeof userData.reviewsCount === 'number' ? userData.reviewsCount : 0, // Default or fetched
+    rating: typeof userData.rating === 'number' ? userData.rating : 4.0,
+    reviewsCount: typeof userData.reviewsCount === 'number' ? userData.reviewsCount : 0,
     imageUrl: userData.photoURL || userData.imageUrl || 'https://placehold.co/300x300.png',
     dataAiHint: 'persona profesional',
     location: userData.location || 'Ubicación no registrada',
     memberSince: memberSince,
     phone: userData.phone || undefined,
+    isApproved: userData.isApproved || false,
   };
 };
 
 async function getHandymen(): Promise<{ handymen: Handyman[]; error?: string }> {
   try {
     const usersRef = collection(firestore, "users");
-    const q = query(usersRef, where("role", "==", "handyman"));
+    // Solo mostrar operarios que estén aprobados por el administrador
+    const q = query(usersRef, where("role", "==", "handyman"), where("isApproved", "==", true));
     
-    console.log("Fetching handymen from Firestore...");
+    console.log("Fetching approved handymen from Firestore...");
     const querySnapshot = await getDocs(q);
-    console.log(`Found ${querySnapshot.docs.length} handymen documents.`);
+    console.log(`Found ${querySnapshot.docs.length} approved handymen documents.`);
     
     const handymenList: Handyman[] = [];
     querySnapshot.forEach((doc) => {
-      console.log(`Mapping document ${doc.id}`);
       handymenList.push(mapFirestoreUserToHandymanList(doc.id, doc.data()));
     });
     
@@ -67,10 +66,10 @@ async function getHandymen(): Promise<{ handymen: Handyman[]; error?: string }> 
   } catch (error: any) {
     console.error("Error fetching handymen from Firestore:", error);
     let errorMessage = "No se pudieron cargar los operarios. Intenta de nuevo más tarde.";
-    if (error.code === 'permission-denied' || (error.message && error.message.toLowerCase().includes('permission-denied'))) {
-      errorMessage = "Error de permisos al cargar operarios. Verifica las reglas de seguridad de Firestore para la colección 'users'. Es posible que necesites permitir la operación 'list' o 'read' bajo ciertas condiciones.";
-    } else if (error.code === 'failed-precondition' || (error.message && error.message.toLowerCase().includes('index'))) {
-      errorMessage = "Firestore requiere un índice para esta consulta. Revisa la consola del servidor (donde ejecutas 'npm run dev') para ver un enlace que te permitirá crear el índice necesario.";
+    if (error.code === 'permission-denied') {
+      errorMessage = "Error de permisos al cargar operarios. Verifica las reglas de seguridad de Firestore.";
+    } else if (error.code === 'failed-precondition') {
+      errorMessage = "Firestore requiere un índice para esta consulta. Revisa la consola del servidor para un enlace que te permitirá crear el índice necesario (rol 'handyman' y 'isApproved').";
     } else {
       errorMessage = `Error al cargar operarios: ${error.message}`;
     }
@@ -107,18 +106,16 @@ export default async function HandymenPage() {
         </div>
       ) : (
         !error && <p className="text-center text-muted-foreground text-lg py-10">
-          No hay operarios registrados con el rol 'handyman' en este momento, o no se pudieron cargar.
+          No hay operarios aprobados disponibles en este momento.
         </p>
       )}
     </div>
   );
 }
 
-// Metadata for the page (optional, can be dynamic if needed)
 export async function generateMetadata() {
   return {
     title: "Encuentra un Operario | Obra al Instante",
     description: "Explora nuestro directorio de operarios calificados.",
   };
 }
-
