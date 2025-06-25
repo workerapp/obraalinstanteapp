@@ -18,6 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 
 const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
@@ -258,7 +259,13 @@ export default function AdminOverviewPage() {
               <TableBody>
                 {validCompletedRequests.map((req) => (
                   <TableRow key={req.id}>
-                    <TableCell className="font-medium">{req.serviceName}</TableCell>
+                    <TableCell className="font-medium">
+                      <Button variant="link" asChild className="p-0 h-auto font-medium">
+                        <Link href={`/dashboard/requests/${req.id}`}>
+                          {req.serviceName}
+                        </Link>
+                      </Button>
+                    </TableCell>
                     <TableCell>{req.handymanName || 'N/A'}</TableCell>
                     <TableCell>{req.contactFullName}</TableCell>
                     <TableCell className="text-right">${(req.quotedAmount || 0).toLocaleString('es-CO')}</TableCell>
