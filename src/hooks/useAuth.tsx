@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState, useEffect, createContext, useContext, type PropsWithChildren } from 'react';
 import { type User as FirebaseUser, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import { auth, firestore } from '@/firebase/clientApp';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, onSnapshot } from 'firebase/firestore'; // Import onSnapshot
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -34,28 +34,50 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubscribeFromUserDoc: (() => void) | null = null;
+
+    const unsubscribeFromAuthState = onAuthStateChanged(auth, (firebaseUser) => {
+      if (unsubscribeFromUserDoc) {
+        unsubscribeFromUserDoc();
+        unsubscribeFromUserDoc = null;
+      }
+
       if (firebaseUser) {
+        setLoading(true);
         const userDocRef = doc(firestore, "users", firebaseUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        if (userDocSnap.exists()) {
-          const userData = userDocSnap.data();
-          setUser({
-            ...firebaseUser,
-            displayName: userData.displayName || firebaseUser.displayName,
-            photoURL: userData.photoURL || firebaseUser.photoURL,
-            role: userData.role,
-            isApproved: userData.isApproved, // Cargar el estado de aprobación
-          });
-        } else {
-          setUser(firebaseUser as AppUser); 
-        }
+        
+        unsubscribeFromUserDoc = onSnapshot(userDocRef, (userDocSnap) => {
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data();
+            setUser({
+              ...firebaseUser,
+              displayName: userData.displayName || firebaseUser.displayName,
+              photoURL: userData.photoURL || firebaseUser.photoURL,
+              role: userData.role,
+              isApproved: userData.isApproved,
+            });
+          } else {
+            setUser(firebaseUser as AppUser);
+          }
+          setLoading(false);
+        }, (error) => {
+          console.error("Error listening to user document:", error);
+          setUser(null);
+          setLoading(false);
+        });
+
       } else {
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribeFromAuthState();
+      if (unsubscribeFromUserDoc) {
+        unsubscribeFromUserDoc();
+      }
+    };
   }, []);
 
   const signUp = async (email: string, pass: string, fullName: string, role: string): Promise<AppUser | null> => {
@@ -96,20 +118,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       toast({ title: "¡Cuenta Creada!", description: successMessage });
       
-      const appUser: AppUser = {
-        ...userCredential.user,
-        displayName: fullName,
-        photoURL: userCredential.user.photoURL,
-        role: finalRole,
-        isApproved: userDocData.isApproved,
-      };
-      setUser(appUser);
+      // No need to set user here, the onSnapshot listener will do it.
       
       const redirectPath = finalRole === 'admin' ? '/admin/overview'
                          : finalRole === 'handyman' ? '/dashboard/handyman'
                          : '/dashboard/customer';
       router.push(redirectPath);
-      return appUser;
+      // The user object from the listener will be the most up-to-date
+      const userDoc = await getDoc(userDocRef);
+      return { ...userCredential.user, ...userDoc.data() } as AppUser;
+
     } catch (error: any) {
       console.error("Error al registrarse:", error);
       const errorMessage = error.code === 'auth/email-already-in-use'
@@ -118,7 +136,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       toast({ title: "Falló el Registro", description: errorMessage, variant: "destructive" });
       return null;
     } finally {
-      setLoading(false);
+      // setLoading(false) is handled by the onSnapshot listener
     }
   };
 
@@ -129,31 +147,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const firebaseUser = userCredential.user;
       
       const userDocRef = doc(firestore, "users", firebaseUser.uid);
-      const userDocSnap = await getDoc(userDocRef);
+      const userDocSnap = await getDoc(userDocRef); // getDoc is fine here, as onSnapshot will take over.
       let userRole = 'customer';
-      let userDisplayName = firebaseUser.displayName;
-      let userPhotoURL = firebaseUser.photoURL;
-      let isApproved: boolean | undefined = undefined;
-
+      
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
         userRole = userData.role || 'customer';
-        userDisplayName = userData.displayName || firebaseUser.displayName;
-        userPhotoURL = userData.photoURL || firebaseUser.photoURL;
-        isApproved = userData.isApproved;
       }
       
-      const isUserAdmin = email === ADMIN_EMAIL;
-      const finalRole = isUserAdmin ? 'admin' : userRole;
-      
-      const appUser: AppUser = {
-        ...firebaseUser,
-        displayName: userDisplayName,
-        photoURL: userPhotoURL,
-        role: finalRole,
-        isApproved: finalRole === 'handyman' ? isApproved : (finalRole === 'admin' ? true : undefined),
-      };
-      setUser(appUser);
+      const finalRole = email === ADMIN_EMAIL ? 'admin' : userRole;
       
       toast({ title: "¡Sesión Iniciada!", description: "¡Bienvenido/a de nuevo!" });
       
@@ -161,14 +163,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
                          : finalRole === 'handyman' ? '/dashboard/handyman'
                          : '/dashboard/customer';
       router.push(redirectPath);
-      return appUser;
+      
+      const userDoc = await getDoc(userDocRef);
+      return { ...firebaseUser, ...userDoc.data() } as AppUser;
+
     } catch (error: any) {
       console.error("Error al iniciar sesión:", error);
       toast({ title: "Falló el Inicio de Sesión", description: "Credenciales inválidas o error inesperado.", variant: "destructive" });
-      return null;
-    } finally {
+      setUser(null); // Ensure user is null on failure
       setLoading(false);
-    }
+      return null;
+    } 
+    // finally is removed because setLoading(false) is now handled by the snapshot listener
   };
 
   const signOutUser = async () => {
@@ -176,13 +182,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     try {
       await signOut(auth);
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
-      setUser(null);
+      // setUser(null) and setLoading(false) are handled by the onAuthStateChanged listener
       router.push('/'); 
     } catch (error: any) {
       console.error("Error al cerrar sesión:", error);
       toast({ title: "Falló el Cierre de Sesión", description: error.message || "Por favor, inténtalo de nuevo.", variant: "destructive" });
-    } finally {
-      setLoading(false);
+      setLoading(false); // Set loading to false on error
     }
   };
   
