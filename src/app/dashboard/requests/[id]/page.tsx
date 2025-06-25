@@ -2,21 +2,34 @@
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { doc, getDoc, Timestamp, collection, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '@/firebase/clientApp';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import type { QuotationRequest } from '@/types/quotationRequest';
+import type { RequestMessage } from '@/types/requestMessage'; // Importar nuevo tipo
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone, Send, History } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useToast } from '@/hooks/use-toast';
 
-const fetchRequestDetails = async (requestId: string | undefined, userId: string | undefined): Promise<QuotationRequest | null> => {
+const messageFormSchema = z.object({
+  messageText: z.string().min(1, "El mensaje no puede estar vacío.").max(1000, "El mensaje no puede exceder los 1000 caracteres."),
+});
+type MessageFormData = z.infer<typeof messageFormSchema>;
+
+
+const fetchRequestDetails = async (requestId: string | undefined, userId: string | undefined, userRole: string | undefined): Promise<QuotationRequest | null> => {
   if (!requestId || !userId) {
     throw new Error("ID de solicitud o ID de usuario no proporcionado.");
   }
@@ -30,10 +43,6 @@ const fetchRequestDetails = async (requestId: string | undefined, userId: string
 
   const requestData = requestDocSnap.data() as Omit<QuotationRequest, 'id'>;
   
-  const userDocRef = doc(firestore, "users", userId);
-  const userDocSnap = await getDoc(userDocRef);
-  const userRole = userDocSnap.exists() ? userDocSnap.data()?.role : null;
-
   if (requestData.userId !== userId && requestData.handymanId !== userId && userRole !== 'admin') {
     throw new Error("No tienes permiso para ver esta solicitud.");
   }
@@ -46,21 +55,76 @@ const fetchRequestDetails = async (requestId: string | undefined, userId: string
   } as QuotationRequest;
 };
 
+const fetchRequestMessages = async (requestId: string | undefined): Promise<RequestMessage[]> => {
+  if (!requestId) return [];
+  
+  const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
+  const q = query(messagesRef, orderBy("createdAt", "asc"));
+  
+  const querySnapshot = await getDocs(q);
+  const messages: RequestMessage[] = [];
+  querySnapshot.forEach((doc) => {
+    messages.push({ id: doc.id, ...doc.data() } as RequestMessage);
+  });
+  return messages;
+};
+
+
 export default function RequestDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const requestId = typeof params.id === 'string' ? params.id : undefined;
   const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
 
+  const messageForm = useForm<MessageFormData>({
+    resolver: zodResolver(messageFormSchema),
+    defaultValues: { messageText: "" },
+  });
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+
   const { data: request, isLoading, error, isError } = useQuery<QuotationRequest | null, Error>({
     queryKey: ['quotationRequestDetails', requestId, typedUser?.uid],
-    queryFn: () => fetchRequestDetails(requestId, typedUser?.uid),
+    queryFn: () => fetchRequestDetails(requestId, typedUser?.uid, typedUser?.role),
     enabled: !!requestId && !!typedUser?.uid,
     retry: 1, 
   });
+  
+  const { data: messages, isLoading: messagesLoading } = useQuery<RequestMessage[], Error>({
+    queryKey: ['requestMessages', requestId],
+    queryFn: () => fetchRequestMessages(requestId),
+    enabled: !!requestId,
+  });
 
-  const getStatusColorClass = (status: QuotationRequest['status']): string => {
+  const onMessageSubmit = async (data: MessageFormData) => {
+    if (!typedUser || !requestId) {
+        toast({ title: "Error", description: "No se puede enviar el mensaje. Usuario o solicitud no identificados.", variant: "destructive"});
+        return;
+    }
+    setIsSendingMessage(true);
+    try {
+        const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
+        await addDoc(messagesRef, {
+            text: data.messageText,
+            senderId: typedUser.uid,
+            senderName: typedUser.displayName || "Usuario Anónimo",
+            senderRole: typedUser.role || "customer",
+            createdAt: serverTimestamp(),
+        });
+        messageForm.reset();
+        queryClient.invalidateQueries({ queryKey: ['requestMessages', requestId] });
+    } catch (error: any) {
+        console.error("Error al enviar mensaje:", error);
+        toast({ title: "Error", description: "No se pudo enviar tu mensaje.", variant: "destructive"});
+    } finally {
+        setIsSendingMessage(false);
+    }
+  };
+
+  const getStatusColorClass = (status?: QuotationRequest['status']): string => {
+    if (!status) return 'bg-gray-500 text-white';
     switch (status) {
      case 'Completada': return 'bg-green-600 text-white';
      case 'Programada': return 'bg-blue-500 text-white';
@@ -71,6 +135,12 @@ export default function RequestDetailPage() {
      default: return 'bg-gray-500 text-white';
    }
  };
+ 
+  const getRoleBadgeClass = (role?: string) => {
+    if (role === 'admin') return 'bg-destructive text-destructive-foreground';
+    if (role === 'handyman') return 'bg-primary text-primary-foreground';
+    return 'bg-secondary text-secondary-foreground';
+  };
 
   if (authLoading || (isLoading && !isError)) {
     return (
@@ -119,15 +189,18 @@ export default function RequestDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto py-8 space-y-6">
-      <Button variant="outline" onClick={() => router.back()} className="mb-4">
-        <ArrowLeft className="mr-2 h-4 w-4" /> Volver al Panel
-      </Button>
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-headline font-bold text-primary">Detalles de la Solicitud</h2>
+        <Button variant="outline" onClick={() => router.back()} className="mb-4">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Volver al Panel
+        </Button>
+      </div>
 
       <Card className="shadow-xl">
         <CardHeader>
           <div className="flex justify-between items-start">
-            <CardTitle className="text-3xl font-headline text-primary flex items-center">
-              <FileText className="mr-3 h-8 w-8" /> Detalles de la Solicitud
+            <CardTitle className="text-2xl font-headline text-primary flex items-center">
+              <FileText className="mr-3 h-8 w-8" /> {request.serviceName}
             </CardTitle>
             <Badge className={`text-lg px-4 py-1.5 ${getStatusColorClass(request.status)}`}>
               {request.status}
@@ -189,11 +262,67 @@ export default function RequestDetailPage() {
               </div>
             </>
           )}
-          
         </CardContent>
-        <CardFooter className="border-t pt-6">
-            <p className="text-xs text-muted-foreground text-center w-full">Si necesitas realizar alguna acción sobre esta solicitud (ej. cancelar, aceptar cotización), por favor hazlo desde tu panel principal.</p>
-        </CardFooter>
+      </Card>
+      
+      {/* Messaging Section */}
+      <Card className="shadow-xl">
+        <CardHeader>
+            <CardTitle className="flex items-center"><MessageSquare className="mr-3 h-6 w-6 text-primary"/> Historial de Mensajes</CardTitle>
+            <CardDescription>Comunícate con el cliente o el operario aquí.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-4 max-h-96 overflow-y-auto p-4 border rounded-md bg-muted/50">
+             {messagesLoading && <div className="flex justify-center p-4"><Loader2 className="animate-spin text-primary"/></div>}
+             {!messagesLoading && messages && messages.length > 0 ? (
+                messages.map(message => (
+                    <div key={message.id} className={`flex flex-col ${message.senderId === typedUser?.uid ? 'items-end' : 'items-start'}`}>
+                        <div className={`max-w-md p-3 rounded-lg ${message.senderId === typedUser?.uid ? 'bg-primary text-primary-foreground' : 'bg-background'}`}>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="font-bold text-sm">{message.senderName}</span>
+                                <Badge variant="outline" className={`text-xs h-5 ${getRoleBadgeClass(message.senderRole)}`}>{message.senderRole}</Badge>
+                            </div>
+                            <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                            <p className="text-xs opacity-70 mt-2 text-right">
+                                {message.createdAt instanceof Timestamp ? format(message.createdAt.toDate(), 'Pp', { locale: es }) : 'Enviando...'}
+                            </p>
+                        </div>
+                    </div>
+                ))
+             ) : (
+                !messagesLoading && <p className="text-sm text-center text-muted-foreground py-4">No hay mensajes en esta solicitud. ¡Sé el primero en enviar uno!</p>
+             )}
+          </div>
+          
+          <Separator/>
+
+          <Form {...messageForm}>
+            <form onSubmit={messageForm.handleSubmit(onMessageSubmit)} className="space-y-3">
+              <FormField
+                control={messageForm.control}
+                name="messageText"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Enviar un nuevo mensaje</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Escribe tu mensaje, pregunta o actualización aquí..."
+                        rows={4}
+                        className="resize-y"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" disabled={isSendingMessage} className="w-full sm:w-auto">
+                {isSendingMessage ? <Loader2 className="animate-spin mr-2"/> : <Send className="mr-2"/>}
+                Enviar Mensaje
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
       </Card>
     </div>
   );
