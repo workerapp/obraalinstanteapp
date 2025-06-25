@@ -60,13 +60,23 @@ const fetchRequestMessages = async (requestId: string | undefined): Promise<Requ
   if (!requestId) return [];
   
   const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
-  const q = query(messagesRef, orderBy("createdAt", "asc"));
+  // Se elimina orderBy para evitar errores de índice. La ordenación se hará en el cliente.
+  const q = query(messagesRef);
   
   const querySnapshot = await getDocs(q);
   const messages: RequestMessage[] = [];
   querySnapshot.forEach((doc) => {
-    messages.push({ id: doc.id, ...doc.data() } as RequestMessage);
+    const data = doc.data();
+    messages.push({ id: doc.id, ...data } as RequestMessage);
   });
+  
+  // Ordenar mensajes en el cliente por fecha de creación
+  messages.sort((a, b) => {
+    const aTime = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : 0;
+    const bTime = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : 0;
+    return aTime - bTime;
+  });
+
   return messages;
 };
 
@@ -114,11 +124,12 @@ export default function RequestDetailPage() {
             senderRole: typedUser.role || "customer",
             createdAt: serverTimestamp(),
         });
+        toast({ title: "Mensaje Enviado", description: "Tu mensaje ha sido añadido al historial." });
         messageForm.reset();
         queryClient.invalidateQueries({ queryKey: ['requestMessages', requestId] });
     } catch (error: any) {
         console.error("Error al enviar mensaje:", error);
-        toast({ title: "Error", description: "No se pudo enviar tu mensaje.", variant: "destructive"});
+        toast({ title: "Error al Enviar", description: "No se pudo enviar tu mensaje. Revisa la consola para más detalles.", variant: "destructive"});
     } finally {
         setIsSendingMessage(false);
     }
