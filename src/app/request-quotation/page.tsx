@@ -17,7 +17,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore } from '@/firebase/clientApp';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useQuery } from '@tanstack/react-query';
 import type { Service } from '@/types/service';
 
@@ -43,12 +43,14 @@ type FormData = z.infer<typeof formSchema>;
 
 const fetchActiveServices = async (): Promise<Service[]> => {
   const servicesRef = collection(firestore, "platformServices");
-  const q = query(servicesRef, where("isActive", "==", true), orderBy("name", "asc"));
+  const q = query(servicesRef, where("isActive", "==", true));
   const querySnapshot = await getDocs(q);
   const services: Service[] = [];
   querySnapshot.forEach((doc) => {
     services.push({ id: doc.id, ...doc.data() } as Service);
   });
+  // Sort client-side to avoid needing a composite index
+  services.sort((a, b) => a.name.localeCompare(b.name));
   return services;
 };
 
