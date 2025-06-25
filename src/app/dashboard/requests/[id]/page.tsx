@@ -22,6 +22,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 const messageFormSchema = z.object({
   messageText: z.string().min(1, "El mensaje no puede estar vacío.").max(1000, "El mensaje no puede exceder los 1000 caracteres."),
