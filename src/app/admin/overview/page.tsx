@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { 
     BarChart, DollarSign, Users, ListChecks, Loader2, AlertTriangle, ArrowLeft, 
-    CheckCircle, XCircle, CreditCard, UserCog, UserCheck2, UserX2 
+    CheckCircle, XCircle, CreditCard, UserCog, UserCheck2, UserX2, Briefcase
 } from 'lucide-react';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -231,6 +231,20 @@ export default function AdminOverviewPage() {
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><ListChecks className="text-blue-500"/>Servicios Gestionados</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-primary">{validCompletedRequests.length || 0}</p><p className="text-xs text-muted-foreground">Total de trabajos completados que generaron comisión.</p></CardContent></Card>
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Users className="text-purple-500"/>Operarios Activos</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-primary">{Object.keys(commissionsByHandyman).length}</p><p className="text-xs text-muted-foreground">Operarios que generaron comisiones.</p></CardContent></Card>
       </div>
+       <Card className="shadow-lg">
+          <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Briefcase className="text-primary"/>Gestión Global de Servicios</CardTitle>
+              <CardDescription>Administra el catálogo principal de servicios ofrecidos en la plataforma.</CardDescription>
+          </CardHeader>
+          <CardContent>
+              <p>Aquí puedes crear, editar y eliminar las categorías de servicio que los clientes y operarios verán en toda la aplicación.</p>
+          </CardContent>
+          <CardFooter>
+                <Button asChild className="w-full">
+                  <Link href="/admin/services">Gestionar Catálogo de Servicios</Link>
+              </Button>
+          </CardFooter>
+      </Card>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1 shadow-xl"><CardHeader><CardTitle>Resumen Financiero Global</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><div className="flex justify-between"><span>Monto Total Cotizado (Válido):</span> <span className="font-medium">${totalQuotedAmount.toLocaleString('es-CO')}</span></div><div className="flex justify-between"><span>Total Pagado a Operarios (Neto):</span> <span className="font-medium">${totalHandymanPayout.toLocaleString('es-CO')}</span></div><Separator/><div className="flex justify-between text-base"><strong>Ingresos Plataforma:</strong> <strong className="text-green-600">${totalPlatformRevenue.toLocaleString('es-CO')}</strong></div></CardContent></Card>

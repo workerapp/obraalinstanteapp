@@ -1,15 +1,16 @@
 // src/types/service.ts
-import type { LucideIcon } from 'lucide-react';
+import type { Timestamp } from 'firebase/firestore';
 
 export interface Service {
-  id: string;
+  id?: string; // Firestore document ID
   name: string;
   description: string;
   category: string;
-  iconName?: string; // For Lucide icon name string
-  imageUrl?: string; // Optional image URL
-  averagePrice?: string | null; // e.g., "$50 - $100" or "Starting from $75/hr" - Now optional
+  iconName?: string | null;
+  imageUrl?: string | null;
+  dataAiHint?: string | null;
   commonTasks: string[];
-  dataAiHint?: string; // For placeholder image search
+  isActive?: boolean;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
-

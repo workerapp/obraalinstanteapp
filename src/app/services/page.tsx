@@ -1,13 +1,36 @@
 
 // src/app/services/page.tsx
-import { services } from '@/data/services';
 import ServiceCard from '@/components/services/service-card';
-import { Input } from '@/components/ui/input';
 import { Briefcase } from 'lucide-react';
+import { firestore } from '@/firebase/clientApp';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import type { Service } from '@/types/service';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 
-export default function ServicesPage() {
-  // For now, just display all services. Filtering/search could be added later.
-  const displayedServices = services;
+
+async function getServices(): Promise<{ services: Service[], error?: string }> {
+    try {
+        const servicesRef = collection(firestore, "platformServices");
+        const q = query(servicesRef, where("isActive", "==", true), orderBy("name", "asc"));
+        const querySnapshot = await getDocs(q);
+        const services: Service[] = [];
+        querySnapshot.forEach((doc) => {
+            services.push({ id: doc.id, ...doc.data() } as Service);
+        });
+        return { services };
+    } catch (error: any) {
+        console.error("Error fetching services:", error);
+        let errorMessage = "No se pudieron cargar los servicios. Intenta de nuevo más tarde.";
+        if (error.code === 'failed-precondition') {
+          errorMessage = "Firestore requiere un índice para esta consulta. Revisa la consola para un enlace de creación.";
+        }
+        return { services: [], error: errorMessage };
+    }
+}
+
+export default async function ServicesPage() {
+  const { services: displayedServices, error } = await getServices();
 
   return (
     <div className="space-y-8">
@@ -19,25 +42,22 @@ export default function ServicesPage() {
         </p>
       </section>
       
-      {/* Placeholder for search/filter bar - non-functional for now */}
-      {/*
-      <div className="mb-8">
-        <Input 
-          type="search" 
-          placeholder="Buscar servicios (ej: plomería, pintura)..." 
-          className="max-w-lg mx-auto shadow-sm"
-        />
-      </div>
-      */}
+      {error && (
+        <Alert variant="destructive" className="max-w-2xl mx-auto">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error al Cargar Servicios</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-      {displayedServices.length > 0 ? (
+      {!error && displayedServices.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {displayedServices.map((service) => (
             <ServiceCard key={service.id} service={service} />
           ))}
         </div>
       ) : (
-        <p className="text-center text-muted-foreground text-lg">
+        !error && <p className="text-center text-muted-foreground text-lg py-10">
           No hay servicios disponibles en este momento. Por favor, vuelve más tarde.
         </p>
       )}

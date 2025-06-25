@@ -1,17 +1,18 @@
 
 // src/app/services/[id]/page.tsx
-import { services } from '@/data/services';
 import type { Service } from '@/types/service';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, CheckCircle, Tag, Users } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { firestore } from '@/firebase/clientApp';
+import { doc, getDoc } from 'firebase/firestore';
+import { notFound } from 'next/navigation';
 
 // Helper function to get Lucide icon component by name string
-const getIcon = (name?: string): LucideIcon | null => {
+const getIcon = (name?: string | null): LucideIcon | null => {
   if (!name || !(name in LucideIcons)) return LucideIcons.Settings; // Default icon
   return LucideIcons[name as keyof typeof LucideIcons] as LucideIcon;
 };
@@ -20,25 +21,27 @@ interface ServiceDetailPageProps {
   params: { id: string };
 }
 
-export async function generateStaticParams() {
-  return services.map((service) => ({
-    id: service.id,
-  }));
+async function getService(id: string): Promise<Service | null> {
+    const serviceDocRef = doc(firestore, "platformServices", id);
+    const serviceDocSnap = await getDoc(serviceDocRef);
+
+    if (!serviceDocSnap.exists()) {
+        return null;
+    }
+    const data = serviceDocSnap.data();
+    return {
+        id: serviceDocSnap.id,
+        ...data,
+        commonTasks: data.commonTasks || [],
+    } as Service;
 }
 
-export default function ServiceDetailPage({ params }: ServiceDetailPageProps) {
-  const service = services.find(s => s.id === params.id);
+
+export default async function ServiceDetailPage({ params }: ServiceDetailPageProps) {
+  const service = await getService(params.id);
 
   if (!service) {
-    return (
-      <div className="text-center py-10">
-        <h1 className="text-2xl font-bold">Servicio no encontrado</h1>
-        <p className="text-muted-foreground">El servicio que estás buscando no existe.</p>
-        <Button asChild className="mt-4">
-          <Link href="/services">Volver a Servicios</Link>
-        </Button>
-      </div>
-    );
+    notFound();
   }
 
   const IconComponent = getIcon(service.iconName);
@@ -112,7 +115,7 @@ export default function ServiceDetailPage({ params }: ServiceDetailPageProps) {
 }
 
 export async function generateMetadata({ params }: ServiceDetailPageProps) {
-  const service = services.find(s => s.id === params.id);
+  const service = await getService(params.id);
   if (!service) {
     return { title: "Servicio No Encontrado" };
   }
