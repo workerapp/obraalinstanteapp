@@ -15,7 +15,7 @@ interface ServiceCardProps {
 }
 
 // A helper function to get Lucide icon component by name string
-const getIcon = (name?: string): LucideIcon | null => {
+const getIcon = (name?: string | null): LucideIcon | null => {
   if (!name || !(name in LucideIcons)) return LucideIcons.Settings; // Default icon
   return LucideIcons[name as keyof typeof LucideIcons] as LucideIcon;
 };

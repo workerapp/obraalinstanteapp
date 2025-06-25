@@ -1,3 +1,4 @@
+
 // src/app/request-quotation/page.tsx
 "use client";
 
@@ -17,7 +18,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore } from '@/firebase/clientApp';
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { useQuery } from '@tanstack/react-query';
 import type { Service } from '@/types/service';
 
@@ -88,23 +89,23 @@ export default function RequestQuotationPage() {
     },
   });
 
-  const watchedServiceId = form.watch("serviceId");
-
   useEffect(() => {
-    const values = form.getValues();
-    const newValues: Partial<FormData> = {
-        ...values,
-        contactFullName: typedUser?.displayName || values.contactFullName || "",
-        contactEmail: typedUser?.email || values.contactEmail || "",
-        problemDescription: problemFromQuery ? decodeURIComponent(problemFromQuery) : values.problemDescription,
-        serviceId: serviceIdFromQuery || values.serviceId,
-        serviceName: serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : values.serviceName,
-        handymanId: handymanIdFromQuery || values.handymanId,
-        handymanName: handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : values.handymanName,
-    };
-    form.reset(newValues);
-  }, [typedUser, serviceIdFromQuery, serviceNameFromQuery, handymanIdFromQuery, handymanNameFromQuery, problemFromQuery, form.reset]);
+    // Set initial values from URL and user profile once
+    const defaultValues: Partial<FormData> = {};
+    if (typedUser) {
+        defaultValues.contactFullName = typedUser.displayName || '';
+        defaultValues.contactEmail = typedUser.email || '';
+    }
+    if (problemFromQuery) defaultValues.problemDescription = decodeURIComponent(problemFromQuery);
+    if (serviceIdFromQuery) defaultValues.serviceId = serviceIdFromQuery;
+    if (serviceNameFromQuery) defaultValues.serviceName = decodeURIComponent(serviceNameFromQuery);
+    if (handymanIdFromQuery) defaultValues.handymanId = handymanIdFromQuery;
+    if (handymanNameFromQuery) defaultValues.handymanName = decodeURIComponent(handymanNameFromQuery);
+    
+    form.reset(defaultValues);
+  }, [typedUser, searchParams, form.reset]);
   
+  const watchedServiceId = form.watch("serviceId");
 
   useEffect(() => {
     if (watchedServiceId && availableServices) {
@@ -113,7 +114,7 @@ export default function RequestQuotationPage() {
         form.setValue('serviceName', selectedService.name, { shouldValidate: true });
       }
     }
-  }, [watchedServiceId, availableServices, form.setValue]);
+  }, [watchedServiceId, availableServices, form]);
 
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {

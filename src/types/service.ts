@@ -1,3 +1,4 @@
+
 // src/types/service.ts
 import type { Timestamp } from 'firebase/firestore';
 

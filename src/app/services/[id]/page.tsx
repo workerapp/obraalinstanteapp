@@ -100,7 +100,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
         <footer className="mt-8 pt-6 border-t">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <Button size="lg" asChild className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground shadow-md">
-              <Link href={`/request-quotation?serviceId=${service.id}`}>Solicitar Cotización</Link>
+              <Link href={`/request-quotation?serviceId=${service.id}&serviceName=${encodeURIComponent(service.name)}`}>Solicitar Cotización</Link>
             </Button>
             <Button variant="outline" size="lg" asChild className="w-full sm:w-auto shadow-md">
               <Link href="/handymen" className="flex items-center gap-2">
