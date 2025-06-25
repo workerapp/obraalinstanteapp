@@ -12,12 +12,17 @@ import { AlertTriangle } from 'lucide-react';
 async function getServices(): Promise<{ services: Service[], error?: string }> {
     try {
         const servicesRef = collection(firestore, "platformServices");
-        const q = query(servicesRef, where("isActive", "==", true), orderBy("name", "asc"));
+        // Remove orderBy to avoid needing a composite index
+        const q = query(servicesRef, where("isActive", "==", true));
         const querySnapshot = await getDocs(q);
         const services: Service[] = [];
         querySnapshot.forEach((doc) => {
             services.push({ id: doc.id, ...doc.data() } as Service);
         });
+
+        // Sort client-side
+        services.sort((a, b) => a.name.localeCompare(b.name));
+        
         return { services };
     } catch (error: any) {
         console.error("Error fetching services:", error);
