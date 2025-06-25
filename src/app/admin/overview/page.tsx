@@ -1,3 +1,4 @@
+
 // src/app/admin/overview/page.tsx
 "use client";
 
@@ -11,7 +12,7 @@ import {
     CheckCircle, XCircle, CreditCard, UserCog, UserCheck2, UserX2 
 } from 'lucide-react';
 import { firestore } from '@/firebase/clientApp';
-import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { QuotationRequest } from '@/types/quotationRequest';
 import type { AppUser } from '@/hooks/useAuth';
@@ -27,11 +28,8 @@ import { Switch } from '@/components/ui/switch';
 
 const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
   const requestsRef = collection(firestore, "quotationRequests");
-  const q = query(
-    requestsRef, 
-    where("status", "==", "Completada"),
-    orderBy("updatedAt", "desc")
-  );
+  // Query simplified to avoid needing a composite index. Sorting is now done on the client.
+  const q = query(requestsRef, where("status", "==", "Completada"));
   
   const querySnapshot = await getDocs(q);
   const requests: QuotationRequest[] = [];
@@ -45,6 +43,10 @@ const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
       commissionPaymentStatus: data.commissionPaymentStatus || undefined,
     } as QuotationRequest);
   });
+
+  // Sort client-side
+  requests.sort((a, b) => b.updatedAt.toMillis() - a.updatedAt.toMillis());
+
   return requests;
 };
 
@@ -58,7 +60,8 @@ interface HandymanAdminView {
 
 const fetchAllHandymen = async (): Promise<HandymanAdminView[]> => {
   const usersRef = collection(firestore, "users");
-  const q = query(usersRef, where("role", "==", "handyman"), orderBy("createdAt", "desc"));
+  // Query simplified to avoid needing a composite index. Sorting is now done on the client.
+  const q = query(usersRef, where("role", "==", "handyman"));
   
   const querySnapshot = await getDocs(q);
   const handymen: HandymanAdminView[] = [];
@@ -72,6 +75,14 @@ const fetchAllHandymen = async (): Promise<HandymanAdminView[]> => {
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt : Timestamp.now(),
     });
   });
+
+  // Sort client-side
+  handymen.sort((a, b) => {
+    const aTime = a.createdAt?.toMillis() || 0;
+    const bTime = b.createdAt?.toMillis() || 0;
+    return bTime - aTime;
+  });
+
   return handymen;
 };
 
