@@ -3,7 +3,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { doc, getDoc, Timestamp, collection, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, collection, query, orderBy, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { firestore } from '@/firebase/clientApp';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import type { QuotationRequest } from '@/types/quotationRequest';
