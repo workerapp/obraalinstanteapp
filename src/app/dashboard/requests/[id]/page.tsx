@@ -60,21 +60,13 @@ const fetchRequestMessages = async (requestId: string | undefined): Promise<Requ
   if (!requestId) return [];
   
   const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
-  // Se elimina orderBy para evitar errores de índice. La ordenación se hará en el cliente.
-  const q = query(messagesRef);
+  const q = query(messagesRef, orderBy("createdAt", "asc"));
   
   const querySnapshot = await getDocs(q);
   const messages: RequestMessage[] = [];
   querySnapshot.forEach((doc) => {
     const data = doc.data();
     messages.push({ id: doc.id, ...data } as RequestMessage);
-  });
-  
-  // Ordenar mensajes en el cliente por fecha de creación
-  messages.sort((a, b) => {
-    const aTime = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : 0;
-    const bTime = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : 0;
-    return aTime - bTime;
   });
 
   return messages;
@@ -115,22 +107,47 @@ export default function RequestDetailPage() {
         return;
     }
     setIsSendingMessage(true);
+    messageForm.reset();
+
+    const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
+    
+    // Optimistic update
+    const newMessage: RequestMessage = {
+        id: `temp-${Date.now()}`, // Temporary ID
+        text: data.messageText,
+        senderId: typedUser.uid,
+        senderName: typedUser.displayName || "Usuario Anónimo",
+        senderRole: typedUser.role as 'customer' | 'handyman' | 'admin' || 'customer',
+        createdAt: Timestamp.now(), // Use local timestamp for immediate display
+    };
+
+    // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+    await queryClient.cancelQueries({ queryKey: ['requestMessages', requestId] });
+
+    // Snapshot the previous value
+    const previousMessages = queryClient.getQueryData<RequestMessage[]>(['requestMessages', requestId]);
+
+    // Optimistically update to the new value
+    queryClient.setQueryData<RequestMessage[]>(['requestMessages', requestId], (old = []) => [...old, newMessage]);
+
     try {
-        const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
+        // Send to Firestore
         await addDoc(messagesRef, {
-            text: data.messageText,
-            senderId: typedUser.uid,
-            senderName: typedUser.displayName || "Usuario Anónimo",
-            senderRole: typedUser.role || "customer",
-            createdAt: serverTimestamp(),
+            text: newMessage.text,
+            senderId: newMessage.senderId,
+            senderName: newMessage.senderName,
+            senderRole: newMessage.senderRole,
+            createdAt: serverTimestamp(), // Let the server set the final timestamp
         });
-        toast({ title: "Mensaje Enviado", description: "Tu mensaje ha sido añadido al historial." });
-        messageForm.reset();
-        queryClient.invalidateQueries({ queryKey: ['requestMessages', requestId] });
+        // The UI is already updated, so no success toast is needed
     } catch (error: any) {
+        // If the mutation fails, roll back the optimistic update
+        queryClient.setQueryData(['requestMessages', requestId], previousMessages);
         console.error("Error al enviar mensaje:", error);
         toast({ title: "Error al Enviar", description: "No se pudo enviar tu mensaje. Revisa la consola para más detalles.", variant: "destructive"});
     } finally {
+        // Always refetch after success or failure to ensure data consistency
+        queryClient.invalidateQueries({ queryKey: ['requestMessages', requestId] });
         setIsSendingMessage(false);
     }
   };
