@@ -117,18 +117,8 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
     }
     const adminPhoneNumber = ADMIN_WHATSAPP_NUMBER.replace(/\D/g, ''); 
     
-    let skillsText = "";
-    if (handyman.skills && handyman.skills.length > 0) {
-      skillsText = `, quien ofrece servicios como ${handyman.skills.slice(0, 2).join(', ')}${handyman.skills.length > 2 ? ', entre otros' : ''},`;
-    } else {
-      skillsText = ",";
-    }
-
-    const messageIntro = `Hola, estoy interesado/a en los servicios de ${handyman.name} (ID: ${handyman.id})`;
-    const platformMention = ` que vi en Obra al Instante.`;
-    const callToAction = ` Por favor, describe detalladamente el servicio que necesitas:`;
-
-    const message = encodeURIComponent(`${messageIntro}${skillsText}${platformMention}${callToAction}`);
+    const messageText = `Hola, quisiera solicitar contacto para un servicio con el operario ${handyman.name} (ID: ${handyman.id}) que vi en Obra al Instante. Por favor, ¿pueden ayudarme a coordinar? El servicio que necesito es: `;
+    const message = encodeURIComponent(messageText);
     const whatsappUrl = `https://wa.me/${adminPhoneNumber}?text=${message}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -163,10 +153,10 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
               </Link>
             </Button>
             <Button variant="outline" size="lg" className="w-full" onClick={handleWhatsAppContact}>
-              <Phone size={18} className="mr-2" /> Contactar por WhatsApp
+              <Phone size={18} className="mr-2" /> Contactar vía Administrador
             </Button>
              <p className="text-xs text-muted-foreground text-center mt-2">
-              El contacto por WhatsApp es con el administrador de la plataforma.
+              La comunicación inicial se gestiona a través del administrador para garantizar la calidad y seguridad del servicio.
             </p>
           </div>
 
@@ -305,4 +295,3 @@ export default function HandymanDetailClientContent({ handyman, reviews }: Handy
     </div>
   );
 }
-

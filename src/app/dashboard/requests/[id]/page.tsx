@@ -266,7 +266,7 @@ export default function RequestDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <p><strong>Nombre Contacto:</strong> {request.contactFullName}</p>
               <p><strong>Email Contacto:</strong> {request.contactEmail}</p>
-              {request.contactPhone && <p className="flex items-center"><Phone className="mr-1.5 h-4 w-4 text-muted-foreground"/><strong>Teléfono:</strong> {request.contactPhone}</p>}
+              {typedUser?.role === 'admin' && request.contactPhone && <p className="flex items-center"><Phone className="mr-1.5 h-4 w-4 text-muted-foreground"/><strong>Teléfono:</strong> {request.contactPhone}</p>}
               <p className="flex items-center col-span-1 md:col-span-2"><MapPin className="mr-1.5 h-4 w-4 text-muted-foreground"/><strong>Dirección:</strong> {request.address}</p>
             </div>
           </div>
