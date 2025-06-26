@@ -51,9 +51,9 @@ export default function AiAssistantPage() {
 
       for await (const chunk of stream) {
         // Robust check to ensure the chunk and its content are valid before processing.
-        if (chunk && chunk.content && Array.isArray(chunk.content)) {
+        if (chunk?.content) {
             for (const part of chunk.content) {
-                if (part && part.text) {
+                if (part.text) {
                     modelResponse += part.text;
                     setMessages((prev) => {
                       const newMessages = [...prev];
@@ -84,10 +84,25 @@ export default function AiAssistantPage() {
     }
   }, [messages]);
   
-   const renderMarkdown = (content: string) => {
-    const rawMarkup = marked.parse(content, { gfm: true, breaks: true, smartypants: false });
-    const sanitizedMarkup = typeof rawMarkup === 'string' ? rawMarkup.replace(/<script.*?>.*?<\/script>/gi, '') : '';
-    return { __html: sanitizedMarkup };
+  const escapeHtml = (unsafe: string) => {
+    if (!unsafe) return '';
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+  }
+
+  const renderMarkdown = (content: string) => {
+    try {
+        const rawMarkup = marked.parse(content, { gfm: true, breaks: true, smartypants: false });
+        const sanitizedMarkup = typeof rawMarkup === 'string' ? rawMarkup.replace(/<script.*?>.*?<\/script>/gi, '') : '';
+        return { __html: sanitizedMarkup };
+    } catch (e) {
+        console.error("Error rendering markdown, falling back to plain text:", e);
+        return { __html: escapeHtml(content) };
+    }
   };
 
   return (

@@ -75,7 +75,7 @@ Tu objetivo es tener una conversación natural con el usuario para ayudarlo a re
 - Si el usuario pregunta si hay operarios con una habilidad específica (como "plomeros" o "electricistas"), USA la herramienta 'findHandymen' para buscar en la base de datos.
 - Cuando uses la herramienta, informa al usuario de los resultados. Si encuentras operarios, menciona sus nombres. Si no encuentras, informa al usuario y sugiérele buscar una habilidad más general o diferente.
 - Proporciona respuestas en español.
-- Cuando menciones a un operario encontrado por la herramienta, formatea su nombre como un enlace markdown a su perfil. El formato del enlace es: '/handymen/[ID_DEL_OPERARIO]'. Por ejemplo, si encuentras un operario llamado 'Juan Pérez' con ID 'xyz123', debes mostrarlo como: '[Juan Pérez](/handymen/xyz123)'.`;
+- IMPORTANTE: Cuando menciones a un operario, simplemente di su nombre. No uses enlaces ni formatos especiales como Markdown.`;
 
 // The streaming flow function, now using ai.generateStream directly
 export async function continueChat(history: MessageData[]) {
