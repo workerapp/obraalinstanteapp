@@ -58,9 +58,12 @@ export default async function ServicesPage() {
 
       {!error && displayedServices.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayedServices.map((service) => (
-            <ServiceCard key={service.id} service={service} />
-          ))}
+          {displayedServices.map((service) => {
+            // Create a serializable plain object to pass to the Client Component
+            // This removes the non-serializable Firestore Timestamp objects.
+            const { createdAt, updatedAt, ...serializableService } = service;
+            return <ServiceCard key={service.id} service={serializableService as Service} />;
+          })}
         </div>
       ) : (
         !error && <div className="text-center py-10"><Briefcase className="mx-auto h-12 w-12 text-muted-foreground mb-4" /><p className="text-muted-foreground text-lg">No hay servicios disponibles en este momento.</p><p className="text-sm text-muted-foreground">El administrador aún no ha añadido ningún servicio.</p></div>
