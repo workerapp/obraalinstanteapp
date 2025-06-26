@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
 
 const formSchema = z.object({
   problemDescription: z.string().min(20, {
@@ -142,9 +143,11 @@ export default function AiAssistantPage() {
                 <h4 className="text-lg font-medium mb-2 flex items-center"><Wrench className="text-gray-600 mr-2 h-5 w-5" />Habilidades de Operario Relevantes:</h4>
                 <div className="flex flex-wrap gap-2">
                   {aiResponse.relevantSkills.map((skill, index) => (
-                    <span key={`skill-${index}`} className="px-3 py-1 text-sm bg-secondary text-secondary-foreground rounded-full">
-                      {skill}
-                    </span>
+                    <Link key={`skill-${index}`} href={`/handymen?category=${encodeURIComponent(skill)}`}>
+                        <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80 transition-colors">
+                          {skill}
+                        </Badge>
+                    </Link>
                   ))}
                 </div>
               </div>
