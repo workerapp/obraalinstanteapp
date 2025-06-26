@@ -1,162 +1,162 @@
 
-// src/app/ai-assistant/page.tsx
+// src/app/ai-assistant/page.tsx (previously AiChatPage)
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useForm, type SubmitHandler } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { useState, useRef, useEffect, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Sparkles, Lightbulb, Wrench } from 'lucide-react';
-import { suggestSolutions, type SuggestSolutionsOutput } from '@/ai/flows/suggest-solutions';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Sparkles, User, Bot, Send } from 'lucide-react';
+import { continueChat } from '@/ai/flows/conversational-chat';
+import type { MessageData } from 'genkit';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { marked } from 'marked';
 
-const formSchema = z.object({
-  problemDescription: z.string().min(20, {
-    message: "Por favor, describe tu problema en al menos 20 caracteres.",
-  }).max(1000, {
-    message: "La descripción del problema no debe exceder los 1000 caracteres.",
-  }),
-});
-
-type FormData = z.infer<typeof formSchema>;
+type ChatMessage = {
+  role: 'user' | 'model';
+  content: string;
+};
 
 export default function AiAssistantPage() {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [aiResponse, setAiResponse] = useState<SuggestSolutionsOutput | null>(null);
-  const searchParams = useSearchParams();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      problemDescription: "",
-    },
-  });
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+  };
 
-  useEffect(() => {
-    const problemFromQuery = searchParams.get('problem');
-    if (problemFromQuery) {
-      form.setValue('problemDescription', decodeURIComponent(problemFromQuery));
-    }
-  }, [searchParams, form]);
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
 
-  const onSubmit: SubmitHandler<FormData> = async (data) => {
+    const userMessage: ChatMessage = { role: 'user', content: input };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
     setIsLoading(true);
-    setError(null);
-    setAiResponse(null);
+
+    const history: MessageData[] = messages.map((msg) => ({
+      role: msg.role,
+      content: [{ text: msg.content }],
+    }));
+    history.push({ role: 'user', content: [{ text: input }] });
+
     try {
-      const response = await suggestSolutions({ problemDescription: data.problemDescription });
-      setAiResponse(response);
+      const stream = await continueChat(history);
+
+      let modelResponse = '';
+      setMessages((prev) => [...prev, { role: 'model', content: '' }]);
+
+      for await (const chunk of stream) {
+        if (chunk.role === 'model') {
+            const chunkText = chunk.content[0]?.text || '';
+            modelResponse += chunkText;
+            setMessages((prev) => {
+              const newMessages = [...prev];
+              newMessages[newMessages.length - 1] = { role: 'model', content: modelResponse };
+              return newMessages;
+            });
+        }
+      }
     } catch (err) {
-      console.error("Error del Asistente IA:", err);
-      setError("Lo sentimos, algo salió mal al obtener sugerencias. Por favor, inténtalo de nuevo.");
+      console.error("Error en el chat IA:", err);
+      setMessages((prev) => [...prev, { role: 'model', content: "Lo siento, algo salió mal. Por favor, intenta de nuevo." }]);
     } finally {
       setIsLoading(false);
     }
   };
-
-  const currentProblemDescription = form.getValues("problemDescription");
+  
+  useEffect(() => {
+    // Scroll to bottom when messages change
+    if (scrollAreaRef.current) {
+        const viewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+        if (viewport) {
+             viewport.scrollTop = viewport.scrollHeight;
+        }
+    }
+  }, [messages]);
+  
+   const renderMarkdown = (content: string) => {
+    const rawMarkup = marked.parse(content, { gfm: true, breaks: true, smartypants: false });
+    const sanitizedMarkup = typeof rawMarkup === 'string' ? rawMarkup.replace(/<script.*?>.*?<\/script>/gi, '') : '';
+    return { __html: sanitizedMarkup };
+  };
 
   return (
-    <div className="max-w-2xl mx-auto py-8">
-      <Card className="shadow-xl">
-        <CardHeader className="text-center">
-          <Sparkles className="mx-auto h-16 w-16 text-accent mb-4" />
-          <CardTitle className="text-3xl font-headline">Asistente de Soluciones IA</CardTitle>
+    <div className="flex flex-col h-[calc(100vh-150px)] max-w-3xl mx-auto">
+      <Card className="flex-1 flex flex-col shadow-xl">
+        <CardHeader className="text-center border-b">
+          <Sparkles className="mx-auto h-12 w-12 text-accent mb-2" />
+          <CardTitle className="text-3xl font-headline">Chat de Asistencia IA</CardTitle>
           <CardDescription>
-            Describe el problema de mantenimiento de tu hogar y nuestra IA sugerirá posibles soluciones y habilidades de operario relevantes.
+            Habla con "Obrita", nuestro asistente IA, para encontrar operarios o resolver tus dudas.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="problemDescription"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-lg">Describe tu Problema</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Ej: El grifo de mi cocina gotea, o necesito instalar un nuevo ventilador de techo..."
-                        rows={5}
-                        className="resize-none"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+        <CardContent className="flex-1 flex flex-col p-0">
+          <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+            <div className="space-y-6">
+               {messages.length === 0 && (
+                 <div className="text-center text-muted-foreground p-8">
+                   <Bot size={48} className="mx-auto mb-4" />
+                   <p>¡Hola! Soy Obrita. ¿Cómo puedo ayudarte hoy?</p>
+                   <p className="text-sm">Puedes preguntarme por operarios, por ejemplo: "¿Tienes plomeros disponibles?"</p>
+                 </div>
                 )}
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {message.role === 'model' && (
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback className="bg-primary text-primary-foreground"><Bot size={20}/></AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div
+                    className={`max-w-prose rounded-lg px-4 py-2 prose prose-sm dark:prose-invert ${
+                      message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                    }`}
+                  >
+                    <div dangerouslySetInnerHTML={renderMarkdown(message.content)} />
+                  </div>
+                  {message.role === 'user' && (
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback className="bg-muted text-muted-foreground"><User size={20}/></AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex items-start gap-3 justify-start">
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback className="bg-primary text-primary-foreground"><Bot size={20}/></AvatarFallback>
+                  </Avatar>
+                  <div className="max-w-md rounded-lg px-4 py-2 bg-muted flex items-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Pensando...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          <div className="p-4 border-t">
+            <form onSubmit={handleSubmit} className="flex items-center gap-2">
+              <Input
+                value={input}
+                onChange={handleInputChange}
+                placeholder="Escribe tu mensaje aquí..."
+                className="flex-1"
+                disabled={isLoading}
               />
-              <Button type="submit" disabled={isLoading} className="w-full">
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Obteniendo Sugerencias...
-                  </>
-                ) : (
-                  <>
-                    <Lightbulb className="mr-2 h-4 w-4" />
-                    Obtener Sugerencias
-                  </>
-                )}
+              <Button type="submit" disabled={isLoading || !input.trim()}>
+                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                <span className="sr-only">Enviar</span>
               </Button>
             </form>
-          </Form>
+          </div>
         </CardContent>
-
-        {error && (
-          <CardFooter>
-            <Alert variant="destructive" className="w-full">
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          </CardFooter>
-        )}
-
-        {aiResponse && (
-          <CardFooter className="flex flex-col items-start gap-4 pt-6">
-            <Separator />
-            <h3 className="text-xl font-semibold font-headline text-primary">Sugerencias de la IA:</h3>
-            
-            {aiResponse.suggestedSolutions && aiResponse.suggestedSolutions.length > 0 && (
-              <div className="w-full p-4 border rounded-md bg-background">
-                <h4 className="text-lg font-medium mb-2 flex items-center"><Lightbulb className="text-yellow-500 mr-2 h-5 w-5" />Posibles Soluciones:</h4>
-                <ul className="list-disc list-inside space-y-1 text-foreground/90">
-                  {aiResponse.suggestedSolutions.map((solution, index) => (
-                    <li key={`sol-${index}`}>{solution}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {aiResponse.relevantSkills && aiResponse.relevantSkills.length > 0 && (
-               <div className="w-full p-4 border rounded-md bg-background">
-                <h4 className="text-lg font-medium mb-2 flex items-center"><Wrench className="text-gray-600 mr-2 h-5 w-5" />Habilidades de Operario Relevantes:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {aiResponse.relevantSkills.map((skill, index) => (
-                    <Link key={`skill-${index}`} href={`/handymen?category=${encodeURIComponent(skill)}`}>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80 transition-colors">
-                          {skill}
-                        </Badge>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-             <Button variant="link" asChild className="mt-4 self-center">
-                <Link href={`/request-quotation?problem=${encodeURIComponent(currentProblemDescription)}`}>Solicita una cotización para este problema &rarr;</Link>
-            </Button>
-          </CardFooter>
-        )}
       </Card>
     </div>
   );
