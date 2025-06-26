@@ -50,14 +50,23 @@ export default function AiAssistantPage() {
       setMessages((prev) => [...prev, { role: 'model', content: '' }]);
 
       for await (const chunk of stream) {
-        if (chunk.role === 'model') {
-            const chunkText = chunk.content[0]?.text || '';
-            modelResponse += chunkText;
-            setMessages((prev) => {
-              const newMessages = [...prev];
-              newMessages[newMessages.length - 1] = { role: 'model', content: modelResponse };
-              return newMessages;
-            });
+        // Add a check to ensure the chunk and its content exist before processing.
+        if (chunk && chunk.content) {
+            // A chunk can have multiple parts (e.g., text and tool calls).
+            // We iterate through them and only process the text parts for display.
+            for (const part of chunk.content) {
+                if (part.text) {
+                    modelResponse += part.text;
+                    setMessages((prev) => {
+                      const newMessages = [...prev];
+                      // Ensure the last message exists and is from the model before updating
+                      if (newMessages.length > 0 && newMessages[newMessages.length - 1].role === 'model') {
+                         newMessages[newMessages.length - 1].content = modelResponse;
+                      }
+                      return newMessages;
+                    });
+                }
+            }
         }
       }
     } catch (err) {
