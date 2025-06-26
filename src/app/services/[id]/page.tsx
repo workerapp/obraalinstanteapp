@@ -12,9 +12,20 @@ import { doc, getDoc } from 'firebase/firestore';
 import { notFound } from 'next/navigation';
 
 // Helper function to get Lucide icon component by name string
-const getIcon = (name?: string | null): LucideIcon | null => {
-  if (!name || !(name in LucideIcons)) return LucideIcons.Settings; // Default icon
-  return LucideIcons[name as keyof typeof LucideIcons] as LucideIcon;
+const getIcon = (name?: string | null): LucideIcon => {
+  const defaultIcon = LucideIcons.Settings;
+  if (!name || name.trim() === '') return defaultIcon;
+
+  // Sanitize name: "Paint Brush" -> "PaintBrush", "wrench" -> "Wrench"
+  const processedName = name.replace(/\s/g, ''); // Remove spaces
+  const finalName = processedName.charAt(0).toUpperCase() + processedName.slice(1);
+
+  if (Object.prototype.hasOwnProperty.call(LucideIcons, finalName)) {
+    return LucideIcons[finalName as keyof typeof LucideIcons];
+  }
+  
+  console.warn(`Lucide icon "${finalName}" (from input "${name}") not found. Defaulting to "Settings".`);
+  return defaultIcon;
 };
 
 interface ServiceDetailPageProps {
