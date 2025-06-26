@@ -74,7 +74,12 @@ export default function Navbar() {
     }
 
     if (typedUser) {
-      const dashboardLink = typedUser.role === 'handyman' ? '/dashboard/handyman' : '/dashboard/customer';
+      const dashboardLink = typedUser.role === 'admin' 
+        ? '/admin/overview' 
+        : typedUser.role === 'handyman' 
+        ? '/dashboard/handyman' 
+        : '/dashboard/customer';
+        
       if (isSheetContext) { // Mobile logged in
         return (
           <>

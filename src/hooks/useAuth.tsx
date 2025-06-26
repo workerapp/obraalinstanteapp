@@ -1,3 +1,4 @@
+
 // src/hooks/useAuth.tsx
 "use client";
 
@@ -65,7 +66,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
           // **ROBUSTNESS FIX**: If user has no role but matches the admin email, grant admin role.
           // This acts as a failsafe if the Firestore doc is slow to create or has issues.
-          if (!finalUser.role && finalUser.email === ADMIN_EMAIL) {
+          if (!finalUser.role && finalUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             finalUser.role = 'admin';
             finalUser.isApproved = true;
           }
@@ -77,7 +78,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           console.error("Error listening to user document:", error);
           // On error, still apply the admin failsafe
           let errorUser: AppUser = firebaseUser as AppUser;
-          if (errorUser.email === ADMIN_EMAIL) {
+          if (errorUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             errorUser.role = 'admin';
             errorUser.isApproved = true;
           }
@@ -105,7 +106,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
       await updateProfile(userCredential.user, { displayName: fullName });
 
-      const isUserAdmin = email === ADMIN_EMAIL;
+      const isUserAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
       const finalRole = isUserAdmin ? 'admin' : role;
       
       const userDocData: any = {
@@ -169,7 +170,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         userRole = userData.role || 'customer';
       }
       
-      const finalRole = email === ADMIN_EMAIL ? 'admin' : userRole;
+      const finalRole = email.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'admin' : userRole;
       
       toast({ title: "¡Sesión Iniciada!", description: "¡Bienvenido/a de nuevo!" });
       
