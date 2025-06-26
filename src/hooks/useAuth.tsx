@@ -64,9 +64,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
             finalUser = firebaseUser as AppUser;
           }
 
-          // **ROBUSTNESS FIX**: If user has no role but matches the admin email, grant admin role.
-          // This acts as a failsafe if the Firestore doc is slow to create or has issues.
-          if (!finalUser.role && finalUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+          // **DEFINITIVE FIX**: The admin email is the ultimate source of truth for the admin role.
+          // This will override any role set in Firestore if the email matches.
+          if (finalUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             finalUser.role = 'admin';
             finalUser.isApproved = true;
           }
@@ -182,7 +182,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const userDoc = await getDoc(userDocRef);
       return { ...firebaseUser, ...userDoc.data() } as AppUser;
 
-    } catch (error: any) {
+    } catch (error: any)
       console.error("Error al iniciar sesión:", error);
       toast({ title: "Falló el Inicio de Sesión", description: "Credenciales inválidas o error inesperado.", variant: "destructive" });
       setUser(null);
