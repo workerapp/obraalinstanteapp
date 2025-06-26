@@ -119,7 +119,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
               <Link href={`/request-quotation?serviceId=${service.id}&serviceName=${encodeURIComponent(service.name)}`}>Solicitar Cotización</Link>
             </Button>
             <Button variant="outline" size="lg" asChild className="w-full sm:w-auto shadow-md">
-              <Link href="/handymen" className="flex items-center gap-2">
+              <Link href={`/handymen?category=${encodeURIComponent(service.category)}`} className="flex items-center gap-2">
                 <Users size={18} /> Buscar un Operario para este Servicio
               </Link>
             </Button>

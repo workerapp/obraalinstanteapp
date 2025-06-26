@@ -1,10 +1,13 @@
+
 // src/app/handymen/page.tsx
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import type { Handyman } from '@/types/handyman';
 import HandymanProfileCard from '@/components/handymen/handyman-profile-card';
-import { Users, AlertTriangle } from 'lucide-react';
+import { Users, AlertTriangle, SearchX } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 // Helper function to map Firestore user data to Handyman type
 const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman => {
@@ -47,15 +50,22 @@ const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman =>
   };
 };
 
-async function getHandymen(): Promise<{ handymen: Handyman[]; error?: string }> {
+async function getHandymen(category?: string): Promise<{ handymen: Handyman[]; error?: string }> {
   try {
     const usersRef = collection(firestore, "users");
-    // Solo mostrar operarios que estén aprobados por el administrador
-    const q = query(usersRef, where("role", "==", "handyman"), where("isApproved", "==", true));
+    const queryConstraints = [
+      where("role", "==", "handyman"),
+      where("isApproved", "==", true),
+    ];
+
+    if (category) {
+      console.log(`Filtering handymen by category/skill: "${category}"`);
+      queryConstraints.push(where("skills", "array-contains", category));
+    }
     
-    console.log("Fetching approved handymen from Firestore...");
+    const q = query(usersRef, ...queryConstraints);
+    
     const querySnapshot = await getDocs(q);
-    console.log(`Found ${querySnapshot.docs.length} approved handymen documents.`);
     
     const handymenList: Handyman[] = [];
     querySnapshot.forEach((doc) => {
@@ -69,7 +79,7 @@ async function getHandymen(): Promise<{ handymen: Handyman[]; error?: string }> 
     if (error.code === 'permission-denied') {
       errorMessage = "Error de permisos al cargar operarios. Verifica las reglas de seguridad de Firestore.";
     } else if (error.code === 'failed-precondition') {
-      errorMessage = "Firestore requiere un índice para esta consulta. Revisa la consola del servidor para un enlace que te permitirá crear el índice necesario (rol 'handyman' y 'isApproved').";
+      errorMessage = "Firestore requiere un índice para esta consulta. Revisa la consola del servidor para un enlace que te permitirá crear el índice necesario. El índice probablemente involucre los campos: 'role', 'isApproved' y 'skills'.";
     } else {
       errorMessage = `Error al cargar operarios: ${error.message}`;
     }
@@ -77,16 +87,22 @@ async function getHandymen(): Promise<{ handymen: Handyman[]; error?: string }> 
   }
 }
 
-export default async function HandymenPage() {
-  const { handymen: displayedHandymen, error } = await getHandymen();
+export default async function HandymenPage({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
+  const category = typeof searchParams?.category === 'string' ? decodeURIComponent(searchParams.category) : undefined;
+  const { handymen: displayedHandymen, error } = await getHandymen(category);
+
+  const pageTitle = category ? `Operarios para ${category}` : "Encuentra un Operario";
+  const pageDescription = category 
+    ? `Explora nuestro directorio de operarios calificados en ${category}. Para que un operario aparezca aquí, debe tener "${category}" en su lista de habilidades.`
+    : "Explora nuestro directorio de operarios calificados y de confianza, listos para ayudarte con los proyectos de tu hogar.";
 
   return (
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-primary/10 via-background to-background rounded-lg shadow-md">
         <Users className="mx-auto h-16 w-16 text-primary mb-4" />
-        <h1 className="text-4xl font-headline font-bold text-primary mb-2">Encuentra un Operario</h1>
-        <p className="text-lg text-foreground/80 max-w-xl mx-auto">
-          Explora nuestro directorio de operarios calificados y de confianza, listos para ayudarte con los proyectos de tu hogar.
+        <h1 className="text-4xl font-headline font-bold text-primary mb-2">{pageTitle}</h1>
+        <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
+          {pageDescription}
         </p>
       </section>
 
@@ -104,6 +120,15 @@ export default async function HandymenPage() {
             <HandymanProfileCard key={handyman.id} handyman={handyman} />
           ))}
         </div>
+      ) : !error && category ? (
+        <div className="text-center py-10">
+          <SearchX className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground text-lg font-semibold">No se encontraron operarios para "{category}"</p>
+          <p className="text-sm text-muted-foreground mt-2">Intenta con otra categoría o explora todos nuestros operarios disponibles.</p>
+           <Button asChild variant="link" className="mt-4">
+              <Link href="/handymen">Ver Todos los Operarios</Link>
+          </Button>
+        </div>
       ) : (
         !error && <p className="text-center text-muted-foreground text-lg py-10">
           No hay operarios aprobados disponibles en este momento.
@@ -113,9 +138,17 @@ export default async function HandymenPage() {
   );
 }
 
-export async function generateMetadata() {
-  return {
-    title: "Encuentra un Operario | Obra al Instante",
-    description: "Explora nuestro directorio de operarios calificados.",
-  };
+export async function generateMetadata({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
+    const category = typeof searchParams?.category === 'string' ? decodeURIComponent(searchParams.category) : undefined;
+    const title = category 
+        ? `Operarios de ${category} | Obra al Instante` 
+        : "Encuentra un Operario | Obra al Instante";
+    const description = category 
+        ? `Encuentra operarios especializados en ${category}.`
+        : "Explora nuestro directorio de operarios calificados.";
+
+    return {
+        title: title,
+        description: description,
+    };
 }
