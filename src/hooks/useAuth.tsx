@@ -5,7 +5,7 @@ import type React from 'react';
 import { useState, useEffect, createContext, useContext, type PropsWithChildren } from 'react';
 import { type User as FirebaseUser, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import { auth, firestore } from '@/firebase/clientApp';
-import { doc, setDoc, getDoc, serverTimestamp, onSnapshot } from 'firebase/firestore'; // Import onSnapshot
+import { doc, setDoc, getDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -47,22 +47,41 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const userDocRef = doc(firestore, "users", firebaseUser.uid);
         
         unsubscribeFromUserDoc = onSnapshot(userDocRef, (userDocSnap) => {
+          let finalUser: AppUser;
+
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data();
-            setUser({
+            finalUser = {
               ...firebaseUser,
               displayName: userData.displayName || firebaseUser.displayName,
               photoURL: userData.photoURL || firebaseUser.photoURL,
               role: userData.role,
               isApproved: userData.isApproved,
-            });
+            };
           } else {
-            setUser(firebaseUser as AppUser);
+            // Document doesn't exist yet, use base Firebase user
+            finalUser = firebaseUser as AppUser;
           }
+
+          // **ROBUSTNESS FIX**: If user has no role but matches the admin email, grant admin role.
+          // This acts as a failsafe if the Firestore doc is slow to create or has issues.
+          if (!finalUser.role && finalUser.email === ADMIN_EMAIL) {
+            finalUser.role = 'admin';
+            finalUser.isApproved = true;
+          }
+          
+          setUser(finalUser);
           setLoading(false);
+
         }, (error) => {
           console.error("Error listening to user document:", error);
-          setUser(null);
+          // On error, still apply the admin failsafe
+          let errorUser: AppUser = firebaseUser as AppUser;
+          if (errorUser.email === ADMIN_EMAIL) {
+            errorUser.role = 'admin';
+            errorUser.isApproved = true;
+          }
+          setUser(errorUser);
           setLoading(false);
         });
 
@@ -101,7 +120,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
         location: null,
         phone: null,
         photoURL: null,
-        // Los operarios inician como no aprobados, los admins como aprobados.
         isApproved: finalRole === 'handyman' ? false : (finalRole === 'admin' ? true : undefined),
       };
 
@@ -118,13 +136,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       toast({ title: "¡Cuenta Creada!", description: successMessage });
       
-      // No need to set user here, the onSnapshot listener will do it.
-      
       const redirectPath = finalRole === 'admin' ? '/admin/overview'
                          : finalRole === 'handyman' ? '/dashboard/handyman'
                          : '/dashboard/customer';
       router.push(redirectPath);
-      // The user object from the listener will be the most up-to-date
+
       const userDoc = await getDoc(userDocRef);
       return { ...userCredential.user, ...userDoc.data() } as AppUser;
 
@@ -135,8 +151,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
         : error.message || "Ocurrió un error inesperado.";
       toast({ title: "Falló el Registro", description: errorMessage, variant: "destructive" });
       return null;
-    } finally {
-      // setLoading(false) is handled by the onSnapshot listener
     }
   };
 
@@ -147,7 +161,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const firebaseUser = userCredential.user;
       
       const userDocRef = doc(firestore, "users", firebaseUser.uid);
-      const userDocSnap = await getDoc(userDocRef); // getDoc is fine here, as onSnapshot will take over.
+      const userDocSnap = await getDoc(userDocRef);
       let userRole = 'customer';
       
       if (userDocSnap.exists()) {
@@ -170,11 +184,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } catch (error: any) {
       console.error("Error al iniciar sesión:", error);
       toast({ title: "Falló el Inicio de Sesión", description: "Credenciales inválidas o error inesperado.", variant: "destructive" });
-      setUser(null); // Ensure user is null on failure
+      setUser(null);
       setLoading(false);
       return null;
     } 
-    // finally is removed because setLoading(false) is now handled by the snapshot listener
   };
 
   const signOutUser = async () => {
@@ -182,12 +195,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     try {
       await signOut(auth);
       toast({ title: "Sesión Cerrada", description: "Has cerrado sesión exitosamente." });
-      // setUser(null) and setLoading(false) are handled by the onAuthStateChanged listener
       router.push('/'); 
     } catch (error: any) {
       console.error("Error al cerrar sesión:", error);
       toast({ title: "Falló el Cierre de Sesión", description: error.message || "Por favor, inténtalo de nuevo.", variant: "destructive" });
-      setLoading(false); // Set loading to false on error
+      setLoading(false);
     }
   };
   
