@@ -3,7 +3,7 @@
 import ServiceCard from '@/components/services/service-card';
 import { Briefcase } from 'lucide-react';
 import { firestore } from '@/firebase/clientApp';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { Service } from '@/types/service';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
@@ -12,7 +12,6 @@ import { AlertTriangle } from 'lucide-react';
 async function getServices(): Promise<{ services: Service[], error?: string }> {
     try {
         const servicesRef = collection(firestore, "platformServices");
-        // Remove orderBy to avoid needing a composite index
         const q = query(servicesRef, where("isActive", "==", true));
         const querySnapshot = await getDocs(q);
         const services: Service[] = [];
@@ -20,7 +19,7 @@ async function getServices(): Promise<{ services: Service[], error?: string }> {
             services.push({ id: doc.id, ...doc.data() } as Service);
         });
 
-        // Sort client-side
+        // Sort client-side to avoid needing a composite index
         services.sort((a, b) => a.name.localeCompare(b.name));
         
         return { services };
@@ -29,6 +28,8 @@ async function getServices(): Promise<{ services: Service[], error?: string }> {
         let errorMessage = "No se pudieron cargar los servicios. Intenta de nuevo más tarde.";
         if (error.code === 'failed-precondition') {
           errorMessage = "Firestore requiere un índice para esta consulta. Revisa la consola para un enlace de creación.";
+        } else if (error.code === 'permission-denied') {
+            errorMessage = "Error de permisos al leer los servicios. Revisa tus Reglas de Seguridad en Firestore."
         }
         return { services: [], error: errorMessage };
     }
@@ -62,9 +63,7 @@ export default async function ServicesPage() {
           ))}
         </div>
       ) : (
-        !error && <p className="text-center text-muted-foreground text-lg py-10">
-          No hay servicios disponibles en este momento. Por favor, vuelve más tarde.
-        </p>
+        !error && <div className="text-center py-10"><Briefcase className="mx-auto h-12 w-12 text-muted-foreground mb-4" /><p className="text-muted-foreground text-lg">No hay servicios disponibles en este momento.</p><p className="text-sm text-muted-foreground">El administrador aún no ha añadido ningún servicio.</p></div>
       )}
     </div>
   );

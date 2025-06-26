@@ -81,7 +81,7 @@ export default function AdminServicesPage() {
   const { user, loading: authLoading } = useAuth();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
@@ -105,6 +105,7 @@ export default function AdminServicesPage() {
   });
 
   useEffect(() => {
+    if (authLoading) return; // Wait until auth state is resolved
     if (user?.role === 'admin') {
       setIsLoadingServices(true);
       fetchPlatformServices()
@@ -115,10 +116,10 @@ export default function AdminServicesPage() {
         })
         .finally(() => setIsLoadingServices(false));
     }
-  }, [user, toast]);
+  }, [user, authLoading, toast]);
 
   useEffect(() => {
-    if (!isDialogOpen && !isLoading) { 
+    if (!isDialogOpen) { 
       setEditingServiceId(null); 
       form.reset({
         name: "",
@@ -131,7 +132,7 @@ export default function AdminServicesPage() {
         dataAiHint: "",
       });
     }
-  }, [isDialogOpen, form, isLoading]);
+  }, [isDialogOpen, form]);
 
   const handleEdit = (service: Service) => {
     if (!service.id) {
@@ -153,8 +154,7 @@ export default function AdminServicesPage() {
   };
 
   const onSubmit: SubmitHandler<ServiceFormData> = async (data) => {
-    setIsLoading(true);
-
+    setIsSubmitting(true);
     try {
       const commonTasksArray = data.commonTasks.split('\n').map(task => task.trim()).filter(Boolean);
 
@@ -174,21 +174,20 @@ export default function AdminServicesPage() {
         const serviceDocRef = doc(firestore, "platformServices", editingServiceId);
         await updateDoc(serviceDocRef, serviceData);
         toast({ title: "Servicio Actualizado", description: `El servicio "${data.name}" ha sido actualizado.` });
-        setServices(prev => prev.map(s => s.id === editingServiceId ? { ...s, ...serviceData, id: editingServiceId } as Service : s));
       } else {
         serviceData.createdAt = serverTimestamp() as Timestamp;
-        const docRef = await addDoc(collection(firestore, "platformServices"), serviceData);
+        await addDoc(collection(firestore, "platformServices"), serviceData);
         toast({ title: "Servicio Añadido", description: `El servicio "${data.name}" ha sido creado.` });
-        const newService: Service = { id: docRef.id, ...serviceData, createdAt: Timestamp.now(), updatedAt: Timestamp.now() };
-        setServices(prev => [newService, ...prev]);
       }
       
+      // Refetch services to show the changes
+      fetchPlatformServices().then(setServices);
       setIsDialogOpen(false); 
     } catch (error: any) {
       console.error("Error saving service:", error);
       toast({ title: "Error al Guardar", description: error.message, variant: "destructive" });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -220,6 +219,7 @@ export default function AdminServicesPage() {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Verificando acceso...</p>
       </div>
     );
   }
@@ -288,9 +288,9 @@ Instalar calentadores..." rows={4} {...field} /></FormControl><FormDescription>U
           </ScrollArea>
           <DialogFooter className="pt-4">
             <DialogClose asChild><Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button></DialogClose>
-            <Button onClick={form.handleSubmit(onSubmit)} disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLoading ? "Guardando..." : (editingServiceId ? "Guardar Cambios" : "Guardar Servicio")}
+            <Button onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? "Guardando..." : (editingServiceId ? "Guardar Cambios" : "Guardar Servicio")}
             </Button>
           </DialogFooter>
         </DialogContent>

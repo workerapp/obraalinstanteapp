@@ -22,18 +22,23 @@ interface ServiceDetailPageProps {
 }
 
 async function getService(id: string): Promise<Service | null> {
-    const serviceDocRef = doc(firestore, "platformServices", id);
-    const serviceDocSnap = await getDoc(serviceDocRef);
+    try {
+        const serviceDocRef = doc(firestore, "platformServices", id);
+        const serviceDocSnap = await getDoc(serviceDocRef);
 
-    if (!serviceDocSnap.exists()) {
+        if (!serviceDocSnap.exists() || !serviceDocSnap.data().isActive) {
+            return null; // Return null if not found or not active
+        }
+        const data = serviceDocSnap.data();
+        return {
+            id: serviceDocSnap.id,
+            ...data,
+            commonTasks: data.commonTasks || [],
+        } as Service;
+    } catch (error) {
+        console.error("Error getting service document:", error);
         return null;
     }
-    const data = serviceDocSnap.data();
-    return {
-        id: serviceDocSnap.id,
-        ...data,
-        commonTasks: data.commonTasks || [],
-    } as Service;
 }
 
 

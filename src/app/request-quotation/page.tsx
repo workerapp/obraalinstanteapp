@@ -56,9 +56,9 @@ const fetchActiveServices = async (): Promise<Service[]> => {
 };
 
 export default function RequestQuotationPage() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
   const searchParams = useSearchParams();
 
@@ -90,7 +90,6 @@ export default function RequestQuotationPage() {
   });
 
   useEffect(() => {
-    // Set initial values from URL and user profile once
     const defaultValues: Partial<FormData> = {};
     if (typedUser) {
         defaultValues.contactFullName = typedUser.displayName || '';
@@ -103,7 +102,7 @@ export default function RequestQuotationPage() {
     if (handymanNameFromQuery) defaultValues.handymanName = decodeURIComponent(handymanNameFromQuery);
     
     form.reset(defaultValues);
-  }, [typedUser, searchParams, form]); // form.reset was missing from dependency array
+  }, [typedUser, searchParams, form]);
   
   const watchedServiceId = form.watch("serviceId");
 
@@ -118,11 +117,11 @@ export default function RequestQuotationPage() {
 
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     if (!typedUser?.uid) {
       toast({ title: "Usuario no Autenticado", description: "Debes iniciar sesión para enviar una solicitud.", variant: "destructive" });
-      setIsLoading(false);
+      setIsSubmitting(false);
       return;
     }
     
@@ -135,7 +134,7 @@ export default function RequestQuotationPage() {
 
     if (!finalServiceName) {
         toast({ title: "Error de Servicio", description: "Por favor, selecciona un servicio o describe tu problema.", variant: "destructive" });
-        setIsLoading(false);
+        setIsSubmitting(false);
         return;
     }
 
@@ -175,7 +174,7 @@ export default function RequestQuotationPage() {
       console.error("Error al añadir documento: ", e);
       toast({ title: "Error al Enviar Solicitud", description: "Hubo un problema al guardar tu solicitud.", variant: "destructive" });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -216,9 +215,9 @@ export default function RequestQuotationPage() {
                     render={({ field }) => ( 
                       <FormItem> 
                         <FormLabel>Servicio Requerido</FormLabel> 
-                        <Select onValueChange={field.onChange} value={field.value || ""}> 
+                        <Select onValueChange={field.onChange} value={field.value || ""} disabled={servicesLoading}> 
                           <FormControl> 
-                            <SelectTrigger disabled={servicesLoading}> 
+                            <SelectTrigger> 
                               <SelectValue placeholder={servicesLoading ? "Cargando servicios..." : "Selecciona un servicio"} /> 
                             </SelectTrigger> 
                           </FormControl> 
@@ -263,8 +262,8 @@ export default function RequestQuotationPage() {
                 )}
               />
 
-              <Button type="submit" disabled={isLoading} className="w-full">
-                {isLoading ? ( <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando Solicitud...</> ) : ( <><Send className="mr-2 h-4 w-4" /> Enviar Solicitud</> )}
+              <Button type="submit" disabled={isSubmitting || authLoading} className="w-full">
+                {isSubmitting ? ( <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando Solicitud...</> ) : ( <><Send className="mr-2 h-4 w-4" /> Enviar Solicitud</> )}
               </Button>
             </form>
           </Form>

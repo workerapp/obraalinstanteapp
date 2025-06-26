@@ -231,7 +231,8 @@ export default function AdminOverviewPage() {
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><ListChecks className="text-blue-500"/>Servicios Gestionados</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-primary">{validCompletedRequests.length || 0}</p><p className="text-xs text-muted-foreground">Total de trabajos completados que generaron comisión.</p></CardContent></Card>
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Users className="text-purple-500"/>Operarios Activos</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-primary">{Object.keys(commissionsByHandyman).length}</p><p className="text-xs text-muted-foreground">Operarios que generaron comisiones.</p></CardContent></Card>
       </div>
-       <Card className="shadow-lg">
+      
+      <Card className="shadow-lg">
           <CardHeader>
               <CardTitle className="flex items-center gap-2"><Briefcase className="text-primary"/>Gestión Global de Servicios</CardTitle>
               <CardDescription>Administra el catálogo principal de servicios ofrecidos en la plataforma.</CardDescription>
@@ -240,7 +241,7 @@ export default function AdminOverviewPage() {
               <p>Aquí puedes crear, editar y eliminar las categorías de servicio que los clientes y operarios verán en toda la aplicación.</p>
           </CardContent>
           <CardFooter>
-                <Button asChild className="w-full">
+              <Button asChild className="w-full">
                   <Link href="/admin/services">Gestionar Catálogo de Servicios</Link>
               </Button>
           </CardFooter>
