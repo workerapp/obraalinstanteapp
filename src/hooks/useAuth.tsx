@@ -1,4 +1,3 @@
-
 // src/hooks/useAuth.tsx
 "use client";
 
@@ -151,6 +150,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         : error.message || "Ocurrió un error inesperado.";
       toast({ title: "Falló el Registro", description: errorMessage, variant: "destructive" });
       return null;
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -163,14 +164,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const userDocRef = doc(firestore, "users", firebaseUser.uid);
       const userDocSnap = await getDoc(userDocRef);
       
-      let userRole = 'customer'; // Default role
-      if (userDocSnap.exists()) {
+      // La verificación del email de admin tiene prioridad absoluta.
+      const isUserAdminByEmail = firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      let finalRole = 'customer'; // Default role
+
+      if (isUserAdminByEmail) {
+        finalRole = 'admin';
+      } else if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
-        userRole = userData.role || 'customer';
+        finalRole = userData.role || 'customer';
       }
-      
-      // Admin email check has the highest priority
-      const finalRole = email.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'admin' : userRole;
       
       toast({ title: "¡Sesión Iniciada!", description: "¡Bienvenido/a de nuevo!" });
       
@@ -183,11 +186,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return { ...firebaseUser, ...userDoc.data() } as AppUser;
 
     } catch (error: any) {
-      console.error("Error al iniciar sesión:", error);
-      toast({ title: "Falló el Inicio de Sesión", description: "Credenciales inválidas o error inesperado.", variant: "destructive" });
-      setUser(null);
-      setLoading(false);
-      return null;
+        console.error("Error al iniciar sesión:", error);
+        let errorMessage = "Ocurrió un error inesperado. Por favor, inténtalo de nuevo.";
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+            errorMessage = "El correo electrónico o la contraseña son incorrectos. Por favor, verifica tus credenciales.";
+        }
+        toast({ title: "Falló el Inicio de Sesión", description: errorMessage, variant: "destructive" });
+        setUser(null);
+        setLoading(false);
+        return null;
     }
   };
 
