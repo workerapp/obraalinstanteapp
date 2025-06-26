@@ -49,6 +49,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         
         unsubscribeFromUserDoc = onSnapshot(userDocRef, (userDocSnap) => {
           let finalUser: AppUser;
+          
+          const isUserAdminByEmail = firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data();
@@ -56,19 +58,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
               ...firebaseUser,
               displayName: userData.displayName || firebaseUser.displayName,
               photoURL: userData.photoURL || firebaseUser.photoURL,
-              role: userData.role,
-              isApproved: userData.isApproved,
+              // La verificación del email de admin tiene prioridad absoluta.
+              role: isUserAdminByEmail ? 'admin' : userData.role || 'customer',
+              isApproved: isUserAdminByEmail ? true : userData.isApproved,
             };
           } else {
-            // Document doesn't exist yet, use base Firebase user
-            finalUser = firebaseUser as AppUser;
-          }
-
-          // **DEFINITIVE FIX**: The admin email is the ultimate source of truth for the admin role.
-          // This will override any role set in Firestore if the email matches.
-          if (finalUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-            finalUser.role = 'admin';
-            finalUser.isApproved = true;
+            // El documento no existe, así que lo creamos si es necesario, o usamos datos base.
+            finalUser = {
+                ...firebaseUser,
+                role: isUserAdminByEmail ? 'admin' : 'customer',
+                isApproved: isUserAdminByEmail ? true : false,
+            } as AppUser;
           }
           
           setUser(finalUser);
@@ -76,9 +76,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
         }, (error) => {
           console.error("Error listening to user document:", error);
-          // On error, still apply the admin failsafe
           let errorUser: AppUser = firebaseUser as AppUser;
-          if (errorUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+          if (firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             errorUser.role = 'admin';
             errorUser.isApproved = true;
           }
@@ -163,13 +162,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
       
       const userDocRef = doc(firestore, "users", firebaseUser.uid);
       const userDocSnap = await getDoc(userDocRef);
-      let userRole = 'customer';
       
+      let userRole = 'customer'; // Default role
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
         userRole = userData.role || 'customer';
       }
       
+      // Admin email check has the highest priority
       const finalRole = email.toLowerCase() === ADMIN_EMAIL.toLowerCase() ? 'admin' : userRole;
       
       toast({ title: "¡Sesión Iniciada!", description: "¡Bienvenido/a de nuevo!" });
@@ -182,13 +182,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const userDoc = await getDoc(userDocRef);
       return { ...firebaseUser, ...userDoc.data() } as AppUser;
 
-    } catch (error: any)
+    } catch (error: any) {
       console.error("Error al iniciar sesión:", error);
       toast({ title: "Falló el Inicio de Sesión", description: "Credenciales inválidas o error inesperado.", variant: "destructive" });
       setUser(null);
       setLoading(false);
       return null;
-    } 
+    }
   };
 
   const signOutUser = async () => {
