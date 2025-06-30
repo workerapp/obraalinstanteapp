@@ -94,9 +94,9 @@ export default function AiAssistantChatPage() {
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (e.key === 'Enter' && !e.shiftKey && e.currentTarget.form) {
             e.preventDefault();
-            e.currentTarget.form?.requestSubmit();
+            e.currentTarget.form.requestSubmit();
         }
     };
     
@@ -111,7 +111,7 @@ export default function AiAssistantChatPage() {
             <CardContent className="flex-grow overflow-hidden">
                 <ScrollArea className="h-full pr-4" ref={scrollAreaRef as any}>
                     <div className="space-y-4">
-                        {messages.map((message, index) => (
+                        {messages.filter(Boolean).map((message, index) => (
                             <div key={index} className={cn("flex items-start gap-3", message.role === 'user' ? "justify-end" : "justify-start")}>
                                 {message.role === 'model' && <Bot className="h-8 w-8 text-primary flex-shrink-0" />}
                                 <div className={cn("p-3 rounded-lg max-w-md", message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
