@@ -6,6 +6,6 @@ export interface RequestMessage {
   text: string;
   senderId: string;
   senderName: string;
-  senderRole: 'customer' | 'handyman' | 'admin';
+  senderRole: 'customer' | 'handyman' | 'admin' | 'supplier';
   createdAt: Timestamp;
 }

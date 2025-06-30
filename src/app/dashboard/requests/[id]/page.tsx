@@ -120,7 +120,7 @@ export default function RequestDetailPage() {
         text: data.messageText,
         senderId: typedUser.uid,
         senderName: typedUser.displayName || "Usuario Anónimo",
-        senderRole: typedUser.role as 'customer' | 'handyman' | 'admin' || 'customer',
+        senderRole: typedUser.role as 'customer' | 'handyman' | 'admin' | 'supplier' || 'customer',
         createdAt: Timestamp.now(), // Use local timestamp for immediate display
     };
     
@@ -176,6 +176,7 @@ export default function RequestDetailPage() {
   const getRoleBadgeClass = (role?: string) => {
     if (role === 'admin') return 'bg-destructive text-destructive-foreground';
     if (role === 'handyman') return 'bg-primary text-primary-foreground';
+    if (role === 'supplier') return 'bg-accent text-accent-foreground';
     return 'bg-secondary text-secondary-foreground';
   };
 
