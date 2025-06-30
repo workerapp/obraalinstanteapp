@@ -53,9 +53,6 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <p>Usa nuestro Asistente IA para describir tu problema y obtener sugerencias de soluciones al instante, o explora nuestros servicios.</p>
-              <Button variant="link" asChild className="px-0 mt-2 text-accent hover:text-accent/80">
-                <Link href="/ai-assistant">Ir al Asistente IA &rarr;</Link>
-              </Button>
             </CardContent>
           </Card>
           <Card className="shadow-lg hover:shadow-xl transition-shadow">
