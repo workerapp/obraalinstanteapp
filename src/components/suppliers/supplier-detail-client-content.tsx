@@ -131,17 +131,19 @@ export default function SupplierDetailClientContent({ supplier, reviews }: Suppl
                 />
               </div>
             )}
-             <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 mb-2">
-              <Link href={`/request-quotation?handymanId=${supplier.id}&handymanName=${encodeURIComponent(supplier.companyName)}`}>
-                <MessageSquare size={18} className="mr-2" /> Solicitar Cotización de Productos
-              </Link>
-            </Button>
-            <Button variant="outline" size="lg" className="w-full" onClick={handleWhatsAppContact}>
-              <Phone size={18} className="mr-2" /> Contactar vía Administrador
-            </Button>
-             <p className="text-xs text-muted-foreground text-center mt-2">
-              La comunicación y cotización se gestionan a través del administrador para garantizar un proceso seguro.
-            </p>
+            <div className="flex flex-col gap-2">
+                <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90">
+                <Link href={`/request-quotation?handymanId=${supplier.id}&handymanName=${encodeURIComponent(supplier.companyName)}`}>
+                    <MessageSquare size={18} className="mr-2" /> Pedir Cotización General
+                </Link>
+                </Button>
+                <Button variant="outline" size="lg" className="w-full" onClick={handleWhatsAppContact}>
+                <Phone size={18} className="mr-2" /> Contactar por WhatsApp
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                La comunicación y cotización se gestionan a través del administrador para garantizar un proceso seguro.
+                </p>
+            </div>
           </div>
 
           <div className="md:col-span-2">
