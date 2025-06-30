@@ -113,18 +113,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
         displayName: fullName,
         role: finalRole,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         tagline: null,
         aboutMe: null,
         skills: [],
         location: null,
         phone: null,
         photoURL: null,
-        isApproved: finalRole === 'handyman' || finalRole === 'supplier' ? false : (finalRole === 'admin' ? true : undefined),
       };
 
-      if (userDocData.isApproved === undefined) {
-        delete userDocData.isApproved;
+      // Add isApproved field only for roles that need it.
+      if (finalRole === 'handyman' || finalRole === 'supplier') {
+        userDocData.isApproved = false;
+      } else if (finalRole === 'admin') {
+        userDocData.isApproved = true;
       }
+      // For 'customer', the field is simply not added.
 
       const userDocRef = doc(firestore, "users", userCredential.user.uid);
       await setDoc(userDocRef, userDocData);
@@ -174,13 +178,27 @@ export function AuthProvider({ children }: PropsWithChildren) {
           finalRole = userData.role || 'customer';
           finalUser = { ...firebaseUser, ...userData } as AppUser;
       } else {
-          finalUser = firebaseUser as AppUser;
+          // This handles an edge case where a user exists in Auth but not in Firestore.
+          // We create a default Firestore document for them.
+          console.warn(`User ${firebaseUser.uid} exists in Auth but not in Firestore. Creating default document.`);
+          finalRole = isUserAdminByEmail ? 'admin' : 'customer';
+          const defaultDocData = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              role: finalRole,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+          };
+          await setDoc(userDocRef, defaultDocData, { merge: true });
+          finalUser = { ...firebaseUser, ...defaultDocData } as AppUser;
       }
       
-      // Override role if it's the admin email
+      // Override role if it's the admin email, ensuring it has precedence.
       if (isUserAdminByEmail) {
         finalRole = 'admin';
-        finalUser.role = 'admin';
+        finalUser!.role = 'admin';
+        finalUser!.isApproved = true;
       }
       
       toast({ title: "¡Sesión Iniciada!", description: "¡Bienvenido/a de nuevo!" });
