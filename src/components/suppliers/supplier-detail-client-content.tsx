@@ -1,15 +1,20 @@
 // src/components/suppliers/supplier-detail-client-content.tsx
 "use client";
 
+import { useState, useEffect } from 'react';
 import type { Supplier } from '@/types/supplier';
+import type { Product } from '@/types/product';
+import { firestore } from '@/firebase/clientApp';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Star, MapPin, CalendarDays, MessageSquare, Phone, UserCircle2, Truck, StarIcon } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, CalendarDays, MessageSquare, Phone, UserCircle2, Truck, StarIcon, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'; 
 import { Separator } from '@/components/ui/separator'; 
+import ProductCard from '@/components/products/product-card';
 
 interface Review {
   id: number;
@@ -26,8 +31,49 @@ interface SupplierDetailClientContentProps {
 
 const ADMIN_WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP_NUMBER || "+573017412292"; 
 
+async function fetchProductsForSupplier(supplierId: string): Promise<Product[]> {
+  if (!supplierId) return [];
+  
+  const productsRef = collection(firestore, "supplierProducts");
+  const q = query(
+    productsRef, 
+    where("supplierUid", "==", supplierId), 
+    where("isActive", "==", true)
+  );
+  
+  const querySnapshot = await getDocs(q);
+  const products: Product[] = [];
+  querySnapshot.forEach((doc) => {
+    products.push({ id: doc.id, ...doc.data() } as Product);
+  });
+
+  // Client-side sort to avoid composite indexes
+  products.sort((a, b) => a.name.localeCompare(b.name));
+  
+  return products;
+}
+
 export default function SupplierDetailClientContent({ supplier, reviews }: SupplierDetailClientContentProps) {
   const { toast } = useToast();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (supplier?.id) {
+        setIsLoadingProducts(true);
+        setProductsError(null);
+        fetchProductsForSupplier(supplier.id)
+            .then(setProducts)
+            .catch(err => {
+                console.error("Error fetching supplier products:", err);
+                setProductsError("No se pudieron cargar los productos de este proveedor en este momento.");
+            })
+            .finally(() => setIsLoadingProducts(false));
+    } else {
+        setIsLoadingProducts(false);
+    }
+  }, [supplier?.id]);
 
   if (!supplier) {
     return (
@@ -149,13 +195,33 @@ export default function SupplierDetailClientContent({ supplier, reviews }: Suppl
           <h2 className="text-2xl font-semibold font-headline mb-4 flex items-center">
             <Truck size={24} className="mr-3 text-primary" /> Catálogo de Productos
           </h2>
-           <div className="text-center py-6 bg-muted/50 p-4 rounded-md">
-              <p className="text-muted-foreground font-medium">Próximamente</p>
-              <p className="text-sm text-muted-foreground/80">
-                El catálogo de productos de {supplier.companyName} estará disponible aquí muy pronto.
-                Por ahora, puedes solicitar una cotización para los materiales que necesites.
-            </p>
+          {isLoadingProducts && (
+            <div className="flex justify-center items-center py-6">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="ml-3 text-muted-foreground">Cargando productos...</p>
             </div>
+          )}
+          {productsError && !isLoadingProducts && (
+            <div className="text-center py-6 bg-destructive/10 p-4 rounded-md">
+              <p className="text-destructive font-medium">Error al Cargar Productos</p>
+              <p className="text-sm text-destructive/80">{productsError}</p>
+            </div>
+          )}
+          {!isLoadingProducts && !productsError && products.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {products.map(product => (
+                <ProductCard key={product.id} product={product} supplier={supplier} />
+              ))}
+            </div>
+          )}
+          {!isLoadingProducts && !productsError && products.length === 0 && (
+            <div className="text-center py-6 bg-muted/50 p-4 rounded-md">
+                <p className="text-muted-foreground font-medium">No hay productos en el catálogo</p>
+                <p className="text-sm text-muted-foreground/80">
+                  Este proveedor aún no ha publicado productos. Puedes solicitar una cotización general de los materiales que necesites.
+                </p>
+            </div>
+          )}
         </section>
         
         <Separator className="my-8" />
