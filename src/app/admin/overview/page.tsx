@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { 
     BarChart, DollarSign, Users, ListChecks, Loader2, AlertTriangle, ArrowLeft, 
-    CheckCircle, XCircle, CreditCard, UserCog, UserCheck2, UserX2, Briefcase, Eye, Activity
+    CheckCircle, XCircle, CreditCard, UserCog, UserCheck2, UserX2, Briefcase, Eye, Activity, TrendingUp, BarChart2
 } from 'lucide-react';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -24,6 +24,8 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Switch } from '@/components/ui/switch';
+import { Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 
 const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
@@ -153,6 +155,45 @@ export default function AdminOverviewPage() {
     }
     return acc;
   }, {} as CommissionsByHandyman);
+
+  // Data processing for charts
+  const revenueByMonth = validCompletedRequests.reduce((acc, req) => {
+    if (req.updatedAt && req.platformFeeCalculated) {
+      const monthKey = format(req.updatedAt.toDate(), 'yyyy-MM');
+      if (!acc[monthKey]) {
+        acc[monthKey] = { date: req.updatedAt.toDate(), total: 0 };
+      }
+      acc[monthKey].total += req.platformFeeCalculated;
+    }
+    return acc;
+  }, {} as Record<string, { date: Date, total: number }>);
+  
+  const revenueChartData = Object.values(revenueByMonth)
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .map(item => ({
+      name: format(item.date, 'MMM yy', { locale: es }),
+      Ingresos: item.total,
+    }));
+
+  const revenueChartConfig = {
+    Ingresos: { label: "Ingresos", color: "hsl(var(--chart-1))" },
+  } satisfies ChartConfig;
+
+  const serviceCounts = validCompletedRequests.reduce((acc, req) => {
+    if (req.serviceName) {
+      acc[req.serviceName] = (acc[req.serviceName] || 0) + 1;
+    }
+    return acc;
+  }, {} as { [key: string]: number });
+
+  const topServicesChartData = Object.entries(serviceCounts)
+    .map(([name, count]) => ({ name, Solicitudes: count }))
+    .sort((a, b) => b.Solicitudes - a.Solicitudes)
+    .slice(0, 5);
+
+  const servicesChartConfig = {
+    Solicitudes: { label: "Solicitudes", color: "hsl(var(--chart-2))" },
+  } satisfies ChartConfig;
   
   const handleToggleCommissionStatus = async (requestId: string, currentStatus?: "Pendiente" | "Pagada") => {
     setIsUpdatingCommissionStatusId(requestId);
@@ -241,6 +282,56 @@ export default function AdminOverviewPage() {
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Users className="text-purple-500"/>Operarios Aprobados</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-primary">{allHandymen?.filter(h => h.isApproved).length || 0}</p><p className="text-xs text-muted-foreground">Operarios con acceso a la plataforma.</p></CardContent></Card>
       </div>
       
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><TrendingUp className="text-primary"/>Ingresos Mensuales de la Plataforma</CardTitle>
+            <CardDescription>Comisiones generadas por mes de servicios completados.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-80">
+            {revenueChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                 <ChartContainer config={revenueChartConfig}>
+                    <BarChart data={revenueChartData} margin={{ top: 20, right: 20, left: -10, bottom: 5 }}>
+                      <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${(value as number / 1000).toFixed(0)}k`} />
+                      <Tooltip content={<ChartTooltipContent formatter={(value) => `$${(value as number).toLocaleString('es-CO')}`} />} />
+                      <Legend />
+                      <Bar dataKey="Ingresos" fill="var(--color-Ingresos)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-muted-foreground">No hay datos de ingresos para mostrar.</div>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><BarChart2 className="text-primary"/>Top 5 Servicios Completados</CardTitle>
+            <CardDescription>Servicios más populares basados en trabajos finalizados.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-80">
+            {topServicesChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <ChartContainer config={servicesChartConfig}>
+                  <BarChart data={topServicesChartData} layout="vertical" margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
+                    <Legend />
+                    <Bar dataKey="Solicitudes" fill="var(--color-Solicitudes)" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-muted-foreground">No hay servicios completados para mostrar.</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Briefcase className="text-primary"/>Gestión Global de Servicios</CardTitle><CardDescription>Administra el catálogo de servicios ofrecidos.</CardDescription></CardHeader><CardContent><p>Crea, edita y elimina las categorías de servicio que los clientes y operarios verán.</p></CardContent><CardFooter><Button asChild className="w-full"><Link href="/admin/services">Gestionar Catálogo de Servicios</Link></Button></CardFooter></Card>
       
       <Card className="shadow-xl">
