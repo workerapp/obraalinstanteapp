@@ -64,7 +64,7 @@ export default function AiAssistantPage() {
           <Sparkles className="mx-auto h-16 w-16 text-primary mb-4" />
           <CardTitle className="text-3xl font-headline">Asistente de IA</CardTitle>
           <CardDescription>
-            Describe tu problema o necesidad y nuestra IA te dará un diagnóstico, soluciones y los operarios que necesitas.
+            ¡Hola! Soy Obrita, tu asistente personal. Describe tu problema o necesidad y te daré un diagnóstico, posibles soluciones y los tipos de operarios que podrías necesitar.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -92,7 +92,7 @@ export default function AiAssistantPage() {
                 {isLoading ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Analizando...</>
                 ) : (
-                  <><Send className="mr-2 h-5 w-5" /> Obtener Análisis de IA</>
+                  <><Send className="mr-2 h-5 w-5" /> Pedir Análisis a Obrita</>
                 )}
               </Button>
             </form>
@@ -117,13 +117,13 @@ export default function AiAssistantPage() {
             <div className="mt-8 space-y-6 animate-in fade-in-50 duration-500">
               <Separator />
               <div className="space-y-4">
-                <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Lightbulb className="mr-3 h-6 w-6" />Análisis del Problema</h3>
+                <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Lightbulb className="mr-3 h-6 w-6" />Mi Análisis del Problema</h3>
                 <p className="text-foreground/90 bg-muted p-4 rounded-md border">{aiResponse.analysis}</p>
               </div>
 
               {aiResponse.suggestedMaterials && aiResponse.suggestedMaterials.length > 0 && (
                 <div className="space-y-4">
-                  <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><ClipboardList className="mr-3 h-6 w-6" />Materiales y Herramientas Sugeridos</h3>
+                  <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><ClipboardList className="mr-3 h-6 w-6" />Posibles Materiales y Herramientas</h3>
                   <Card>
                     <CardContent className="p-4">
                       <ul className="list-disc list-inside space-y-1 text-sm text-foreground/80">
@@ -137,7 +137,7 @@ export default function AiAssistantPage() {
               )}
 
               <div className="space-y-4">
-                <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Wrench className="mr-3 h-6 w-6" />Soluciones y Habilidades Sugeridas</h3>
+                <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Wrench className="mr-3 h-6 w-6" />Soluciones y Operarios Recomendados</h3>
                 <Card>
                   <CardContent className="p-4 space-y-4">
                     {aiResponse.suggestedSolutions && aiResponse.suggestedSolutions.length > 0 && (
