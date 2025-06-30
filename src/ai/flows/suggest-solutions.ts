@@ -2,7 +2,7 @@
 'use server';
 
 /**
- * @fileOverview AI assistant that analyzes a home maintenance problem and suggests a diagnosis, solutions, and relevant handyman skills.
+ * @fileOverview AI assistant that analyzes a home maintenance problem and suggests a diagnosis, solutions, relevant handyman skills, and materials.
  *
  * - suggestSolutions - A function that handles the analysis process.
  * - SuggestSolutionsInput - The input type for the suggestSolutions function.
@@ -21,6 +21,7 @@ const SuggestSolutionsOutputSchema = z.object({
   analysis: z.string().describe('Un breve análisis y diagnóstico del problema, explicando la posible causa. En ESPAÑOL.'),
   suggestedSolutions: z.array(z.string()).describe('Lista de posibles soluciones al problema, en ESPAÑOL.'),
   relevantSkills: z.array(z.string()).describe('Lista de habilidades de operario relevantes para las soluciones, en ESPAÑOL.'),
+  suggestedMaterials: z.array(z.string()).describe('Lista de posibles materiales y herramientas necesarios para las soluciones, en ESPAÑOL.')
 });
 export type SuggestSolutionsOutput = z.infer<typeof SuggestSolutionsOutputSchema>;
 
@@ -33,13 +34,14 @@ const prompt = ai.definePrompt({
   input: {schema: SuggestSolutionsInputSchema},
   output: {schema: SuggestSolutionsOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
-  prompt: `Eres un asistente de IA experto que ayuda a los clientes a diagnosticar problemas de mantenimiento del hogar y encontrar las soluciones adecuadas. Tu objetivo es proporcionar un análisis detallado y sugerir las habilidades de operario más relevantes.
+  prompt: `Eres un asistente de IA experto que ayuda a los clientes a diagnosticar problemas de mantenimiento del hogar y encontrar las soluciones adecuadas. Tu objetivo es proporcionar un análisis detallado, sugerir soluciones, una lista de materiales y las habilidades de operario más relevantes.
 
 Basándote en la descripción del problema proporcionada por el cliente, sigue estos pasos en tu razonamiento:
 1.  **Analiza el problema:** Desglosa la descripción del cliente. Identifica el objeto principal (p. ej., puerta, grifo, pared) y la acción requerida (p. ej., reparar, instalar, construir).
 2.  **Genera un Diagnóstico (Campo 'analysis'):** Basado en tu análisis, proporciona una explicación breve y clara de cuál podría ser la causa raíz del problema.
 3.  **Genera Soluciones (Campo 'suggestedSolutions'):** Propón una lista de posibles soluciones. Sé claro y conciso.
-4.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Es crucial que consideres todas las posibilidades relevantes.
+4.  **Genera Materiales y Herramientas (Campo 'suggestedMaterials'):** Basado en las soluciones, crea una lista de posibles materiales y herramientas que se necesitarían para el trabajo.
+5.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Es crucial que consideres todas las posibilidades relevantes.
 
 La descripción del problema es: {{{problemDescription}}}
 
@@ -65,6 +67,7 @@ const suggestSolutionsFlow = ai.defineFlow(
       output.analysis = output.analysis || "No se pudo generar un análisis.";
       output.suggestedSolutions = output.suggestedSolutions || [];
       output.relevantSkills = output.relevantSkills || [];
+      output.suggestedMaterials = output.suggestedMaterials || [];
       return output;
     } catch (flowError) {
       console.error('Error within suggestSolutionsFlow:', flowError);

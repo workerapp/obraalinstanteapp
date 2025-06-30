@@ -1,3 +1,4 @@
+
 // src/app/ai-assistant/page.tsx
 "use client";
 
@@ -10,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Sparkles, Lightbulb, Wrench, Send, AlertTriangle, Search, MessageSquare } from 'lucide-react';
+import { Loader2, Sparkles, Lightbulb, Wrench, Send, AlertTriangle, Search, MessageSquare, ClipboardList } from 'lucide-react';
 import { suggestSolutions, type SuggestSolutionsOutput } from '@/ai/flows/suggest-solutions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
@@ -42,7 +43,7 @@ export default function AiAssistantPage() {
     setAiResponse(null);
     try {
       const response = await suggestSolutions({ problemDescription: data.problemDescription });
-      if (response && response.suggestedSolutions && response.relevantSkills) {
+      if (response) {
         setAiResponse(response);
       } else {
         setError("La IA devolvió una respuesta inesperada. Inténtalo de nuevo.");
@@ -119,6 +120,21 @@ export default function AiAssistantPage() {
                 <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Lightbulb className="mr-3 h-6 w-6" />Análisis del Problema</h3>
                 <p className="text-foreground/90 bg-muted p-4 rounded-md border">{aiResponse.analysis}</p>
               </div>
+
+              {aiResponse.suggestedMaterials && aiResponse.suggestedMaterials.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><ClipboardList className="mr-3 h-6 w-6" />Materiales y Herramientas Sugeridos</h3>
+                  <Card>
+                    <CardContent className="p-4">
+                      <ul className="list-disc list-inside space-y-1 text-sm text-foreground/80">
+                        {aiResponse.suggestedMaterials.map((material, index) => (
+                          <li key={`mat-${index}`}>{material}</li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               <div className="space-y-4">
                 <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Wrench className="mr-3 h-6 w-6" />Soluciones y Habilidades Sugeridas</h3>
