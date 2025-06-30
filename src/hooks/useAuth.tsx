@@ -193,8 +193,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
         toast({ title: "Falló el Inicio de Sesión", description: errorMessage, variant: "destructive" });
         setUser(null);
-        setLoading(false);
         return null;
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -207,7 +208,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } catch (error: any) {
       console.error("Error al cerrar sesión:", error);
       toast({ title: "Falló el Cierre de Sesión", description: error.message || "Por favor, inténtalo de nuevo.", variant: "destructive" });
-      setLoading(false);
+    } finally {
+        setLoading(false);
     }
   };
   
