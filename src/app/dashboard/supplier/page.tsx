@@ -57,14 +57,11 @@ const fetchSupplierRequests = async (supplierUid: string | undefined): Promise<Q
   
   const requestsRef = collection(firestore, "quotationRequests");
 
-  // Query 1: Requests specifically assigned to this supplier
   const assignedQuery = query(
     requestsRef, 
     where("handymanId", "==", supplierUid)
   );
 
-  // Query 2: Unclaimed public requests (status 'Enviada' and no provider assigned)
-  // Suppliers can see general requests that haven't been claimed yet.
   const unassignedQuery = query(
     requestsRef,
     where("handymanId", "==", null),
@@ -96,7 +93,6 @@ const fetchSupplierRequests = async (supplierUid: string | undefined): Promise<Q
 
   const requests = Array.from(requestsMap.values());
   
-  // Client-side sorting
   requests.sort((a, b) => {
     const statusOrder: { [key: string]: number } = { 'Enviada': 1, 'Revisando': 2, 'Cotizada': 3, 'Programada': 4, 'Completada': 5, 'Cancelada': 6 };
     const statusA = statusOrder[a.status] || 99;
@@ -181,7 +177,6 @@ export default function SupplierDashboardPage() {
         updatedAt: serverTimestamp(),
       };
 
-      // Claim the request if it's unassigned and being actioned
       if (currentRequest.handymanId === null && newStatus === 'Revisando') {
         updateData.handymanId = typedUser.uid;
         updateData.handymanName = typedUser.displayName;
@@ -254,7 +249,6 @@ export default function SupplierDashboardPage() {
         commissionPaymentStatus: null,
       };
 
-      // Claim the request if it was unassigned
       if (requestBeingQuoted.handymanId === null) {
         updateData.handymanId = typedUser.uid;
         updateData.handymanName = typedUser.displayName;
@@ -302,8 +296,8 @@ export default function SupplierDashboardPage() {
                     </p>
                 </CardContent>
                 <CardFooter>
-                    <Button asChild className="w-full" disabled>
-                        <Link href="/dashboard/supplier/profile">Completar Perfil de Empresa (Próximamente)</Link>
+                    <Button asChild className="w-full">
+                        <Link href="/dashboard/supplier/profile">Completar Perfil de Empresa</Link>
                     </Button>
                 </CardFooter>
             </Card>
