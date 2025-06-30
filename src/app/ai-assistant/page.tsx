@@ -96,7 +96,7 @@ export default function AiAssistantChatPage() {
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            handleSubmit(e.currentTarget.form as HTMLFormElement);
+            e.currentTarget.form?.requestSubmit();
         }
     };
     
