@@ -33,7 +33,7 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore } from '@/firebase/clientApp';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -60,13 +60,20 @@ type ProductFormData = z.infer<typeof productFormSchema>;
 async function fetchSupplierProducts(supplierUid: string): Promise<Product[]> {
   if (!supplierUid) return [];
   const productsRef = collection(firestore, "supplierProducts");
-  const q = query(productsRef, where("supplierUid", "==", supplierUid), orderBy("createdAt", "desc"));
+  const q = query(productsRef, where("supplierUid", "==", supplierUid));
   
   const querySnapshot = await getDocs(q);
   const products: Product[] = [];
   querySnapshot.forEach((doc) => {
     products.push({ id: doc.id, ...doc.data() } as Product);
   });
+
+  products.sort((a, b) => {
+      const aTime = (a.createdAt as any)?.toMillis() || 0;
+      const bTime = (b.createdAt as any)?.toMillis() || 0;
+      return bTime - aTime;
+  });
+
   return products;
 }
 
@@ -151,7 +158,7 @@ export default function SupplierProductsPage() {
     if (!typedUser?.uid) return;
     setIsSubmitting(true);
     try {
-      const productDataForFirestore = {
+      const productDataForFirestore: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> & { updatedAt: Timestamp; createdAt?: Timestamp } = {
         supplierUid: typedUser.uid,
         name: data.name,
         category: data.category,
@@ -162,7 +169,7 @@ export default function SupplierProductsPage() {
         isActive: data.isActive,
         imageUrl: data.imageUrl || null,
         dataAiHint: data.dataAiHint || null,
-        updatedAt: serverTimestamp(),
+        updatedAt: serverTimestamp() as Timestamp,
       };
 
       if (editingProductId) {
@@ -170,8 +177,8 @@ export default function SupplierProductsPage() {
         await updateDoc(productDocRef, productDataForFirestore);
         toast({ title: "Producto Actualizado", description: `El producto "${data.name}" ha sido actualizado.` });
       } else {
-        const fullProductData = { ...productDataForFirestore, createdAt: serverTimestamp() };
-        await addDoc(collection(firestore, "supplierProducts"), fullProductData);
+        productDataForFirestore.createdAt = serverTimestamp() as Timestamp;
+        await addDoc(collection(firestore, "supplierProducts"), productDataForFirestore);
         toast({ title: "Producto Añadido", description: `El producto "${data.name}" ha sido creado.` });
       }
       

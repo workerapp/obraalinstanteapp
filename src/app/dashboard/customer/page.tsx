@@ -33,7 +33,8 @@ const fetchQuotationRequests = async (userId: string | undefined): Promise<Quota
   if (!userId) return [];
   
   const requestsRef = collection(firestore, "quotationRequests");
-  const q = query(requestsRef, where("userId", "==", userId), orderBy("requestedAt", "desc"));
+  // Remove orderBy from query to avoid needing a composite index
+  const q = query(requestsRef, where("userId", "==", userId));
   
   const querySnapshot = await getDocs(q);
   const requests: QuotationRequest[] = [];
@@ -49,6 +50,10 @@ const fetchQuotationRequests = async (userId: string | undefined): Promise<Quota
       updatedAt: updatedAt,
     } as QuotationRequest);
   });
+  
+  // Sort on the client-side
+  requests.sort((a, b) => (b.requestedAt?.toMillis() || 0) - (a.requestedAt?.toMillis() || 0));
+
   return requests;
 };
 
