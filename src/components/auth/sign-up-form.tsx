@@ -1,4 +1,3 @@
-
 // src/components/auth/sign-up-form.tsx
 "use client";
 
@@ -17,7 +16,7 @@ const formSchema = z.object({
   email: z.string().email({ message: "Dirección de correo electrónico inválida." }),
   password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
   confirmPassword: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
-  role: z.enum(["customer", "handyman"], { required_error: "Por favor, selecciona un rol." }),
+  role: z.enum(["customer", "handyman", "supplier"], { required_error: "Por favor, selecciona un rol." }),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Las contraseñas no coinciden",
   path: ["confirmPassword"], 
@@ -51,9 +50,9 @@ export default function SignUpForm() {
           name="fullName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nombre Completo</FormLabel>
+              <FormLabel>Nombre Completo / Nombre de Empresa</FormLabel>
               <FormControl>
-                <Input placeholder="Juan Pérez" {...field} />
+                <Input placeholder="Juan Pérez o Ferretería El Tornillo Feliz" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -115,7 +114,7 @@ export default function SignUpForm() {
                       <RadioGroupItem value="customer" />
                     </FormControl>
                     <FormLabel className="font-normal">
-                      Cliente (Buscando servicios)
+                      Cliente (Buscando servicios o productos)
                     </FormLabel>
                   </FormItem>
                   <FormItem className="flex items-center space-x-3 space-y-0">
@@ -124,6 +123,14 @@ export default function SignUpForm() {
                     </FormControl>
                     <FormLabel className="font-normal">
                       Operario (Ofreciendo servicios)
+                    </FormLabel>
+                  </FormItem>
+                   <FormItem className="flex items-center space-x-3 space-y-0">
+                    <FormControl>
+                      <RadioGroupItem value="supplier" />
+                    </FormControl>
+                    <FormLabel className="font-normal">
+                      Proveedor (Ofreciendo productos/materiales)
                     </FormLabel>
                   </FormItem>
                 </RadioGroup>

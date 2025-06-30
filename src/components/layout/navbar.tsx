@@ -72,6 +72,8 @@ export default function Navbar() {
         ? '/admin/overview' 
         : typedUser.role === 'handyman' 
         ? '/dashboard/handyman' 
+        : typedUser.role === 'supplier'
+        ? '/dashboard/supplier'
         : '/dashboard/customer';
         
       if (isSheetContext) { // Mobile logged in

@@ -119,7 +119,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         location: null,
         phone: null,
         photoURL: null,
-        isApproved: finalRole === 'handyman' ? false : (finalRole === 'admin' ? true : undefined),
+        isApproved: finalRole === 'handyman' || finalRole === 'supplier' ? false : (finalRole === 'admin' ? true : undefined),
       };
 
       if (userDocData.isApproved === undefined) {
@@ -129,7 +129,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const userDocRef = doc(firestore, "users", userCredential.user.uid);
       await setDoc(userDocRef, userDocData);
       
-      const successMessage = finalRole === 'handyman' 
+      const successMessage = finalRole === 'handyman' || finalRole === 'supplier'
         ? "Tu cuenta será revisada por un administrador."
         : "¡Bienvenido/a! Te has registrado con éxito.";
 
@@ -137,6 +137,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       
       const redirectPath = finalRole === 'admin' ? '/admin/overview'
                          : finalRole === 'handyman' ? '/dashboard/handyman'
+                         : finalRole === 'supplier' ? '/dashboard/supplier'
                          : '/dashboard/customer';
       router.push(redirectPath);
 
@@ -157,6 +158,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const signIn = async (email: string, pass: string): Promise<AppUser | null> => {
     setLoading(true);
+    let finalUser: AppUser | null = null;
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       const firebaseUser = userCredential.user;
@@ -164,26 +166,33 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const userDocRef = doc(firestore, "users", firebaseUser.uid);
       const userDocSnap = await getDoc(userDocRef);
       
-      // La verificación del email de admin tiene prioridad absoluta.
       const isUserAdminByEmail = firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
       let finalRole = 'customer'; // Default role
 
+      if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          finalRole = userData.role || 'customer';
+          finalUser = { ...firebaseUser, ...userData } as AppUser;
+      } else {
+          finalUser = firebaseUser as AppUser;
+      }
+      
+      // Override role if it's the admin email
       if (isUserAdminByEmail) {
         finalRole = 'admin';
-      } else if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
-        finalRole = userData.role || 'customer';
+        finalUser.role = 'admin';
       }
       
       toast({ title: "¡Sesión Iniciada!", description: "¡Bienvenido/a de nuevo!" });
       
       const redirectPath = finalRole === 'admin' ? '/admin/overview'
                          : finalRole === 'handyman' ? '/dashboard/handyman'
+                         : finalRole === 'supplier' ? '/dashboard/supplier'
                          : '/dashboard/customer';
       router.push(redirectPath);
       
-      const userDoc = await getDoc(userDocRef);
-      return { ...firebaseUser, ...userDoc.data() } as AppUser;
+      setUser(finalUser);
+      return finalUser;
 
     } catch (error: any) {
         console.error("Error al iniciar sesión:", error);
