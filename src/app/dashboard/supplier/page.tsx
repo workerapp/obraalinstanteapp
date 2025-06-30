@@ -143,6 +143,9 @@ export default function SupplierDashboardPage() {
   const completedRequests = quotationRequests?.filter(req => req.status === 'Completada') || [];
   const totalCompletedSales = completedRequests.length;
   const totalEarnings = completedRequests.reduce((sum, req) => sum + (req.handymanEarnings || 0), 0);
+  const pendingCommission = completedRequests
+    .filter(req => req.commissionPaymentStatus === 'Pendiente')
+    .reduce((sum, req) => sum + (req.platformFeeCalculated || 0), 0);
 
   const getStatusColorClass = (status: QuotationRequest['status']): string => {
      switch (status) {
@@ -314,9 +317,10 @@ export default function SupplierDashboardPage() {
         <p className="text-lg text-foreground/80 max-w-xl mx-auto">Gestiona tus cotizaciones de productos, solicitudes de clientes, y perfil de empresa.</p>
       </section>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><DollarSign className="text-green-500"/>Ganancias Totales (Neto)</CardTitle><CardDescription>Después de comisión.</CardDescription></CardHeader><CardContent><p className="text-3xl font-bold text-primary">${totalEarnings.toLocaleString('es-CO')}</p></CardContent></Card>
-        <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="text-green-500"/>Ventas Completadas</CardTitle><CardDescription>Total de ventas finalizadas.</CardDescription></CardHeader><CardContent><p className="text-3xl font-bold text-primary">{totalCompletedSales}</p></CardContent></Card>
+        <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><CreditCard className="text-orange-500"/>Comisión Pendiente</CardTitle><CardDescription>Monto a pagar a la plataforma.</CardDescription></CardHeader><CardContent><p className="text-3xl font-bold text-orange-600">${pendingCommission.toLocaleString('es-CO')}</p></CardContent></Card>
+        <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="text-blue-500"/>Ventas Completadas</CardTitle><CardDescription>Total de ventas finalizadas.</CardDescription></CardHeader><CardContent><p className="text-3xl font-bold text-primary">{totalCompletedSales}</p></CardContent></Card>
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Package className="text-accent"/>Mis Productos</CardTitle><CardDescription>Gestiona tu catálogo.</CardDescription></CardHeader><CardFooter><Button asChild variant="outline" className="w-full"><Link href="/dashboard/supplier/products">Gestionar Productos</Link></Button></CardFooter></Card>
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Settings2 className="text-muted-foreground"/>Perfil de Empresa</CardTitle><CardDescription>Actualiza tu perfil público.</CardDescription></CardHeader><CardFooter><Button asChild variant="outline" className="w-full"><Link href="/dashboard/supplier/profile">Editar Perfil</Link></Button></CardFooter></Card>
       </div>
