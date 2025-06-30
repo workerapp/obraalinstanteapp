@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { 
-    BarChart, DollarSign, Users, ListChecks, Loader2, AlertTriangle, ArrowLeft, 
+    BarChart as BarChartIcon, DollarSign, Users, ListChecks, Loader2, AlertTriangle, ArrowLeft, 
     CheckCircle, XCircle, CreditCard, UserCog, UserCheck2, UserX2, Briefcase, Eye, Activity, TrendingUp, BarChart2
 } from 'lucide-react';
 import { firestore } from '@/firebase/clientApp';
@@ -24,7 +24,7 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Switch } from '@/components/ui/switch';
-import { Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 
 
@@ -271,7 +271,7 @@ export default function AdminOverviewPage() {
   return (
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-accent/10 via-background to-background rounded-lg shadow-md">
-        <BarChart className="mx-auto h-16 w-16 text-accent mb-4" />
+        <BarChartIcon className="mx-auto h-16 w-16 text-accent mb-4" />
         <h1 className="text-4xl font-headline font-bold text-accent mb-2">Panel de Administración</h1>
         <p className="text-lg text-foreground/80 max-w-xl mx-auto">Resumen de actividad, finanzas y gestión de operarios de la plataforma.</p>
       </section>
@@ -291,17 +291,15 @@ export default function AdminOverviewPage() {
           </CardHeader>
           <CardContent className="h-80">
             {revenueChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                 <ChartContainer config={revenueChartConfig}>
-                    <BarChart data={revenueChartData} margin={{ top: 20, right: 20, left: -10, bottom: 5 }}>
-                      <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${(value as number / 1000).toFixed(0)}k`} />
-                      <Tooltip content={<ChartTooltipContent formatter={(value) => `$${(value as number).toLocaleString('es-CO')}`} />} />
-                      <Legend />
-                      <Bar dataKey="Ingresos" fill="var(--color-Ingresos)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ChartContainer>
-              </ResponsiveContainer>
+              <ChartContainer config={revenueChartConfig}>
+                <BarChart data={revenueChartData} margin={{ top: 20, right: 20, left: -10, bottom: 5 }}>
+                  <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${(value as number / 1000).toFixed(0)}k`} />
+                  <Tooltip content={<ChartTooltipContent formatter={(value) => `$${(value as number).toLocaleString('es-CO')}`} />} />
+                  <Legend />
+                  <Bar dataKey="Ingresos" fill="var(--color-Ingresos)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">No hay datos de ingresos para mostrar.</div>
             )}
@@ -314,17 +312,15 @@ export default function AdminOverviewPage() {
           </CardHeader>
           <CardContent className="h-80">
             {topServicesChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <ChartContainer config={servicesChartConfig}>
-                  <BarChart data={topServicesChartData} layout="vertical" margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
-                    <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
-                    <Legend />
-                    <Bar dataKey="Solicitudes" fill="var(--color-Solicitudes)" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ChartContainer>
-              </ResponsiveContainer>
+              <ChartContainer config={servicesChartConfig}>
+                <BarChart data={topServicesChartData} layout="vertical" margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
+                  <Legend />
+                  <Bar dataKey="Solicitudes" fill="var(--color-Solicitudes)" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ChartContainer>
             ) : (
               <div className="flex h-full items-center justify-center text-muted-foreground">No hay servicios completados para mostrar.</div>
             )}
