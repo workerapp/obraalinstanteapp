@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image'; // Import next/image
-import { Home, Briefcase, Users, LogIn, UserPlus, LayoutDashboard, LogOut, UserCircle, Menu, Package } from 'lucide-react';
+import { Home, Briefcase, Users, LogIn, UserPlus, LayoutDashboard, LogOut, UserCircle, Menu, Package, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
@@ -49,6 +49,11 @@ export default function Navbar() {
       <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : ''}`}>
         <Link href="/suppliers" className="flex items-center gap-2">
           <Package size={18} /> Proveedores
+        </Link>
+      </Button>
+      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : ''}`}>
+        <Link href="/ai-assistant" className="flex items-center gap-2">
+          <Sparkles size={18} /> Asistente IA
         </Link>
       </Button>
     </>
