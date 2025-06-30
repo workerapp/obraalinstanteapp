@@ -29,14 +29,14 @@ const formSchema = z.object({
   address: z.string().min(5, "La dirección es requerida."),
   serviceId: z.string().optional(),
   serviceName: z.string().optional(),
-  problemDescription: z.string().min(20, "Por favor, describe tu problema en al menos 20 caracteres.").max(1000),
+  problemDescription: z.string().min(20, "Por favor, describe tu problema o los productos que necesitas en al menos 20 caracteres.").max(1000),
   preferredDate: z.string().optional(),
   handymanId: z.string().optional(),
   handymanName: z.string().optional(),
 }).refine(data => {
     return data.serviceId || data.problemDescription;
 }, {
-    message: "Debes seleccionar un servicio o proporcionar una descripción del problema.",
+    message: "Debes seleccionar un servicio o proporcionar una descripción del problema/productos.",
     path: ["serviceId"],
 });
 
@@ -128,6 +128,8 @@ export default function RequestQuotationPage() {
     let finalServiceName = data.serviceName;
     if (data.serviceId && availableServices) {
         finalServiceName = availableServices.find(s => s.id === data.serviceId)?.name || 'Servicio personalizado';
+    } else if (data.handymanId) {
+        finalServiceName = 'Cotización de Productos';
     } else if (!data.serviceId && data.problemDescription) {
         finalServiceName = 'Consulta General (Problema Detallado)';
     }
@@ -146,7 +148,7 @@ export default function RequestQuotationPage() {
       contactEmail: data.contactEmail,
       contactPhone: data.contactPhone || null,
       address: data.address,
-      serviceId: data.serviceId || 'general-consultation',
+      serviceId: data.serviceId || (data.handymanId ? 'product-quotation' : 'general-consultation'),
       serviceName: finalServiceName,
       problemDescription: data.problemDescription,
       preferredDate: data.preferredDate || null,
@@ -181,6 +183,7 @@ export default function RequestQuotationPage() {
   const displayServiceNameFromState = form.watch("serviceName");
   const displayServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : (displayServiceNameFromState || null);
   const displayHandymanName = handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (form.watch("handymanName") || null);
+  const isSupplierQuote = searchParams.has('handymanId') && !searchParams.has('serviceId');
 
   return (
     <div className="max-w-2xl mx-auto py-8">
@@ -189,9 +192,8 @@ export default function RequestQuotationPage() {
           <FileText className="mx-auto h-16 w-16 text-accent mb-4" />
           <CardTitle className="text-3xl font-headline">Solicitar una Cotización</CardTitle>
           <CardDescription>
-            Completa el formulario para obtener una cotización.
-            {displayHandymanName && ` Estás solicitando una cotización específicamente a ${displayHandymanName}.`}
-            {problemFromQuery && !serviceIdFromQuery && " La descripción de tu problema ha sido pre-llenada por nuestro Asistente IA."}
+            {isSupplierQuote ? `Completa el formulario para solicitar una cotización de productos a ${displayHandymanName}.` 
+            : `Completa el formulario para obtener una cotización de servicio.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -202,10 +204,10 @@ export default function RequestQuotationPage() {
                 <FormField control={form.control} name="contactEmail" render={({ field }) => ( <FormItem> <FormLabel>Correo Electrónico</FormLabel> <FormControl><Input type="email" placeholder="tu@ejemplo.com" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               </div>
               <FormField control={form.control} name="contactPhone" render={({ field }) => ( <FormItem> <FormLabel>Número de Teléfono (Opcional)</FormLabel> <FormControl><Input type="tel" placeholder="Tu número de teléfono" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-              <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección del Servicio</FormLabel> <FormControl><Input placeholder="Calle 123, Ciudad, Provincia" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
+              <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección (para entrega o servicio)</FormLabel> <FormControl><Input placeholder="Calle 123, Ciudad, Provincia" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
 
-              {serviceIdFromQuery ? (
-                <FormItem> <FormLabel>Servicio Requerido</FormLabel> <div className="flex items-center gap-2 p-3 rounded-md border bg-muted"> <Package className="h-5 w-5 text-muted-foreground" /> <span className="text-sm text-foreground">{displayServiceName || 'Servicio Específico'}</span> </div> <FormDescription> {displayHandymanName ? `Solicitando cotización para ${displayServiceName} de ${displayHandymanName}.` : `Solicitando cotización para ${displayServiceName}.`} </FormDescription> </FormItem>
+              {serviceIdFromQuery || isSupplierQuote ? (
+                <FormItem> <FormLabel>Solicitando a</FormLabel> <div className="flex items-center gap-2 p-3 rounded-md border bg-muted"> <Package className="h-5 w-5 text-muted-foreground" /> <span className="text-sm text-foreground">{displayHandymanName || 'Destinatario Específico'}</span> </div> <FormDescription> {isSupplierQuote ? `Solicitando cotización de productos a ${displayHandymanName}.` : `Solicitando cotización para ${displayServiceName} de ${displayHandymanName}.`} </FormDescription> </FormItem>
               ) : problemFromQuery && !serviceIdFromQuery ? (
                  <FormItem> <FormLabel>Servicio Requerido</FormLabel> <div className="flex items-center gap-2 p-3 rounded-md border bg-muted"> <FileText className="h-5 w-5 text-muted-foreground" /> <span className="text-sm text-foreground">Consulta General (basada en tu descripción)</span> </div> <FormDescription>Tu problema descrito a la IA se usará como base para la cotización.</FormDescription> </FormItem>
               ) : (
@@ -240,9 +242,9 @@ export default function RequestQuotationPage() {
                 name="problemDescription" 
                 render={({ field }) => ( 
                   <FormItem> 
-                    <FormLabel>Descripción del Problema</FormLabel> 
+                    <FormLabel>{isSupplierQuote ? 'Productos Requeridos' : 'Descripción del Problema'}</FormLabel> 
                     <FormControl> 
-                      <Textarea placeholder="Describe el problema en detalle..." rows={5} className="resize-none" {...field}/> 
+                      <Textarea placeholder={isSupplierQuote ? 'Ej: 10 bultos de cemento, 5 galones de pintura blanca...' : 'Describe el problema en detalle...'} rows={5} className="resize-none" {...field}/> 
                     </FormControl> 
                     <FormMessage /> 
                   </FormItem> 
@@ -256,7 +258,7 @@ export default function RequestQuotationPage() {
                   <FormItem> 
                     <FormLabel>Fecha Preferida (Opcional)</FormLabel> 
                     <FormControl><Input type="date" {...field} min={new Date().toISOString().split("T")[0]}/></FormControl> 
-                    <FormDescription>Indícanos si tienes una fecha preferida para el servicio.</FormDescription> 
+                    <FormDescription>Indícanos si tienes una fecha preferida para el servicio o entrega.</FormDescription> 
                     <FormMessage /> 
                   </FormItem> 
                 )}
