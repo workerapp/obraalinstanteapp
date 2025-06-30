@@ -292,10 +292,10 @@ export default function AdminOverviewPage() {
           <CardContent className="h-80">
             {revenueChartData.length > 0 ? (
               <ChartContainer config={revenueChartConfig}>
-                <BarChart data={revenueChartData} margin={{ top: 20, right: 20, left: -10, bottom: 5 }}>
+                <BarChart data={revenueChartData} margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
                   <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${(value as number / 1000).toFixed(0)}k`} />
-                  <Tooltip content={<ChartTooltipContent formatter={(value) => `$${(value as number).toLocaleString('es-CO')}`} />} />
+                  <Tooltip cursor={false} content={<ChartTooltipContent indicator="dot" formatter={(value) => `$${(value as number).toLocaleString('es-CO')}`} />} />
                   <Legend />
                   <Bar dataKey="Ingresos" fill="var(--color-Ingresos)" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -313,10 +313,10 @@ export default function AdminOverviewPage() {
           <CardContent className="h-80">
             {topServicesChartData.length > 0 ? (
               <ChartContainer config={servicesChartConfig}>
-                <BarChart data={topServicesChartData} layout="vertical" margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
+                <BarChart data={topServicesChartData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                   <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                  <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent />} />
+                  <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} content={<ChartTooltipContent indicator="line" />} />
                   <Legend />
                   <Bar dataKey="Solicitudes" fill="var(--color-Solicitudes)" radius={[0, 4, 4, 0]} />
                 </BarChart>
