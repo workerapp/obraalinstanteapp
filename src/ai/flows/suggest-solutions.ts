@@ -2,9 +2,9 @@
 'use server';
 
 /**
- * @fileOverview AI assistant that suggests potential solutions and relevant handyman skills based on a customer's problem description.
+ * @fileOverview AI assistant that analyzes a home maintenance problem and suggests a diagnosis, solutions, and relevant handyman skills.
  *
- * - suggestSolutions - A function that handles the suggestion process.
+ * - suggestSolutions - A function that handles the analysis process.
  * - SuggestSolutionsInput - The input type for the suggestSolutions function.
  * - SuggestSolutionsOutput - The return type for the suggestSolutions function.
  */
@@ -18,6 +18,7 @@ const SuggestSolutionsInputSchema = z.object({
 export type SuggestSolutionsInput = z.infer<typeof SuggestSolutionsInputSchema>;
 
 const SuggestSolutionsOutputSchema = z.object({
+  analysis: z.string().describe('Un breve análisis y diagnóstico del problema, explicando la posible causa. En ESPAÑOL.'),
   suggestedSolutions: z.array(z.string()).describe('Lista de posibles soluciones al problema, en ESPAÑOL.'),
   relevantSkills: z.array(z.string()).describe('Lista de habilidades de operario relevantes para las soluciones, en ESPAÑOL.'),
 });
@@ -36,13 +37,13 @@ const prompt = ai.definePrompt({
 
 Basándote en la descripción del problema proporcionada por el cliente, sigue estos pasos en tu razonamiento:
 1.  **Analiza el problema:** Desglosa la descripción del cliente. Identifica el objeto principal (p. ej., puerta, grifo, pared) y la acción requerida (p. ej., reparar, instalar, construir).
-2.  **Considera materiales y contextos:** Piensa en los diferentes materiales con los que podría estar hecho el objeto. Por ejemplo, una puerta puede ser de madera, metal o vidrio. Un problema eléctrico puede requerir un electricista, pero si implica romper una pared, también podría necesitar un albañil.
-3.  **Genera soluciones:** Basado en tu análisis, propón una lista de posibles soluciones. Sé claro y conciso.
-4.  **Identifica habilidades relevantes:** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Es crucial que consideres todas las posibilidades relevantes. Si una puerta puede ser de madera o metal, debes incluir tanto 'Carpintería' como 'Metalistería' en las habilidades.
+2.  **Genera un Diagnóstico (Campo 'analysis'):** Basado en tu análisis, proporciona una explicación breve y clara de cuál podría ser la causa raíz del problema.
+3.  **Genera Soluciones (Campo 'suggestedSolutions'):** Propón una lista de posibles soluciones. Sé claro y conciso.
+4.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Es crucial que consideres todas las posibilidades relevantes.
 
 La descripción del problema es: {{{problemDescription}}}
 
-IMPORTANTE: El contenido de las listas "suggestedSolutions" y "relevantSkills" DEBE estar en ESPAÑOL.
+IMPORTANTE: TODO el contenido de texto en los campos de salida DEBE estar en ESPAÑOL.
 Asegúrate de que el formato de salida sea un objeto JSON que coincida con el esquema de salida proporcionado.
   `,
 });
@@ -60,14 +61,14 @@ const suggestSolutionsFlow = ai.defineFlow(
         console.error('AI prompt returned undefined or null output');
         throw new Error('La IA no pudo generar una respuesta.');
       }
-      // Ensure the arrays exist, even if empty, as per schema
+      // Ensure the fields exist, even if empty, as per schema
+      output.analysis = output.analysis || "No se pudo generar un análisis.";
       output.suggestedSolutions = output.suggestedSolutions || [];
       output.relevantSkills = output.relevantSkills || [];
       return output;
     } catch (flowError) {
       console.error('Error within suggestSolutionsFlow:', flowError);
-      throw flowError; 
+      throw new Error('Ocurrió un error al procesar la solicitud con la IA.'); 
     }
   }
 );
-

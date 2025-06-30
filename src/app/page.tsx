@@ -3,8 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle, Sparkles, Users } from 'lucide-react';
-import AiAssistantHomeWidget from '@/components/home/ai-assistant-home-widget'; // Importado
+import { CheckCircle, Sparkles, Users, Lightbulb } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -37,9 +36,25 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Nuevo widget del Asistente IA aquí */}
+      {/* Redesigned AI Assistant CTA */}
       <section className="container mx-auto">
-        <AiAssistantHomeWidget />
+        <Card className="shadow-lg hover:shadow-xl transition-shadow w-full max-w-3xl mx-auto bg-card">
+          <CardHeader className="text-center">
+            <Lightbulb className="mx-auto h-12 w-12 text-accent mb-3" />
+            <CardTitle className="text-2xl font-headline">¿No sabes por dónde empezar?</CardTitle>
+            <CardDescription>
+              Usa nuestro Asistente de IA. Describe tu problema y obtén un diagnóstico, posibles soluciones y los tipos de operarios que necesitas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Button size="lg" asChild>
+              <Link href="/ai-assistant">
+                <Sparkles className="mr-2 h-5 w-5" />
+                Probar el Asistente de IA
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </section>
 
       <section className="container mx-auto">
