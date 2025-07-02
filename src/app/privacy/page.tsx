@@ -1,4 +1,3 @@
-
 // src/app/privacy/page.tsx
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
@@ -21,80 +20,77 @@ export default function PrivacyPolicyPage() {
         <CardHeader>
             <CardTitle className="flex items-center gap-3">
                 <ShieldAlert className="h-8 w-8 text-primary" />
-                <span>Tu Privacidad es Nuestra Prioridad</span>
+                <span>Tratamiento de Datos Personales</span>
             </CardTitle>
           <CardDescription>
             Última actualización: {lastUpdated}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-foreground/90 leading-relaxed">
-          <div className="border-l-4 border-destructive bg-destructive/10 p-4 rounded-md">
-            <p className="font-semibold text-destructive">
-                **AVISO IMPORTANTE:** El siguiente contenido es una guía informativa y NO constituye asesoramiento legal.
-                Ha sido redactado para reflejar las funcionalidades de esta aplicación de demostración. Para su uso en producción,
-                debes consultar con un profesional legal para redactar una Política de Privacidad completa y adecuada
-                que cumpla con la legislación colombiana, incluyendo la Ley 1581 de 2012 (Ley de Habeas Data) y sus decretos reglamentarios.
-            </p>
-          </div>
           
           <h2 className="text-xl font-semibold font-headline mt-6">1. Introducción y Responsable del Tratamiento</h2>
           <p>
-            Bienvenido a Obra al Instante (la "Plataforma"). Esta Política de Privacidad explica cómo recopilamos, usamos y protegemos
-            tu información personal. El responsable del tratamiento de tus datos es Obra al Instante S.A.S. (en adelante, "nosotros"), con domicilio en [Ciudad, Colombia] y correo electrónico de contacto para temas de privacidad: <a href="mailto:privacidad@obraalinstante.com" className="text-primary hover:underline">privacidad@obraalinstante.com</a>.
+            Bienvenido a Obra al Instante (la "Plataforma"). La presente Política de Privacidad describe cómo recolectamos, utilizamos, almacenamos y protegemos tu información personal en cumplimiento de la Ley 1581 de 2012 de Protección de Datos Personales (Habeas Data) y sus decretos reglamentarios en Colombia.
+          </p>
+          <p>
+            El Responsable del Tratamiento de tus datos es **Obra al Instante S.A.S.** (en adelante, "nosotros", "la Compañía"), con correo electrónico de contacto para asuntos de privacidad: <a href="mailto:privacidad@obraalinstante.com" className="text-primary hover:underline">privacidad@obraalinstante.com</a>.
           </p>
 
           <h2 className="text-xl font-semibold font-headline">2. Información que Recopilamos</h2>
           <p>
-            Recopilamos información para poder operar nuestra plataforma y conectar a clientes con profesionales. El tipo de información depende de tu rol:
+            Recolectamos la información necesaria para la correcta operación de la Plataforma y para facilitar la conexión entre nuestros usuarios. La información varía según tu rol:
           </p>
           <ul className="list-disc list-inside ml-4 space-y-2">
             <li>
-                <strong>Para todos los usuarios:</strong> Nombre, correo electrónico y contraseña para la creación de la cuenta. También recopilamos datos de uso, como dirección IP y tipo de navegador, para mejorar el servicio.
+                <strong>Para todos los usuarios (Clientes, Operarios y Proveedores):</strong> Al crear una cuenta, recopilamos tu nombre, correo electrónico y contraseña (la cual se almacena de forma segura y encriptada). Adicionalmente, podemos recopilar datos técnicos como dirección IP, tipo de navegador y datos de uso para el mantenimiento y mejora del servicio.
             </li>
             <li>
-                <strong>Si eres Cliente:</strong> Recopilamos la información que proporcionas al solicitar una cotización, como tu número de teléfono (opcional), dirección para el servicio, y la descripción del problema o necesidad. También guardamos el historial de tus solicitudes y las conversaciones con los profesionales a través de nuestro chat.
+                <strong>Clientes:</strong> Al solicitar una cotización o servicio, recopilamos la información que proporcionas, incluyendo: número de teléfono, dirección física para la prestación del servicio, y la descripción detallada del problema o necesidad. El historial de tus solicitudes y las conversaciones mantenidas a través de nuestro sistema de mensajería también son almacenados.
             </li>
             <li>
-                <strong>Si eres Operario o Proveedor:</strong> Recopilamos la información de tu perfil público, que puede incluir tu nombre o el de tu empresa, lema, descripción ("Sobre Mí"), ubicación, teléfono de contacto, foto de perfil o logo, y la lista de servicios o productos que ofreces. También guardamos tu historial de trabajos y cotizaciones en la plataforma.
+                <strong>Operarios y Proveedores:</strong> Para tu perfil público, recopilamos la información que voluntariamente proporcionas, la cual puede incluir: nombre de la empresa, lema, descripción ("Sobre Mí"), ubicación, teléfono de contacto, fotografía de perfil o logo, y una lista detallada de los servicios, habilidades o categorías de productos que ofreces. Esta información es visible para los Clientes con el fin de facilitar la contratación.
+            </li>
+             <li>
+                <strong>Asistente de IA "Obrita":</strong> Las descripciones de problemas que envías al Asistente de IA se procesan para generar análisis y recomendaciones. Utilizamos estas interacciones de forma anónima para mejorar la calidad de nuestro servicio de IA.
             </li>
           </ul>
 
           <h2 className="text-xl font-semibold font-headline">3. Finalidad del Tratamiento de Datos</h2>
           <p>
-            Utilizamos tu información para los siguientes fines:
+            Tus datos personales serán utilizados exclusivamente para las siguientes finalidades:
           </p>
           <ul className="list-disc list-inside ml-4 space-y-1">
-            <li>Para crear y gestionar tu cuenta en la Plataforma.</li>
-            <li>Para facilitar la comunicación y conexión entre Clientes y Profesionales. Esto incluye compartir la información de contacto necesaria (como dirección y teléfono) únicamente cuando una cotización es aceptada y un servicio es programado.</li>
-            <li>Para procesar solicitudes, cotizaciones y pagos (a través de proveedores de pago externos).</li>
-            <li>Para operar y mejorar la Plataforma, incluyendo nuestro Asistente de IA "Obrita". Las descripciones de problemas que envías a "Obrita" se procesan para darte un análisis, pero no se asocian públicamente a tu identidad.</li>
-            <li>Para comunicarnos contigo sobre tus solicitudes, actualizaciones de la plataforma o con fines de marketing (siempre con tu consentimiento previo).</li>
-            <li>Para garantizar la seguridad de la plataforma y prevenir el fraude.</li>
+            <li>Crear, verificar y gestionar tu cuenta de usuario en la Plataforma.</li>
+            <li>Actuar como intermediario para facilitar la comunicación y conexión entre Clientes y Profesionales (Operarios/Proveedores). Esto incluye compartir información de contacto y de servicio estrictamente necesaria para la coordinación y ejecución de un trabajo una vez que una cotización ha sido aceptada.</li>
+            <li>Procesar y dar seguimiento a las solicitudes, cotizaciones y estados de los servicios.</li>
+            <li>Operar, mantener y mejorar la Plataforma, incluyendo las funcionalidades de nuestro Asistente de IA.</li>
+            <li>Enviar comunicaciones transaccionales indispensables sobre tus solicitudes o el estado de tu cuenta (ej. notificaciones de nuevos mensajes, cambios de estado de un servicio).</li>
+            <li>Prevenir el fraude, garantizar la seguridad de la Plataforma y hacer cumplir nuestros Términos de Servicio.</li>
           </ul>
 
-          <h2 className="text-xl font-semibold font-headline">4. Tus Derechos (Ley 1581 de 2012 - Habeas Data)</h2>
+          <h2 className="text-xl font-semibold font-headline">4. Derechos del Titular (Ley 1581 de 2012)</h2>
           <p>
-            Como titular de la información, tienes los siguientes derechos:
+            Como Titular de la información, tienes los siguientes derechos, que puedes ejercer en cualquier momento:
           </p>
           <ul className="list-disc list-inside ml-4 space-y-1">
-            <li><strong>Conocer, Actualizar y Rectificar:</strong> Tienes derecho a acceder a tus datos, actualizarlos y corregirlos si son incorrectos o incompletos. Puedes hacerlo directamente desde tu panel de perfil.</li>
-            <li><strong>Solicitar Prueba de Autorización:</strong> Puedes solicitarnos una copia de la autorización que nos diste para tratar tus datos.</li>
-            <li><strong>Ser Informado del Uso:</strong> Puedes preguntarnos cómo hemos utilizado tus datos personales.</li>
-            <li><strong>Presentar Quejas:</strong> Si consideras que hemos infringido la ley de protección de datos, puedes presentar una queja ante la Superintendencia de Industria y Comercio (SIC).</li>
-            <li><strong>Revocar la Autorización y Solicitar la Supresión:</strong> Puedes revocar tu consentimiento para el tratamiento de datos y solicitar que los eliminemos de nuestras bases de datos en cualquier momento, siempre y cuando no tengas una obligación legal o contractual de permanecer en ellas.</li>
+            <li><strong>Conocer, Actualizar y Rectificar:</strong> Tienes derecho a acceder a tus datos personales y a solicitar la corrección o actualización de aquellos que sean parciales, inexactos, incompletos o fraccionados. Gran parte de esta información puede ser gestionada directamente desde tu panel de perfil.</li>
+            <li><strong>Solicitar Prueba de la Autorización:</strong> Puedes solicitarnos una copia de la autorización que nos otorgaste para el tratamiento de tus datos al momento de tu registro.</li>
+            <li><strong>Ser Informado del Uso:</strong> Puedes solicitarnos información sobre el uso que le hemos dado a tus datos personales.</li>
+            <li><strong>Presentar Quejas:</strong> Tienes derecho a presentar quejas ante la Superintendencia de Industria y Comercio (SIC) por infracciones a la ley de protección de datos.</li>
+            <li><strong>Revocar la Autorización y Solicitar la Supresión:</strong> Puedes revocar tu consentimiento para el tratamiento de datos y solicitar su eliminación de nuestras bases de datos, siempre y cuando no exista un deber legal o contractual que nos obligue a conservarlos.</li>
           </ul>
            <p>
-            Para ejercer estos derechos, por favor contáctanos en <a href="mailto:privacidad@obraalinstante.com" className="text-primary hover:underline">privacidad@obraalinstante.com</a>, adjuntando una copia de tu documento de identidad para verificar tu titularidad.
+            Para ejercer estos derechos, por favor envía una solicitud al correo <a href="mailto:privacidad@obraalinstante.com" className="text-primary hover:underline">privacidad@obraalinstante.com</a>, adjuntando una copia de tu documento de identidad para verificar que eres el Titular de los datos.
           </p>
 
           <h2 className="text-xl font-semibold font-headline">5. Seguridad y Transferencia de Datos</h2>
           <p>
-            Tomamos medidas técnicas y organizativas razonables para proteger tu información. Tus datos pueden ser almacenados en servidores ubicados fuera de Colombia (por ejemplo, los de nuestro proveedor de servicios en la nube), pero siempre nos aseguraremos de que cumplan con estándares de seguridad adecuados y equivalentes a los exigidos por la ley colombiana.
+            Implementamos medidas técnicas, humanas y administrativas razonables para proteger tu información contra acceso no autorizado, alteración, pérdida o divulgación. Tus datos pueden ser alojados en servidores de proveedores de servicios en la nube (ej. Google Cloud, AWS) que pueden estar ubicados fuera de Colombia. Al aceptar esta política, autorizas la transferencia internacional de tus datos para fines de almacenamiento, garantizando que dichos proveedores cumplen con estándares de seguridad de la información adecuados y conformes a la normativa aplicable.
           </p>
           
-          <h2 className="text-xl font-semibold font-headline">6. Vigencia</h2>
+          <h2 className="text-xl font-semibold font-headline">6. Vigencia de la Política y del Tratamiento de Datos</h2>
            <p>
-            Esta política entra en vigor a partir de la fecha de su publicación. Tus datos serán tratados durante el tiempo que sea necesario para cumplir con las finalidades mencionadas o hasta que solicites su supresión.
+            Esta política rige a partir de la fecha de su publicación. Tus datos personales serán tratados durante el tiempo que sea razonable y necesario para cumplir con las finalidades expuestas en este documento o hasta que solicites su supresión y no tengamos obligación legal de conservarlos.
           </p>
         </CardContent>
       </Card>
