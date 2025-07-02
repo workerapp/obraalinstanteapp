@@ -1,4 +1,3 @@
-
 // src/app/contact/page.tsx
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,11 +35,11 @@ export default function ContactPage() {
               <CardContent className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Mail size={16} />
-                  <a href="mailto:soporte@obraalinstante.com" className="text-primary hover:underline">soporte@obraalinstante.com</a>
+                  <a href="mailto:obraalinstante@gmail.com" className="text-primary hover:underline">obraalinstante@gmail.com</a>
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone size={16} />
-                  <span>+57 301 123 4567</span>
+                  <span>+57 324 352 9658</span>
                 </div>
               </CardContent>
             </Card>
@@ -56,11 +55,11 @@ export default function ContactPage() {
               <CardContent className="space-y-2">
                  <div className="flex items-center gap-2">
                   <Mail size={16} />
-                  <a href="mailto:socios@obraalinstante.com" className="text-primary hover:underline">socios@obraalinstante.com</a>
+                  <a href="mailto:obraalinstante@gmail.com" className="text-primary hover:underline">obraalinstante@gmail.com</a>
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone size={16} />
-                  <span>+57 301 765 4321</span>
+                  <span>+57 324 352 9658</span>
                 </div>
               </CardContent>
             </Card>
