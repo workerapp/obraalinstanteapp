@@ -98,7 +98,7 @@ export default function Navbar() {
             <div className="px-2 py-1 text-sm text-muted-foreground font-medium">{typedUser.displayName || typedUser.email}</div>
             <SheetClose asChild>
               <Link href="/dashboard/profile" className="flex items-center gap-2 p-2 hover:bg-accent rounded-md text-base">
-                <UserCircle size={18} /> Perfil (Ejemplo)
+                <UserCircle size={18} /> Perfil
               </Link>
             </SheetClose>
             <Separator className="my-2" />
@@ -132,7 +132,7 @@ export default function Navbar() {
                 <DropdownMenuLabel>{typedUser.displayName || typedUser.email}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/profile">Perfil (Ejemplo)</Link>
+                  <Link href="/dashboard/profile">Perfil</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={signOutUser} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
                   <LogOut size={16} className="mr-2" /> Cerrar Sesión
