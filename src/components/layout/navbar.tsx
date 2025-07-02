@@ -31,27 +31,27 @@ export default function Navbar() {
 
   const navLinksContent = (isSheetContext: boolean) => (
     <>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : 'hidden'}`}>
+      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-muted rounded-md text-base' : 'hidden md:flex'}`}>
         <Link href="/" className="flex items-center gap-2">
           <Home size={18} /> Inicio
         </Link>
       </Button>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : ''}`}>
+      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-muted rounded-md text-base' : ''}`}>
         <Link href="/services" className="flex items-center gap-2">
           <Briefcase size={18} /> Servicios
         </Link>
       </Button>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : ''}`}>
+      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-muted rounded-md text-base' : ''}`}>
         <Link href="/handymen" className="flex items-center gap-2">
           <Users size={18} /> Operarios
         </Link>
       </Button>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : ''}`}>
+      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-muted rounded-md text-base' : 'md:flex'}`}>
         <Link href="/suppliers" className="flex items-center gap-2">
           <Package size={18} /> Proveedores
         </Link>
       </Button>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : 'hidden lg:flex'}`}>
+      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-muted rounded-md text-base' : 'hidden lg:flex'}`}>
         <Link href="/ai-assistant" className="flex items-center gap-2">
           <Sparkles size={18} /> Asistente IA
         </Link>
@@ -90,14 +90,14 @@ export default function Navbar() {
         return (
           <>
             <SheetClose asChild>
-              <Link href={dashboardLink} className="flex items-center gap-2 p-2 hover:bg-accent rounded-md text-base">
+              <Link href={dashboardLink} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md text-base">
                 <LayoutDashboard size={18} /> Panel
               </Link>
             </SheetClose>
             <Separator className="my-2" />
             <div className="px-2 py-1 text-sm text-muted-foreground font-medium">{typedUser.displayName || typedUser.email}</div>
             <SheetClose asChild>
-              <Link href="/dashboard/profile" className="flex items-center gap-2 p-2 hover:bg-accent rounded-md text-base">
+              <Link href="/dashboard/profile" className="flex items-center gap-2 p-2 hover:bg-muted rounded-md text-base">
                 <UserCircle size={18} /> Perfil
               </Link>
             </SheetClose>
@@ -147,7 +147,7 @@ export default function Navbar() {
         return (
           <>
             <SheetClose asChild>
-              <Button variant="ghost" asChild size="sm" className="w-full justify-start p-2 hover:bg-accent rounded-md text-base" >
+              <Button variant="ghost" asChild size="sm" className="w-full justify-start p-2 hover:bg-muted rounded-md text-base" >
                 <Link href="/sign-in" className="flex items-center gap-1">
                   <LogIn size={18} /> Iniciar Sesión
                 </Link>
