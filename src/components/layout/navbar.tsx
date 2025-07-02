@@ -187,7 +187,7 @@ export default function Navbar() {
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
             <Image src="/images/icon.png" alt="Obra al Instante Logo" width={32} height={32} priority data-ai-hint="logo simple" />
-            <h1 className="text-2xl font-headline font-bold">Obra al Instante</h1>
+            <h1 className="hidden lg:block text-2xl font-headline font-bold">Obra al Instante</h1>
           </Link>
           <div className="flex items-center gap-2 md:gap-3">
             {/* Skeleton loaders for auth links */}
@@ -207,7 +207,7 @@ export default function Navbar() {
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <Link href="/" className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors">
           <Image src="/images/icon.png" alt="Obra al Instante Logo" width={32} height={32} priority data-ai-hint="logo simple"/>
-          <h1 className="text-2xl font-headline font-bold">Obra al Instante</h1>
+          <h1 className="hidden lg:block text-2xl font-headline font-bold">Obra al Instante</h1>
         </Link>
 
         {isMobile ? (
