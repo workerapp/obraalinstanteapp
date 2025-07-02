@@ -1,4 +1,3 @@
-
 // src/app/terms/page.tsx
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, ArrowLeft } from 'lucide-react';
@@ -96,7 +95,7 @@ export default function TermsOfServicePage() {
           <h2 className="text-xl font-semibold font-headline">10. Contacto</h2>
           <p>
             Si tienes alguna pregunta sobre estos Términos, por favor contáctanos en:
-            <a href="mailto:legal@obraalinstante.com" className="text-primary hover:underline ml-1">legal@obraalinstante.com</a>
+            <a href="mailto:obraalinstante@gmail.com" className="text-primary hover:underline ml-1">obraalinstante@gmail.com</a>
           </p>
         </CardContent>
       </Card>
