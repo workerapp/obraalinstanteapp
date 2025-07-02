@@ -1,112 +1,102 @@
 
 // src/app/terms/page.tsx
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText } from 'lucide-react';
+import { FileText, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export default function TermsOfServicePage() {
+  const lastUpdated = "15 de Mayo de 2024";
+
   return (
     <div className="max-w-3xl mx-auto py-8 space-y-6">
-      <Button variant="outline" asChild className="mb-4">
-        <Link href="/"> &larr; Volver al Inicio</Link>
-      </Button>
+       <div className="flex items-center justify-between">
+        <h1 className="text-4xl font-headline font-bold text-primary">Términos de Servicio</h1>
+        <Button variant="outline" asChild>
+          <Link href="/"><ArrowLeft size={16} className="mr-2" />Volver al Inicio</Link>
+        </Button>
+      </div>
+      
       <Card className="shadow-lg">
-        <CardHeader className="text-center">
-          <FileText className="mx-auto h-12 w-12 text-primary mb-4" />
-          <CardTitle className="text-3xl font-headline">Términos de Servicio</CardTitle>
+        <CardHeader>
+           <CardTitle className="flex items-center gap-3">
+                <FileText className="h-8 w-8 text-primary" />
+                <span>Acuerdo de Uso de la Plataforma</span>
+            </CardTitle>
           <CardDescription>
-            Por favor, lee estos términos cuidadosamente antes de usar Obra al Instante.
+            Última actualización: {lastUpdated}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-foreground/90 leading-relaxed">
-          <p className="font-semibold text-destructive text-center">
-            **AVISO IMPORTANTE:** El siguiente contenido es un marcador de posición y NO constituye asesoramiento legal.
-            Debes consultar con un profesional legal para redactar Términos de Servicio completos y adecuados
-            para tu negocio y que cumplan con la legislación colombiana.
-          </p>
+          <div className="border-l-4 border-destructive bg-destructive/10 p-4 rounded-md">
+            <p className="font-semibold text-destructive">
+              **AVISO IMPORTANTE:** El siguiente contenido es una guía informativa y NO constituye asesoramiento legal.
+              Ha sido redactado para reflejar las funcionalidades de esta aplicación de demostración. Para su uso en producción,
+              debes consultar con un profesional legal para redactar Términos de Servicio completos y adecuados
+              para tu modelo de negocio y que cumplan con la legislación colombiana.
+            </p>
+          </div>
 
           <h2 className="text-xl font-semibold font-headline mt-6">1. Aceptación de los Términos</h2>
           <p>
-            Al acceder y utilizar la plataforma Obra al Instante (en adelante "Plataforma" o "Servicio"), aceptas
-            estar sujeto a estos Términos de Servicio ("Términos"). Si no estás de acuerdo con alguna parte de los términos,
-            entonces no podrás acceder al Servicio.
+            Al registrarte y utilizar la plataforma Obra al Instante (en adelante "Plataforma" o "Servicio"), aceptas
+            estar legalmente vinculado a estos Términos de Servicio ("Términos"). Si no estás de acuerdo con estos Términos, no debes utilizar la Plataforma.
           </p>
 
           <h2 className="text-xl font-semibold font-headline">2. Descripción del Servicio</h2>
           <p>
-            Obra al Instante es una plataforma que conecta a usuarios que buscan servicios para el hogar ("Clientes")
-            con profesionales independientes que ofrecen dichos servicios ("Operarios"). Obra al Instante actúa como
-            un intermediario y no es responsable directo por la prestación de los servicios ni por las acciones de los
-            Clientes u Operarios.
+            Obra al Instante es una plataforma tecnológica que actúa como un <strong>intermediario</strong>. Conectamos a usuarios que buscan servicios o productos para el hogar ("Clientes")
+            con profesionales y empresas independientes que ofrecen dichos servicios ("Operarios") o productos ("Proveedores").
+          </p>
+          <p>
+            <strong>ACLARACIÓN IMPORTANTE:</strong> Obra al Instante no es una empresa de construcción, ni un empleador, ni una agencia de contratación. Los Operarios y Proveedores son contratistas independientes y son los únicos responsables por la calidad, garantía, seguridad y ejecución de los servicios o productos que ofrecen. Nuestra función se limita a facilitar esta conexión.
+          </p>
+          
+          <h2 className="text-xl font-semibold font-headline">3. Cuentas y Roles de Usuario</h2>
+          <p>
+            Debes registrarte para usar la mayoría de las funciones. Eres responsable de mantener la confidencialidad de tu contraseña. Hay tres roles principales:
+          </p>
+          <ul className="list-disc list-inside ml-4 space-y-1">
+            <li><strong>Cliente:</strong> Persona o empresa que busca un servicio o producto.</li>
+            <li><strong>Operario:</strong> Profesional independiente que ofrece servicios.</li>
+            <li><strong>Proveedor:</strong> Empresa que ofrece productos o materiales.</li>
+          </ul>
+          <p>Los Operarios y Proveedores pasan por un proceso de revisión y deben ser aprobados por el Administrador de la Plataforma para poder ofrecer sus servicios o productos.</p>
+
+          <h2 className="text-xl font-semibold font-headline">4. Proceso de Servicio y Cotización</h2>
+          <p>
+            Un Cliente puede solicitar una cotización general, para un servicio específico o a un profesional específico. El Operario/Proveedor asignado podrá revisar la solicitud, comunicarse a través del chat de la plataforma y enviar una cotización. El Cliente es libre de aceptar o rechazar dicha cotización. La aceptación de una cotización constituye un acuerdo directo entre el Cliente y el Operario/Proveedor.
           </p>
 
-          <h2 className="text-xl font-semibold font-headline">3. Cuentas de Usuario</h2>
+          <h2 className="text-xl font-semibold font-headline">5. Tarifas y Modelo de Comisión</h2>
           <p>
-            Para acceder a ciertas funciones de la Plataforma, es posible que debas registrarte y crear una cuenta.
-            Eres responsable de mantener la confidencialidad de tu contraseña y de todas las actividades que ocurran
-            bajo tu cuenta. Aceptas notificar inmediatamente a Obra al Instante sobre cualquier uso no autorizado de tu cuenta.
+            La plataforma cobra una tarifa de comisión a los Operarios y Proveedores por cada servicio o venta completada y pagada a través de la plataforma. Esta tarifa se calcula como un porcentaje sobre el monto cotizado y aceptado por el Cliente. La tarifa de comisión actual se comunicará a los profesionales y será deducida de sus ganancias.
           </p>
 
-          <h2 className="text-xl font-semibold font-headline">4. Responsabilidades de los Usuarios</h2>
+          <h2 className="text-xl font-semibold font-headline">6. Obligaciones y Conducta del Usuario</h2>
           <p>
-            <strong>Clientes:</strong> Aceptan proporcionar información precisa sobre los servicios requeridos, tratar a los Operarios
-            con respeto y cumplir con los acuerdos de pago.
-          </p>
-          <p>
-            <strong>Operarios:</strong> Aceptan proporcionar información precisa sobre sus habilidades y servicios, realizar los trabajos
-            de manera profesional y diligente, y cumplir con las leyes y regulaciones aplicables en Colombia.
-            Los Operarios son contratistas independientes y no empleados de Obra al Instante.
-          </p>
-
-          <h2 className="text-xl font-semibold font-headline">5. Cotizaciones, Pagos y Tarifas</h2>
-          <p>
-            Los detalles sobre cotizaciones, pagos por servicios y cualquier tarifa de la plataforma se describirán
-            en el momento de la transacción o según se comunique en la Plataforma. Obra al Instante puede utilizar
-            procesadores de pago de terceros.
-          </p>
-
-          <h2 className="text-xl font-semibold font-headline">6. Propiedad Intelectual</h2>
-          <p>
-            El Servicio y su contenido original (excluyendo el contenido proporcionado por los usuarios), características y
-            funcionalidad son y seguirán siendo propiedad exclusiva de Obra al Instante y sus licenciantes.
+            Todos los usuarios se comprometen a proporcionar información veraz y a comunicarse de manera respetuosa. Queda prohibido el uso de la plataforma para fines ilegales, fraudulentos o para compartir información que no sea relevante para la solicitud de un servicio. Nos reservamos el derecho de suspender o eliminar cuentas que violen estos términos.
           </p>
 
           <h2 className="text-xl font-semibold font-headline">7. Limitación de Responsabilidad</h2>
           <p>
-            En la máxima medida permitida por la ley colombiana, Obra al Instante no será responsable por ningún daño
-            indirecto, incidental, especial, consecuente o punitivo, incluyendo, entre otros, pérdida de ganancias,
-            datos, uso, buena voluntad u otras pérdidas intangibles, resultantes de (i) tu acceso o uso o incapacidad
-            para acceder o usar el Servicio; (ii) cualquier conducta o contenido de cualquier tercero en el Servicio;
-            (iii) cualquier contenido obtenido del Servicio; y (iv) el acceso no autorizado, uso o alteración de
-            tus transmisiones o contenido, ya sea basado en garantía, contrato, agravio (incluyendo negligencia) o
-            cualquier otra teoría legal.
-          </p>
-          <p>
-             Obra al Instante no garantiza la calidad, idoneidad, seguridad o habilidad de los Operarios.
-             Cualquier acuerdo por servicios es estrictamente entre el Cliente y el Operario.
+            Dado que Obra al Instante es solo un intermediario, no somos responsables por la calidad, seguridad, legalidad o cualquier aspecto de los servicios prestados o los productos vendidos por los Operarios y Proveedores. Cualquier disputa, daño o reclamo relacionado con un servicio debe resolverse directamente entre el Cliente y el profesional correspondiente. Recomendamos a los Clientes realizar su propia debida diligencia antes de contratar.
           </p>
 
           <h2 className="text-xl font-semibold font-headline">8. Modificaciones a los Términos</h2>
           <p>
-            Nos reservamos el derecho, a nuestra sola discreción, de modificar o reemplazar estos Términos en cualquier momento.
-            Te notificaremos los cambios importantes.
+            Nos reservamos el derecho de modificar estos Términos en cualquier momento. Te notificaremos los cambios importantes. El uso continuado de la plataforma después de una modificación constituye la aceptación de los nuevos Términos.
           </p>
 
           <h2 className="text-xl font-semibold font-headline">9. Ley Aplicable y Jurisdicción</h2>
           <p>
-            Estos Términos se regirán e interpretarán de acuerdo con las leyes de la República de Colombia,
-            sin tener en cuenta sus disposiciones sobre conflicto de leyes. Cualquier disputa se someterá a la
-            jurisdicción de los tribunales competentes en Colombia.
+            Estos Términos se regirán por las leyes de la República de Colombia. Cualquier disputa se someterá a la jurisdicción de los tribunales competentes en Colombia.
           </p>
 
           <h2 className="text-xl font-semibold font-headline">10. Contacto</h2>
           <p>
             Si tienes alguna pregunta sobre estos Términos, por favor contáctanos en:
-            [Tu Dirección de Correo Electrónico de Contacto]
-          </p>
-          <p className="text-sm text-muted-foreground mt-6">
-            Última actualización: [Fecha de la Última Actualización]
+            <a href="mailto:legal@obraalinstante.com" className="text-primary hover:underline ml-1">legal@obraalinstante.com</a>
           </p>
         </CardContent>
       </Card>
