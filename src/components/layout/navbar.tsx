@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetClose, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useState, useEffect } from 'react';
 
@@ -218,6 +218,8 @@ export default function Navbar() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px] sm:w-[320px] p-4 pt-10 flex flex-col">
+              <SheetTitle className="sr-only">Menú</SheetTitle>
+              <SheetDescription className="sr-only">Navegación principal y opciones de cuenta.</SheetDescription>
               <nav className="flex flex-col gap-1">
                 {navLinksContent(true)}
               </nav>
