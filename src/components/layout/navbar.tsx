@@ -31,7 +31,7 @@ export default function Navbar() {
 
   const navLinksContent = (isSheetContext: boolean) => (
     <>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : ''}`}>
+      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : 'hidden'}`}>
         <Link href="/" className="flex items-center gap-2">
           <Home size={18} /> Inicio
         </Link>
@@ -46,7 +46,7 @@ export default function Navbar() {
           <Users size={18} /> Operarios
         </Link>
       </Button>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : 'hidden lg:flex'}`}>
+      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : ''}`}>
         <Link href="/suppliers" className="flex items-center gap-2">
           <Package size={18} /> Proveedores
         </Link>
