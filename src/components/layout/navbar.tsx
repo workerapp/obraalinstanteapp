@@ -46,12 +46,12 @@ export default function Navbar() {
           <Users size={18} /> Operarios
         </Link>
       </Button>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : ''}`}>
+      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : 'hidden lg:flex'}`}>
         <Link href="/suppliers" className="flex items-center gap-2">
           <Package size={18} /> Proveedores
         </Link>
       </Button>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : ''}`}>
+      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 hover:bg-accent rounded-md text-base' : 'hidden lg:flex'}`}>
         <Link href="/ai-assistant" className="flex items-center gap-2">
           <Sparkles size={18} /> Asistente IA
         </Link>
