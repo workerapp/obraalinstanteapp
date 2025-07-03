@@ -44,11 +44,12 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Image from 'next/image';
+import { useQuery } from '@tanstack/react-query';
 
 
 const serviceFormSchema = z.object({
   name: z.string().min(3, "El nombre del servicio debe tener al menos 3 caracteres.").max(100),
-  category: z.string().min(3, "La categoría debe tener al menos 3 caracteres.").max(50),
+  category: z.string({ required_error: "Debes seleccionar una categoría."}).min(1, "Debes seleccionar una categoría."),
   description: z.string().min(10, "La descripción debe tener al menos 10 caracteres.").max(1000, "La descripción detallada no debe exceder 1000 caracteres."),
   priceType: z.enum(["fijo", "porHora", "porProyecto", "consultar"], {
     required_error: "Selecciona un tipo de precio.",
@@ -88,6 +89,22 @@ async function fetchHandymanServices(handymanUid: string): Promise<HandymanServi
   return services;
 }
 
+// Fetches the unique categories from the global platform services
+async function fetchPlatformCategories(): Promise<string[]> {
+  const servicesRef = collection(firestore, "platformServices");
+  const q = query(servicesRef, where("isActive", "==", true));
+  
+  const querySnapshot = await getDocs(q);
+  const categories = new Set<string>();
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    if (data.category) {
+        categories.add(data.category);
+    }
+  });
+  return Array.from(categories).sort();
+}
+
 
 export default function HandymanServicesPage() {
   const { toast } = useToast();
@@ -103,6 +120,11 @@ export default function HandymanServicesPage() {
   const [serviceToDeleteId, setServiceToDeleteId] = useState<string | null>(null);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [isDeletingService, setIsDeletingService] = useState(false);
+
+  const { data: platformCategories, isLoading: isLoadingCategories } = useQuery<string[], Error>({
+    queryKey: ['platformCategories'],
+    queryFn: fetchPlatformCategories,
+  });
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceFormSchema),
@@ -359,8 +381,26 @@ export default function HandymanServicesPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Categoría</FormLabel>
-                      <FormControl><Input placeholder="Ej: Plomería" {...field} /></FormControl>
-                      <FormDescription>Una categoría general para tu servicio.</FormDescription>
+                       <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value} 
+                        defaultValue={field.value}
+                        disabled={isLoadingCategories}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={isLoadingCategories ? "Cargando categorías..." : "Selecciona una categoría"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {platformCategories?.map((cat) => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Selecciona la categoría que mejor describa tu servicio. Esto ayuda a los clientes a encontrarte.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -485,7 +525,7 @@ export default function HandymanServicesPage() {
             <AlertDialogAction 
               onClick={confirmDeleteService} 
               disabled={isDeletingService}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive hover:bg-destructive/90"
             >
               {isDeletingService ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Eliminando...</>
