@@ -40,10 +40,13 @@ import { z } from 'zod';
 import type { Product } from '@/types/product';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Image from 'next/image';
+import { useQuery } from '@tanstack/react-query';
+import type { ProductCategory } from '@/types/productCategory';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const productFormSchema = z.object({
   name: z.string().min(3, "El nombre del producto debe tener al menos 3 caracteres.").max(100),
-  category: z.string().min(3, "La categoría debe tener al menos 3 caracteres.").max(50),
+  category: z.string().min(1, "La categoría es requerida."),
   description: z.string().min(10, "La descripción debe tener al menos 10 caracteres.").max(1000),
   price: z.preprocess(
     (val) => (val === "" || val === undefined || val === null) ? undefined : Number(val),
@@ -60,21 +63,25 @@ type ProductFormData = z.infer<typeof productFormSchema>;
 async function fetchSupplierProducts(supplierUid: string): Promise<Product[]> {
   if (!supplierUid) return [];
   const productsRef = collection(firestore, "supplierProducts");
-  const q = query(productsRef, where("supplierUid", "==", supplierUid));
+  const q = query(productsRef, where("supplierUid", "==", supplierUid), orderBy("createdAt", "desc"));
   
   const querySnapshot = await getDocs(q);
   const products: Product[] = [];
   querySnapshot.forEach((doc) => {
     products.push({ id: doc.id, ...doc.data() } as Product);
   });
-
-  products.sort((a, b) => {
-      const aTime = (a.createdAt as any)?.toMillis() || 0;
-      const bTime = (b.createdAt as any)?.toMillis() || 0;
-      return bTime - aTime;
-  });
-
   return products;
+}
+
+async function fetchPlatformProductCategories(): Promise<ProductCategory[]> {
+  const categoriesRef = collection(firestore, "productCategories");
+  const q = query(categoriesRef, orderBy("name", "asc"));
+  const querySnapshot = await getDocs(q);
+  const categories: ProductCategory[] = [];
+  querySnapshot.forEach((doc) => {
+    categories.push({ id: doc.id, ...doc.data() } as ProductCategory);
+  });
+  return categories;
 }
 
 export default function SupplierProductsPage() {
@@ -91,6 +98,11 @@ export default function SupplierProductsPage() {
   const [productToDeleteId, setProductToDeleteId] = useState<string | null>(null);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [isDeletingProduct, setIsDeletingProduct] = useState(false);
+
+  const { data: platformCategories, isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['productCategories'],
+    queryFn: fetchPlatformProductCategories
+  });
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -242,7 +254,34 @@ export default function SupplierProductsPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 pr-1">
                 <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre del Producto</FormLabel><FormControl><Input placeholder="Ej: Cemento Gris Argos 50kg" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="category" render={({ field }) => (<FormItem><FormLabel>Categoría</FormLabel><FormControl><Input placeholder="Ej: Materiales de Construcción" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoría del Producto</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value} 
+                        defaultValue={field.value}
+                        disabled={isLoadingCategories}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={isLoadingCategories ? "Cargando..." : "Selecciona una categoría"} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {platformCategories?.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>Selecciona la categoría que mejor describa este producto.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Describe el producto, sus usos, marca, etc." rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Precio (COP)</FormLabel><FormControl><Input type="number" placeholder="Ej: 28000" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />

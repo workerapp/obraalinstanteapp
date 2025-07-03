@@ -13,11 +13,14 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Loader2, UserCircle, ArrowLeft, Save } from 'lucide-react';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore, auth } from '@/firebase/clientApp';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, collection, query, orderBy } from 'firebase/firestore';
 import { updateProfile as updateFirebaseAuthProfile, type User as FirebaseUser } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import type { ProductCategory } from '@/types/productCategory';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Schema for the supplier profile form
 const profileFormSchema = z.object({
@@ -26,12 +29,22 @@ const profileFormSchema = z.object({
   aboutMe: z.string().max(1000, "La descripción 'Sobre la Empresa' no debe exceder los 1000 caracteres.").optional().or(z.literal('')),
   location: z.string().max(100, "La ubicación no debe exceder los 100 caracteres.").optional().or(z.literal('')),
   phone: z.string().regex(/^[+]?[0-9\s-()]*$/, "Número de teléfono inválido.").max(20).optional().or(z.literal('')),
-  // Using 'skills' field to store product categories, one per line
-  skills: z.string().optional().or(z.literal('')), 
+  skills: z.array(z.string()).default([]), // Represents categories
   photoURL: z.string().url("Debe ser una URL válida para el logo.").optional().or(z.literal('')),
 });
 
 type ProfileFormData = z.infer<typeof profileFormSchema>;
+
+async function fetchPlatformProductCategories(): Promise<ProductCategory[]> {
+  const categoriesRef = collection(firestore, "productCategories");
+  const q = query(categoriesRef, orderBy("name", "asc"));
+  const querySnapshot = await getDocs(q);
+  const categories: ProductCategory[] = [];
+  querySnapshot.forEach((doc) => {
+    categories.push({ id: doc.id, ...doc.data() } as ProductCategory);
+  });
+  return categories;
+}
 
 export default function SupplierProfilePage() {
   const { user, loading: authLoading, setUser: setAuthUser } = useAuth(); 
@@ -41,6 +54,11 @@ export default function SupplierProfilePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingProfile, setIsFetchingProfile] = useState(true);
 
+  const { data: platformCategories, isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['productCategories'],
+    queryFn: fetchPlatformProductCategories
+  });
+
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
@@ -49,7 +67,7 @@ export default function SupplierProfilePage() {
       aboutMe: "",
       location: "",
       phone: "",
-      skills: "", // Represents categories
+      skills: [], // Represents categories
       photoURL: "",
     },
   });
@@ -69,7 +87,7 @@ export default function SupplierProfilePage() {
               aboutMe: data.aboutMe || "",
               location: data.location || "",
               phone: data.phone || "",
-              skills: Array.isArray(data.skills) ? data.skills.join('\n') : (data.skills || ""),
+              skills: data.skills || [],
               photoURL: data.photoURL || typedUser.photoURL || "",
             });
           } else {
@@ -100,8 +118,6 @@ export default function SupplierProfilePage() {
     setIsLoading(true);
     try {
       const userDocRef = doc(firestore, "users", typedUser.uid);
-      // Split the string of categories into an array, trimming whitespace and filtering out empty lines.
-      const categoriesArray = data.skills ? data.skills.split('\n').map(s => s.trim()).filter(s => s) : [];
       
       const firestoreUpdateData: any = {
         displayName: data.displayName,
@@ -109,7 +125,7 @@ export default function SupplierProfilePage() {
         aboutMe: data.aboutMe || null,
         location: data.location || null,
         phone: data.phone || null,
-        skills: categoriesArray, // Saving as an array for querying
+        skills: data.skills || [], // Saving as an array for querying
         photoURL: data.photoURL || null,
         updatedAt: serverTimestamp(),
       };
@@ -250,11 +266,38 @@ export default function SupplierProfilePage() {
               <FormField
                 control={form.control}
                 name="skills"
-                render={({ field }) => (
+                render={() => (
                   <FormItem>
-                    <FormLabel>Categorías de Productos (Opcional)</FormLabel>
-                    <FormControl><Textarea placeholder="Materiales de Construcción\nPinturas\nHerramientas Eléctricas" rows={4} {...field} /></FormControl>
-                    <FormDescription>Lista las categorías principales de productos que ofreces, una por línea.</FormDescription>
+                    <FormLabel>Categorías de Productos Ofrecidas</FormLabel>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-4 border rounded-md">
+                      {isLoadingCategories && <p>Cargando categorías...</p>}
+                      {platformCategories?.map((category) => (
+                        <FormField
+                          key={category.id}
+                          control={form.control}
+                          name="skills"
+                          render={({ field }) => {
+                            return (
+                              <FormItem key={category.id} className="flex items-center space-x-2">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(category.name)}
+                                    onCheckedChange={(checked) => {
+                                      const currentValue = field.value || [];
+                                      return checked
+                                        ? field.onChange([...currentValue, category.name])
+                                        : field.onChange(currentValue.filter((value) => value !== category.name));
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-sm font-normal">{category.name}</FormLabel>
+                              </FormItem>
+                            );
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <FormDescription>Selecciona las categorías principales de productos que ofreces.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

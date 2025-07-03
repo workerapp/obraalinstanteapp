@@ -1,4 +1,3 @@
-
 // src/app/admin/overview/page.tsx
 "use client";
 
@@ -9,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { 
     DollarSign, Users, ListChecks, Loader2, AlertTriangle, ArrowLeft, 
-    CheckCircle, XCircle, CreditCard, UserCog, UserCheck2, UserX2, Briefcase, Eye, Activity, Package
+    CheckCircle, XCircle, CreditCard, UserCog, UserCheck2, UserX2, Briefcase, Eye, Activity, Package, Layers
 } from 'lucide-react';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -276,7 +275,10 @@ export default function AdminOverviewPage() {
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Package className="text-cyan-500"/>Proveedores Aprobados</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-primary">{allSuppliers?.filter(s => s.isApproved).length || 0}</p><p className="text-xs text-muted-foreground">Proveedores de productos activos.</p></CardContent></Card>
       </div>
 
-      <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Briefcase className="text-primary"/>Gestión Global de Servicios</CardTitle><CardDescription>Administra el catálogo de servicios ofrecidos.</CardDescription></CardHeader><CardContent><p>Crea, edita y elimina las categorías de servicio que los clientes y operarios verán.</p></CardContent><CardFooter><Button asChild className="w-full"><Link href="/admin/services">Gestionar Catálogo de Servicios</Link></Button></CardFooter></Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Briefcase className="text-primary"/>Gestión Global de Servicios</CardTitle><CardDescription>Administra el catálogo de servicios que verán los clientes.</CardDescription></CardHeader><CardContent><p>Crea y edita las categorías de servicio que los clientes y operarios seleccionarán.</p></CardContent><CardFooter><Button asChild className="w-full"><Link href="/admin/services">Gestionar Catálogo de Servicios</Link></Button></CardFooter></Card>
+        <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Layers className="text-primary"/>Gestión de Categorías de Productos</CardTitle><CardDescription>Administra el catálogo de categorías de productos.</CardDescription></CardHeader><CardContent><p>Define las categorías que los proveedores usarán para clasificar sus productos.</p></CardContent><CardFooter><Button asChild className="w-full"><Link href="/admin/product-categories">Gestionar Categorías de Productos</Link></Button></CardFooter></Card>
+      </div>
       
       <Card className="shadow-xl">
         <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="text-primary"/>Solicitudes Activas</CardTitle><CardDescription>Monitoriza todos los servicios en curso que aún no se han completado.</CardDescription></CardHeader>
