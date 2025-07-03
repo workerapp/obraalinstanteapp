@@ -29,35 +29,31 @@ export default function Navbar() {
     setHasMounted(true);
   }, []);
 
-  const navLinksContent = (isSheetContext: boolean) => (
-    <>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 text-base' : 'hidden md:flex'}`}>
-        <Link href="/" className="flex items-center gap-2">
-          <Home size={18} /> Inicio
-        </Link>
-      </Button>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 text-base' : ''}`}>
-        <Link href="/services" className="flex items-center gap-2">
-          <Briefcase size={18} /> Servicios
-        </Link>
-      </Button>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 text-base' : ''}`}>
-        <Link href="/handymen" className="flex items-center gap-2">
-          <Users size={18} /> Operarios
-        </Link>
-      </Button>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 text-base' : 'md:flex'}`}>
-        <Link href="/suppliers" className="flex items-center gap-2">
-          <Package size={18} /> Proveedores
-        </Link>
-      </Button>
-      <Button variant="ghost" asChild size="sm" className={`${isSheetContext ? 'w-full justify-start p-2 text-base' : 'hidden lg:flex'}`}>
-        <Link href="/ai-assistant" className="flex items-center gap-2">
-          <Sparkles size={18} /> Asistente IA
-        </Link>
-      </Button>
-    </>
-  );
+  const navLinksContent = (isSheetContext: boolean) => {
+    const links = [
+      { href: '/', icon: Home, label: 'Inicio', className: `${isSheetContext ? 'w-full justify-start p-2 text-base' : 'hidden md:flex'}` },
+      { href: '/services', icon: Briefcase, label: 'Servicios', className: `${isSheetContext ? 'w-full justify-start p-2 text-base' : ''}` },
+      { href: '/handymen', icon: Users, label: 'Operarios', className: `${isSheetContext ? 'w-full justify-start p-2 text-base' : ''}` },
+      { href: '/suppliers', icon: Package, label: 'Proveedores', className: `${isSheetContext ? 'w-full justify-start p-2 text-base' : 'md:flex'}` },
+      { href: '/ai-assistant', icon: Sparkles, label: 'Asistente IA', className: `${isSheetContext ? 'w-full justify-start p-2 text-base' : 'hidden lg:flex'}` }
+    ];
+
+    return (
+      <>
+        {links.map((link, index) => {
+          const button = (
+            <Button key={index} variant="ghost" asChild size="sm" className={link.className}>
+              <Link href={link.href} className="flex items-center gap-2">
+                <link.icon size={18} /> {link.label}
+              </Link>
+            </Button>
+          );
+          // Only wrap with SheetClose if it's in the mobile sheet context
+          return isSheetContext ? <SheetClose asChild key={index}>{button}</SheetClose> : button;
+        })}
+      </>
+    );
+  };
 
   const authLinksContent = (isSheetContext: boolean) => {
     if (authLoading && !typedUser) {
