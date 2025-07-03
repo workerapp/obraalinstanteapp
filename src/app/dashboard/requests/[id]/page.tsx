@@ -44,7 +44,16 @@ const fetchRequestDetails = async (requestId: string | undefined, userId: string
 
   const requestData = requestDocSnap.data() as Omit<QuotationRequest, 'id'>;
   
-  if (requestData.userId !== userId && requestData.handymanId !== userId && userRole !== 'admin') {
+  // Authorization logic
+  const isOwner = requestData.userId === userId;
+  const isAssigned = requestData.handymanId === userId;
+  const isAdmin = userRole === 'admin';
+  const isPublicRequest = !requestData.handymanId;
+  const isProfessional = userRole === 'handyman' || userRole === 'supplier';
+  
+  const canView = isAdmin || isOwner || isAssigned || (isPublicRequest && isProfessional);
+
+  if (!canView) {
     throw new Error("No tienes permiso para ver esta solicitud.");
   }
 
