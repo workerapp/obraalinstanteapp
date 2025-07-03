@@ -1,13 +1,18 @@
-
 // src/app/handymen/page.tsx
+"use client";
+
+import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import type { Handyman } from '@/types/handyman';
 import HandymanProfileCard from '@/components/handymen/handyman-profile-card';
-import { Users, AlertTriangle, SearchX } from 'lucide-react';
+import { Users, AlertTriangle, SearchX, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Card, CardFooter, CardHeader, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Helper function to map Firestore user data to Handyman type
 const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman => {
@@ -19,9 +24,7 @@ const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman =>
         createdAtDate = userData.createdAt.toDate();
       } else if (typeof userData.createdAt === 'string') {
         createdAtDate = new Date(userData.createdAt);
-      } else if (typeof userData.createdAt === 'number') {
-        createdAtDate = new Date(userData.createdAt);
-      } else if (userData.createdAt.seconds && typeof userData.createdAt.seconds === 'number') {
+      } else if (typeof userData.createdAt.seconds === 'number') {
         createdAtDate = new Date(userData.createdAt.seconds * 1000);
       }
       
@@ -37,7 +40,6 @@ const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman =>
     id: uid,
     name: userData.displayName || `Operario ${uid.substring(0, 6)}`,
     tagline: userData.tagline || 'Operario profesional y confiable',
-    aboutMe: userData.aboutMe || undefined,
     skills: Array.isArray(userData.skills) && userData.skills.length > 0 ? userData.skills : ['Servicios Generales'],
     rating: typeof userData.rating === 'number' ? userData.rating : 4.0,
     reviewsCount: typeof userData.reviewsCount === 'number' ? userData.reviewsCount : 0,
@@ -64,7 +66,6 @@ async function getHandymen(category?: string): Promise<{ handymen: Handyman[]; e
     }
     
     const q = query(usersRef, ...queryConstraints);
-    
     const querySnapshot = await getDocs(q);
     
     const handymenList: Handyman[] = [];
@@ -79,76 +80,103 @@ async function getHandymen(category?: string): Promise<{ handymen: Handyman[]; e
     if (error.code === 'permission-denied') {
       errorMessage = "Error de permisos al cargar operarios. Verifica las reglas de seguridad de Firestore.";
     } else if (error.code === 'failed-precondition') {
-      errorMessage = "Firestore requiere un índice para esta consulta. Revisa la consola del servidor para un enlace que te permitirá crear el índice necesario. El índice probablemente involucre los campos: 'role', 'isApproved' y 'skills'.";
-    } else {
-      errorMessage = `Error al cargar operarios: ${error.message}`;
+      errorMessage = "Firestore requiere un índice para esta consulta. Revisa la consola para un enlace que te permitirá crear el índice necesario.";
     }
     return { handymen: [], error: errorMessage };
   }
 }
 
-export default async function HandymenPage({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
-  const category = typeof searchParams?.category === 'string' ? decodeURIComponent(searchParams.category) : undefined;
-  const { handymen: displayedHandymen, error } = await getHandymen(category);
+function HandymenGridSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <Card key={index} className="flex flex-col h-full shadow-lg rounded-lg overflow-hidden">
+          <CardHeader className="p-0">
+            <Skeleton className="h-56 w-full" />
+          </CardHeader>
+          <CardContent className="pt-6 flex-grow">
+            <Skeleton className="h-7 w-3/4 mb-1" />
+            <Skeleton className="h-4 w-1/2 mb-3" />
+            <div className="flex gap-2 mb-3">
+              <Skeleton className="h-5 w-20" />
+              <Skeleton className="h-5 w-20" />
+            </div>
+            <Skeleton className="h-4 w-full mb-1" />
+            <Skeleton className="h-4 w-2/3 mb-4" />
+            <div className="flex flex-wrap gap-2">
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <Skeleton className="h-6 w-20 rounded-full" />
+              <Skeleton className="h-6 w-12 rounded-full" />
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Skeleton className="h-10 w-full" />
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+export default function HandymenPage() {
+  const searchParams = useSearchParams();
+  const category = searchParams.get('category') ? decodeURIComponent(searchParams.get('category')!) : undefined;
+
+  const { data, isLoading, isError, error: queryError } = useQuery({
+    queryKey: ['handymen', category],
+    queryFn: () => getHandymen(category),
+  });
+
+  const displayedHandymen = data?.handymen || [];
+  const fetchError = data?.error || (isError ? (queryError as Error).message : null);
 
   const pageTitle = category ? `Operarios para ${category}` : "Encuentra un Operario";
   const pageDescription = category 
-    ? `Explora nuestro directorio de operarios calificados en ${category}. Para que un operario aparezca aquí, debe tener "${category}" en su lista de habilidades.`
-    : "Explora nuestro directorio de operarios calificados y de confianza, listos para ayudarte con los proyectos de tu hogar.";
+    ? `Explora nuestro directorio de operarios calificados en ${category}.`
+    : "Explora nuestro directorio de operarios calificados y de confianza.";
 
   return (
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-primary/10 via-background to-background rounded-lg shadow-md">
         <Users className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-4xl font-headline font-bold text-primary mb-2">{pageTitle}</h1>
-        <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
-          {pageDescription}
-        </p>
+        <p className="text-lg text-foreground/80 max-w-2xl mx-auto">{pageDescription}</p>
       </section>
 
-      {error && (
+      {isLoading && <HandymenGridSkeleton />}
+
+      {fetchError && (
         <Alert variant="destructive" className="max-w-2xl mx-auto">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Error al Cargar Operarios</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{fetchError}</AlertDescription>
         </Alert>
       )}
 
-      {!error && displayedHandymen.length > 0 ? (
+      {!isLoading && !fetchError && displayedHandymen.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {displayedHandymen.map((handyman) => (
             <HandymanProfileCard key={handyman.id} handyman={handyman} />
           ))}
         </div>
-      ) : !error && category ? (
+      )}
+
+      {!isLoading && !fetchError && displayedHandymen.length === 0 && (
         <div className="text-center py-10">
           <SearchX className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground text-lg font-semibold">No se encontraron operarios para "{category}"</p>
-          <p className="text-sm text-muted-foreground mt-2">Intenta con otra categoría o explora todos nuestros operarios disponibles.</p>
-           <Button asChild variant="link" className="mt-4">
+          <p className="text-muted-foreground text-lg font-semibold">
+            {category ? `No se encontraron operarios para "${category}"` : "No hay operarios aprobados disponibles"}
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Intenta con otra categoría o vuelve más tarde.
+          </p>
+          {category && (
+            <Button asChild variant="link" className="mt-4">
               <Link href="/handymen">Ver Todos los Operarios</Link>
-          </Button>
+            </Button>
+          )}
         </div>
-      ) : (
-        !error && <p className="text-center text-muted-foreground text-lg py-10">
-          No hay operarios aprobados disponibles en este momento.
-        </p>
       )}
     </div>
   );
-}
-
-export async function generateMetadata({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
-    const category = typeof searchParams?.category === 'string' ? decodeURIComponent(searchParams.category) : undefined;
-    const title = category 
-        ? `Operarios de ${category} | Obra al Instante` 
-        : "Encuentra un Operario | Obra al Instante";
-    const description = category 
-        ? `Encuentra operarios especializados en ${category}.`
-        : "Explora nuestro directorio de operarios calificados.";
-
-    return {
-        title: title,
-        description: description,
-    };
 }

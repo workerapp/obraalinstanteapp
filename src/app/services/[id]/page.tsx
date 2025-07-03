@@ -1,23 +1,27 @@
 // src/app/services/[id]/page.tsx
+"use client";
+
 import type { Service } from '@/types/service';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, CheckCircle, Tag, Users } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Tag, Users, Settings as DefaultIcon, AlertTriangle, Loader2 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { firestore } from '@/firebase/clientApp';
 import { doc, getDoc } from 'firebase/firestore';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import ServiceDetailFooter from '@/components/services/service-detail-footer';
+import { useQuery } from '@tanstack/react-query';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Helper function to get Lucide icon component by name string
+
 const getIcon = (name?: string | null): LucideIcon => {
-  const defaultIcon = LucideIcons.Settings;
+  const defaultIcon = DefaultIcon;
   if (!name || name.trim() === '') return defaultIcon;
 
-  // Sanitize name: "Paint Brush" -> "PaintBrush", "wrench" -> "Wrench"
-  const processedName = name.replace(/\s/g, ''); // Remove spaces
+  const processedName = name.replace(/\s/g, ''); 
   const finalName = processedName.charAt(0).toUpperCase() + processedName.slice(1);
 
   if (Object.prototype.hasOwnProperty.call(LucideIcons, finalName)) {
@@ -28,17 +32,14 @@ const getIcon = (name?: string | null): LucideIcon => {
   return defaultIcon;
 };
 
-interface ServiceDetailPageProps {
-  params: { id: string };
-}
-
 async function getService(id: string): Promise<Service | null> {
+    if (!id) return null;
     try {
         const serviceDocRef = doc(firestore, "platformServices", id);
         const serviceDocSnap = await getDoc(serviceDocRef);
 
         if (!serviceDocSnap.exists() || !serviceDocSnap.data().isActive) {
-            return null; // Return null if not found or not active
+            return null;
         }
         const data = serviceDocSnap.data();
         return {
@@ -48,13 +49,75 @@ async function getService(id: string): Promise<Service | null> {
         } as Service;
     } catch (error) {
         console.error("Error getting service document:", error);
-        return null;
+        throw new Error("No se pudo obtener el servicio de la base de datos.");
     }
 }
 
+function ServiceDetailSkeleton() {
+  return (
+    <div className="max-w-4xl mx-auto py-8 space-y-8">
+      <Skeleton className="h-10 w-48 mb-6" />
+      <div className="bg-card p-6 sm:p-8 rounded-xl shadow-xl space-y-6">
+        <Skeleton className="relative w-full h-64 sm:h-80 rounded-lg" />
+        <header>
+          <div className="flex items-center gap-3 mb-2">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <Skeleton className="h-10 w-3/4" />
+          </div>
+          <Skeleton className="h-6 w-full" />
+        </header>
+        <section>
+          <Skeleton className="h-8 w-1/3 mb-3" />
+          <Skeleton className="h-5 w-1/2" />
+        </section>
+        <section>
+          <Skeleton className="h-8 w-1/3 mb-3" />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-4/5" />
+          </div>
+        </section>
+        <footer className="mt-8 pt-6 border-t">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <Skeleton className="h-12 w-full sm:w-48" />
+            <Skeleton className="h-12 w-full sm:w-48" />
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
 
-export default async function ServiceDetailPage({ params }: ServiceDetailPageProps) {
-  const serviceData = await getService(params.id);
+export default function ServiceDetailPage() {
+  const params = useParams();
+  const serviceId = typeof params.id === 'string' ? params.id : '';
+
+  const { data: serviceData, isLoading, isError, error } = useQuery({
+    queryKey: ['platformService', serviceId],
+    queryFn: () => getService(serviceId),
+    enabled: !!serviceId,
+    retry: 1,
+  });
+
+  if (isLoading) {
+    return <ServiceDetailSkeleton />;
+  }
+
+  if (isError) {
+    return (
+        <div className="max-w-2xl mx-auto py-10">
+            <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error al Cargar Servicio</AlertTitle>
+            <AlertDescription>{(error as Error).message || "No se pudo cargar el servicio. Por favor, inténtalo de nuevo."}</AlertDescription>
+            </Alert>
+            <Button variant="outline" asChild className="mt-6">
+              <Link href="/services"><ArrowLeft size={16} className="mr-2" />Volver a Servicios</Link>
+            </Button>
+        </div>
+    );
+  }
 
   if (!serviceData) {
     notFound();
@@ -62,7 +125,6 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
 
   const IconComponent = getIcon(serviceData.iconName);
   
-  // This removes the non-serializable Firestore Timestamp objects before passing to a Client Component.
   const { createdAt, updatedAt, ...serializableService } = serviceData;
 
   return (
@@ -84,6 +146,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
               layout="fill"
               objectFit="cover"
               data-ai-hint={serviceData.dataAiHint || "acción servicio"}
+              priority
             />
           </div>
         )}
@@ -120,15 +183,4 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
       </article>
     </div>
   );
-}
-
-export async function generateMetadata({ params }: ServiceDetailPageProps) {
-  const service = await getService(params.id);
-  if (!service) {
-    return { title: "Servicio No Encontrado" };
-  }
-  return {
-    title: `${service.name} - Obra al Instante`,
-    description: service.description,
-  };
 }

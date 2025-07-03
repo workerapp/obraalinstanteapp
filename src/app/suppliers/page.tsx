@@ -1,26 +1,27 @@
 // src/app/suppliers/page.tsx
+"use client";
+
+import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import type { Supplier } from '@/types/supplier';
 import SupplierProfileCard from '@/components/suppliers/supplier-profile-card';
-import { Package, AlertTriangle, SearchX } from 'lucide-react';
+import { Package, AlertTriangle, SearchX, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Card, CardFooter, CardHeader, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Helper function to map Firestore user data to Supplier type
 const mapFirestoreUserToSupplierList = (uid: string, userData: any): Supplier => {
   let memberSince = 'Fecha de registro no disponible';
   if (userData.createdAt) {
     try {
       let createdAtDate: Date | null = null;
-      if (userData.createdAt instanceof Timestamp) {
-        createdAtDate = userData.createdAt.toDate();
-      } else if (typeof userData.createdAt === 'string') {
-        createdAtDate = new Date(userData.createdAt);
-      } else if (typeof userData.createdAt.seconds === 'number') {
-        createdAtDate = new Date(userData.createdAt.seconds * 1000);
-      }
+      if (userData.createdAt instanceof Timestamp) createdAtDate = userData.createdAt.toDate();
+      else if (typeof userData.createdAt === 'string') createdAtDate = new Date(userData.createdAt);
+      else if (typeof userData.createdAt.seconds === 'number') createdAtDate = new Date(userData.createdAt.seconds * 1000);
       
       if (createdAtDate && !isNaN(createdAtDate.getTime())) {
         memberSince = `Se unió en ${createdAtDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}`;
@@ -41,7 +42,6 @@ const mapFirestoreUserToSupplierList = (uid: string, userData: any): Supplier =>
     dataAiHint: 'logo empresa',
     location: userData.location || 'Ubicación no registrada',
     memberSince: memberSince,
-    phone: userData.phone || undefined,
     isApproved: userData.isApproved || false,
   };
 };
@@ -55,13 +55,10 @@ async function getSuppliers(category?: string): Promise<{ suppliers: Supplier[];
     ];
 
     if (category) {
-      console.log(`Filtering suppliers by category: "${category}"`);
-      // Nota: 'skills' en Firestore se reutiliza como categorías para proveedores
       queryConstraints.push(where("skills", "array-contains", category));
     }
     
     const q = query(usersRef, ...queryConstraints);
-    
     const querySnapshot = await getDocs(q);
     
     const supplierList: Supplier[] = [];
@@ -72,80 +69,100 @@ async function getSuppliers(category?: string): Promise<{ suppliers: Supplier[];
     return { suppliers: supplierList };
   } catch (error: any) {
     console.error("Error fetching suppliers from Firestore:", error);
-    let errorMessage = "No se pudieron cargar los proveedores. Intenta de nuevo más tarde.";
-    if (error.code === 'permission-denied') {
-      errorMessage = "Error de permisos al cargar proveedores. Verifica las reglas de seguridad de Firestore.";
-    } else if (error.code === 'failed-precondition') {
-      errorMessage = "Firestore requiere un índice para esta consulta. Revisa la consola del servidor para un enlace que te permitirá crear el índice necesario. El índice probablemente involucre los campos: 'role', 'isApproved' y 'skills'.";
-    } else {
-      errorMessage = `Error al cargar proveedores: ${error.message}`;
+    let errorMessage = "No se pudieron cargar los proveedores.";
+    if (error.code === 'failed-precondition') {
+      errorMessage = "Firestore requiere un índice para esta consulta. Revisa la consola para un enlace de creación.";
     }
     return { suppliers: [], error: errorMessage };
   }
 }
 
-export default async function SuppliersPage({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
-  const category = typeof searchParams?.category === 'string' ? decodeURIComponent(searchParams.category) : undefined;
-  const { suppliers: displayedSuppliers, error } = await getSuppliers(category);
+function SuppliersGridSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <Card key={index} className="flex flex-col h-full shadow-lg rounded-lg overflow-hidden">
+          <CardHeader className="p-0">
+            <Skeleton className="h-56 w-full" />
+          </CardHeader>
+          <CardContent className="pt-6 flex-grow">
+            <Skeleton className="h-7 w-3/4 mb-1" />
+            <Skeleton className="h-4 w-1/2 mb-3" />
+            <div className="flex gap-2 mb-3">
+              <Skeleton className="h-5 w-20" />
+              <Skeleton className="h-5 w-20" />
+            </div>
+            <Skeleton className="h-4 w-full mb-1" />
+            <Skeleton className="h-4 w-2/3 mb-4" />
+            <div className="flex flex-wrap gap-2">
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <Skeleton className="h-6 w-20 rounded-full" />
+            </div>
+          </CardContent>
+          <CardFooter><Skeleton className="h-10 w-full" /></CardFooter>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+export default function SuppliersPage() {
+  const searchParams = useSearchParams();
+  const category = searchParams.get('category') ? decodeURIComponent(searchParams.get('category')!) : undefined;
+
+  const { data, isLoading, isError, error: queryError } = useQuery({
+    queryKey: ['suppliers', category],
+    queryFn: () => getSuppliers(category),
+  });
+
+  const displayedSuppliers = data?.suppliers || [];
+  const fetchError = data?.error || (isError ? (queryError as Error).message : null);
 
   const pageTitle = category ? `Proveedores de ${category}` : "Encuentra un Proveedor";
   const pageDescription = category 
     ? `Explora nuestro directorio de proveedores de ${category}.`
-    : "Explora nuestro directorio de proveedores de confianza para materiales y productos de construcción.";
+    : "Explora nuestro directorio de proveedores de confianza para materiales y productos.";
 
   return (
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-primary/10 via-background to-background rounded-lg shadow-md">
         <Package className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="text-4xl font-headline font-bold text-primary mb-2">{pageTitle}</h1>
-        <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
-          {pageDescription}
-        </p>
+        <p className="text-lg text-foreground/80 max-w-2xl mx-auto">{pageDescription}</p>
       </section>
 
-      {error && (
+      {isLoading && <SuppliersGridSkeleton />}
+
+      {fetchError && (
         <Alert variant="destructive" className="max-w-2xl mx-auto">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Error al Cargar Proveedores</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{fetchError}</AlertDescription>
         </Alert>
       )}
 
-      {!error && displayedSuppliers.length > 0 ? (
+      {!isLoading && !fetchError && displayedSuppliers.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {displayedSuppliers.map((supplier) => (
             <SupplierProfileCard key={supplier.id} supplier={supplier} />
           ))}
         </div>
-      ) : !error && category ? (
+      )}
+
+      {!isLoading && !fetchError && displayedSuppliers.length === 0 && (
         <div className="text-center py-10">
           <SearchX className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground text-lg font-semibold">No se encontraron proveedores para "{category}"</p>
-          <p className="text-sm text-muted-foreground mt-2">Intenta con otra categoría o explora todos nuestros proveedores disponibles.</p>
-           <Button asChild variant="link" className="mt-4">
+          <p className="text-muted-foreground text-lg font-semibold">
+            {category ? `No se encontraron proveedores para "${category}"` : "No hay proveedores disponibles"}
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">Intenta con otra categoría o vuelve más tarde.</p>
+          {category && (
+            <Button asChild variant="link" className="mt-4">
               <Link href="/suppliers">Ver Todos los Proveedores</Link>
-          </Button>
+            </Button>
+          )}
         </div>
-      ) : (
-        !error && <p className="text-center text-muted-foreground text-lg py-10">
-          No hay proveedores aprobados disponibles en este momento.
-        </p>
       )}
     </div>
   );
-}
-
-export async function generateMetadata({ searchParams }: { searchParams?: { [key: string]: string | string[] | undefined } }) {
-    const category = typeof searchParams?.category === 'string' ? decodeURIComponent(searchParams.category) : undefined;
-    const title = category 
-        ? `Proveedores de ${category} | Obra al Instante` 
-        : "Encuentra un Proveedor | Obra al Instante";
-    const description = category 
-        ? `Encuentra proveedores especializados en ${category}.`
-        : "Explora nuestro directorio de proveedores calificados para materiales de construcción.";
-
-    return {
-        title: title,
-        description: description,
-    };
 }

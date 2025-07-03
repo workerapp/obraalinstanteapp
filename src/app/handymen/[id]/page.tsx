@@ -1,16 +1,34 @@
 // src/app/handymen/[id]/page.tsx
-import { notFound } from 'next/navigation';
-import HandymanDetailClientContent from '@/components/handymen/handyman-detail-client-content';
-import { firestore } from '@/firebase/clientApp';
-import { doc, getDoc, Timestamp } from 'firebase/firestore';
-import type { Handyman } from '@/types/handyman';
+"use client";
 
-interface HandymanDetailPageProps {
-  params: { id: string };
+import { useQuery } from '@tanstack/react-query';
+import { useParams, notFound, useRouter } from 'next/navigation';
+import type { Handyman } from '@/types/handyman';
+import type { HandymanService } from '@/types/handymanService';
+import { firestore } from '@/firebase/clientApp';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Star, MapPin, CalendarDays, MessageSquare, Phone, CheckCircle, Briefcase, Tag, Loader2, UserCircle2, AlertTriangle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+interface Review {
+  id: number;
+  author: string;
+  rating: number;
+  comment: string;
+  date: string;
 }
 
+const ADMIN_WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP_NUMBER || "+573017412292";
+
 const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null => {
-  if (!userData || userData.role !== 'handyman') {
+  if (!userData || userData.role !== 'handyman' || userData.isApproved !== true) {
     return null;
   }
 
@@ -18,23 +36,19 @@ const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null
   if (userData.createdAt) {
     try {
       let createdAtDate: Date | null = null;
-      if (userData.createdAt instanceof Timestamp) {
-        createdAtDate = userData.createdAt.toDate();
-      } else if (typeof userData.createdAt === 'string') {
-        createdAtDate = new Date(userData.createdAt);
-      } else if (typeof userData.createdAt.seconds === 'number') {
-        createdAtDate = new Date(userData.createdAt.seconds * 1000);
-      }
+      if (userData.createdAt instanceof Timestamp) createdAtDate = userData.createdAt.toDate();
+      else if (typeof userData.createdAt === 'string') createdAtDate = new Date(userData.createdAt);
+      else if (typeof userData.createdAt.seconds === 'number') createdAtDate = new Date(userData.createdAt.seconds * 1000);
       
       if (createdAtDate && !isNaN(createdAtDate.getTime())) {
           memberSince = `Se unió en ${createdAtDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}`;
       }
     } catch (e: any) {
-      console.error(`mapFirestoreUserToHandyman: [UID: ${uid}] Error formatting 'createdAt' date. Error: ${e.message}`);
+      console.error(`Error formatting date for UID ${uid}: ${e.message}`);
     }
   }
 
-  const handymanProfile: Handyman = {
+  return {
     id: uid,
     name: userData.displayName || `Operario ${uid.substring(0, 6)}`,
     tagline: userData.tagline || 'Operario profesional y confiable',
@@ -49,77 +63,184 @@ const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null
     phone: userData.phone || undefined,
     isApproved: userData.isApproved || false,
   };
-  return handymanProfile;
 };
 
-
-export async function generateMetadata({ params }: HandymanDetailPageProps) {
-  try {
-    if (!params.id || typeof params.id !== 'string') {
-        return { title: "Operario No Encontrado" };
-    }
-    const userDocRef = doc(firestore, "users", params.id);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (userDocSnap.exists()) {
-      const userData = userDocSnap.data();
-      // Solo generar metadata si el operario está aprobado
-      if (userData.role === 'handyman' && userData.isApproved === true) {
-        return {
-          title: `${userData.displayName || 'Operario'} - Perfil | Obra al Instante`,
-          description: userData.aboutMe || `Perfil de ${userData.displayName || 'Operario'}. Contacta para servicios de ${userData.skills?.slice(0,3).join(', ') || 'varios'}.`,
-        };
-      }
-    }
-  } catch (error) {
-    console.error(`generateMetadata: Error fetching handyman metadata for ID '${params.id}':`, error);
+const fetchHandymanProfile = async (handymanId: string): Promise<Handyman | null> => {
+  if (!handymanId) return null;
+  const userDocRef = doc(firestore, "users", handymanId);
+  const userDocSnap = await getDoc(userDocRef);
+  if (!userDocSnap.exists()) {
+    throw new Error("El perfil de este operario no fue encontrado.");
   }
-  return { 
-    title: "Operario No Disponible | Obra al Instante",
-    description: "El perfil de este operario no está disponible o no ha sido aprobado." 
-  };
+  const userData = userDocSnap.data();
+  const handyman = mapFirestoreUserToHandyman(handymanId, userData);
+  if (!handyman) {
+    throw new Error("Este usuario no es un operario aprobado o su perfil no está disponible.");
+  }
+  return handyman;
+};
+
+const priceTypeTranslations: Record<HandymanService['priceType'], string> = {
+  fijo: "Fijo", porHora: "Por Hora", porProyecto: "Por Proyecto", consultar: "Consultar Cotización",
+};
+
+async function fetchServicesForHandyman(handymanId: string): Promise<HandymanService[]> {
+  if (!handymanId) return [];
+  
+  const servicesRef = collection(firestore, "handymanServices");
+  const q = query(
+    servicesRef, 
+    where("handymanUid", "==", handymanId), 
+    where("isActive", "==", true)
+  );
+  
+  const querySnapshot = await getDocs(q);
+  const services: HandymanService[] = [];
+  querySnapshot.forEach((doc) => {
+    services.push({ id: doc.id, ...doc.data() } as HandymanService);
+  });
+  return services;
 }
 
-export default async function HandymanDetailPage({ params }: HandymanDetailPageProps) {
-  const handymanId = params.id;
+export default function HandymanDetailPage() {
+  const { toast } = useToast();
+  const params = useParams();
+  const router = useRouter();
+  const handymanId = typeof params.id === 'string' ? params.id : '';
 
-  if (!handymanId || typeof handymanId !== 'string') {
+  const { data: handyman, isLoading: isLoadingHandyman, error: handymanError } = useQuery({
+    queryKey: ['handymanProfile', handymanId],
+    queryFn: () => fetchHandymanProfile(handymanId),
+    enabled: !!handymanId,
+    retry: 1,
+  });
+
+  const { data: offeredServices, isLoading: isLoadingServices, error: servicesError } = useQuery({
+    queryKey: ['handymanServices', handymanId],
+    queryFn: () => fetchServicesForHandyman(handymanId),
+    enabled: !!handymanId,
+  });
+
+  if (isLoadingHandyman) {
+    return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+  }
+  
+  if (handymanError) {
+    return (
+      <div className="max-w-2xl mx-auto py-10">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Error al Cargar Perfil</AlertTitle>
+          <AlertDescription>{(handymanError as Error).message}</AlertDescription>
+        </Alert>
+        <Button variant="outline" onClick={() => router.back()} className="mt-6">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+        </Button>
+      </div>
+    );
+  }
+
+  if (!handyman) {
     notFound();
   }
 
-  try {
-    const userDocRef = doc(firestore, "users", handymanId);
-    const userDocSnap = await getDoc(userDocRef);
+  const reviews = [
+    { id: 1, author: "Alicia B.", rating: 5, comment: "¡Fantástico! Arregló mi grifo que goteaba en poco tiempo.", date: "2023-03-15" },
+    { id: 2, author: "Roberto C.", rating: 4, comment: "Buen trabajo en el cableado eléctrico. Profesional y ordenado.", date: "2023-02-20" },
+  ];
 
-    if (!userDocSnap.exists()) {
-      console.warn(`HandymanDetailPage: [ID: ${handymanId}] No user document found. Calling notFound().`);
-      notFound();
+  const handleWhatsAppContact = () => {
+    if (!ADMIN_WHATSAPP_NUMBER) {
+      toast({ title: "Configuración Requerida", description: "El número de WhatsApp del administrador no ha sido configurado.", variant: "destructive" });
+      return;
     }
+    const adminPhoneNumber = ADMIN_WHATSAPP_NUMBER.replace(/\D/g, '');
+    const message = encodeURIComponent(`Hola, quisiera contactar al operario ${handyman.name} (ID: ${handyman.id}) sobre un servicio.`);
+    window.open(`https://wa.me/${adminPhoneNumber}?text=${message}`, '_blank');
+  };
 
-    const userData = userDocSnap.data();
+  return (
+    <div className="max-w-4xl mx-auto py-8 space-y-8">
+      <div>
+        <Button variant="outline" asChild className="mb-6">
+          <Link href="/handymen" className="flex items-center gap-2">
+            <ArrowLeft size={16} /> Volver al Directorio
+          </Link>
+        </Button>
+      </div>
 
-    // Solo mostrar el perfil si el operario está aprobado
-    if (userData.role !== 'handyman' || userData.isApproved !== true) {
-      console.warn(`HandymanDetailPage: [ID: ${handymanId}] User is not an approved handyman. Role: ${userData.role}, isApproved: ${userData.isApproved}. Calling notFound().`);
-      notFound();
-    }
+      <div className="bg-card p-6 sm:p-8 rounded-xl shadow-xl">
+        <div className="grid md:grid-cols-3 gap-6 md:gap-8">
+          <div className="md:col-span-1">
+            <div className="relative w-full aspect-square rounded-lg overflow-hidden shadow-md mb-4">
+              <Image src={handyman.imageUrl!} alt={handyman.name} layout="fill" objectFit="cover" data-ai-hint={handyman.dataAiHint || "persona profesional"} />
+            </div>
+            <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 mb-2">
+              <Link href={`/request-quotation?handymanId=${handyman.id}&handymanName=${encodeURIComponent(handyman.name)}`}>
+                <MessageSquare size={18} className="mr-2" /> Solicitar Cotización General
+              </Link>
+            </Button>
+            <Button variant="outline" size="lg" className="w-full" onClick={handleWhatsAppContact}>
+              <Phone size={18} className="mr-2" /> Contactar vía Administrador
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-2">La comunicación inicial se gestiona a través del administrador.</p>
+          </div>
 
-    const handyman = mapFirestoreUserToHandyman(handymanId, userData);
+          <div className="md:col-span-2">
+            <h1 className="text-4xl font-headline font-bold text-primary mb-1">{handyman.name}</h1>
+            <p className="text-lg text-muted-foreground mb-4">{handyman.tagline}</p>
 
-    if (!handyman) {
-      console.warn(`HandymanDetailPage: [ID: ${handymanId}] Failed to map Firestore data. Calling notFound().`);
-      notFound();
-    }
-    
-    const reviews = [ // Mock reviews
-      { id: 1, author: "Alicia B.", rating: 5, comment: "¡Fantástico! Arregló mi grifo que goteaba en poco tiempo.", date: "2023-03-15" },
-      { id: 2, author: "Roberto C.", rating: 4, comment: "Buen trabajo en el cableado eléctrico. Profesional y ordenado.", date: "2023-02-20" },
-    ];
+            <div className="flex items-center gap-2 mb-4">
+              <Star className="h-6 w-6 text-yellow-400 fill-yellow-400" />
+              <span className="text-xl font-semibold">{handyman.rating?.toFixed(1) || 'N/A'}</span>
+              <span className="text-sm text-muted-foreground">({handyman.reviewsCount || 0} reseñas)</span>
+            </div>
 
-    return <HandymanDetailClientContent handyman={handyman} reviews={reviews} />;
+            <div className="space-y-2 text-foreground/90 mb-6">
+              {handyman.location && <p className="flex items-center gap-2"><MapPin size={18} className="text-accent" /> {handyman.location}</p>}
+              {handyman.memberSince && <p className="flex items-center gap-2"><CalendarDays size={18} className="text-accent" /> {handyman.memberSince}</p>}
+            </div>
 
-  } catch (error: any) {
-    console.error(`HandymanDetailPage: [ID: ${handymanId}] EXCEPTION CAUGHT. Error:`, error.message);
-    notFound();
-  }
+            <section className="mb-6">
+              <h2 className="text-xl font-semibold font-headline mb-3">Habilidades Generales</h2>
+              <div className="flex flex-wrap gap-2">
+                {handyman.skills?.map((skill) => <Badge key={skill} variant="secondary">{skill}</Badge>) || <p>No especificado</p>}
+              </div>
+            </section>
+            
+            <section className="mb-6">
+              <h2 className="text-xl font-semibold font-headline mb-3 flex items-center"><UserCircle2 size={22} className="mr-2 text-accent"/> Sobre Mí</h2>
+              <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">{handyman.aboutMe || 'No hay descripción disponible.'}</p>
+            </section>
+          </div>
+        </div>
+        <Separator className="my-8" />
+        <section>
+          <h2 className="text-2xl font-semibold font-headline mb-4 flex items-center"><Briefcase size={24} className="mr-3 text-primary" /> Servicios Ofrecidos</h2>
+          {isLoadingServices && <div className="flex items-center py-6"><Loader2 className="h-6 w-6 animate-spin text-primary mr-2" /><p>Cargando servicios...</p></div>}
+          {servicesError && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>No se pudieron cargar los servicios.</AlertDescription></Alert>}
+          {!isLoadingServices && !servicesError && (offeredServices && offeredServices.length > 0 ? (
+            <div className="space-y-4">
+              {offeredServices.map((service) => (
+                <Card key={service.id} className="bg-background hover:shadow-md transition-shadow">
+                  <CardHeader><CardTitle className="text-xl text-accent">{service.name}</CardTitle><CardDescription>{service.category}</CardDescription></CardHeader>
+                  <CardContent><p className="text-sm text-foreground/80 mb-3">{service.description}</p></CardContent>
+                  <CardFooter className="flex justify-between items-center">
+                    <Badge variant="outline" className="border-primary text-primary">{priceTypeTranslations[service.priceType]}{service.priceType !== 'consultar' && ` - $${Number(service.priceValue).toLocaleString('es-CO')}`}</Badge>
+                    <Button asChild size="sm">
+                      <Link href={`/request-quotation?serviceId=${service.id}&handymanId=${handyman.id}&handymanName=${encodeURIComponent(handyman.name)}&serviceName=${encodeURIComponent(service.name)}`}>
+                        <MessageSquare size={16} className="mr-2"/> Cotizar
+                      </Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-6">Este operario no ha publicado servicios específicos.</p>
+          ))}
+        </section>
+      </div>
+    </div>
+  );
 }

@@ -1,13 +1,14 @@
-
 // src/app/services/page.tsx
+"use client";
+
+import { useQuery } from '@tanstack/react-query';
 import ServiceCard from '@/components/services/service-card';
-import { Briefcase } from 'lucide-react';
+import { Briefcase, Loader2, AlertTriangle } from 'lucide-react';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import type { Service } from '@/types/service';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
-
+import { Skeleton } from '@/components/ui/skeleton';
 
 async function getServices(): Promise<{ services: Service[], error?: string }> {
     try {
@@ -35,8 +36,42 @@ async function getServices(): Promise<{ services: Service[], error?: string }> {
     }
 }
 
-export default async function ServicesPage() {
-  const { services: displayedServices, error } = await getServices();
+function ServicesGridSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <Card key={index} className="flex flex-col h-full shadow-lg rounded-lg overflow-hidden">
+          <CardHeader>
+            <Skeleton className="h-48 w-full" />
+            <div className="flex items-center gap-3 pt-4">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-7 w-3/4" />
+            </div>
+            <Skeleton className="h-16 w-full" />
+          </CardHeader>
+          <CardContent className="flex-grow">
+            <Skeleton className="h-4 w-1/2 mb-2" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full mt-1" />
+            <Skeleton className="h-4 w-2/3 mt-1" />
+          </CardContent>
+          <CardFooter>
+            <Skeleton className="h-10 w-full" />
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+export default function ServicesPage() {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['platformServices'],
+    queryFn: getServices,
+  });
+
+  const displayedServices = data?.services || [];
+  const fetchError = data?.error || (isError ? (error as Error).message : null);
 
   return (
     <div className="space-y-8">
@@ -48,25 +83,25 @@ export default async function ServicesPage() {
         </p>
       </section>
       
-      {error && (
+      {isLoading && <ServicesGridSkeleton />}
+
+      {fetchError && (
         <Alert variant="destructive" className="max-w-2xl mx-auto">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Error al Cargar Servicios</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{fetchError}</AlertDescription>
         </Alert>
       )}
 
-      {!error && displayedServices.length > 0 ? (
+      {!isLoading && !fetchError && displayedServices.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {displayedServices.map((service) => {
-            // Create a serializable plain object to pass to the Client Component
-            // This removes the non-serializable Firestore Timestamp objects.
             const { createdAt, updatedAt, ...serializableService } = service;
             return <ServiceCard key={service.id} service={serializableService as Service} />;
           })}
         </div>
       ) : (
-        !error && <div className="text-center py-10"><Briefcase className="mx-auto h-12 w-12 text-muted-foreground mb-4" /><p className="text-muted-foreground text-lg">No hay servicios disponibles en este momento.</p><p className="text-sm text-muted-foreground">El administrador aún no ha añadido ningún servicio.</p></div>
+        !isLoading && !fetchError && <div className="text-center py-10"><Briefcase className="mx-auto h-12 w-12 text-muted-foreground mb-4" /><p className="text-muted-foreground text-lg">No hay servicios disponibles en este momento.</p><p className="text-sm text-muted-foreground">El administrador aún no ha añadido ningún servicio.</p></div>
       )}
     </div>
   );
