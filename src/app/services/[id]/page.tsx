@@ -54,13 +54,16 @@ async function getService(id: string): Promise<Service | null> {
 
 
 export default async function ServiceDetailPage({ params }: ServiceDetailPageProps) {
-  const service = await getService(params.id);
+  const serviceData = await getService(params.id);
 
-  if (!service) {
+  if (!serviceData) {
     notFound();
   }
 
-  const IconComponent = getIcon(service.iconName);
+  const IconComponent = getIcon(serviceData.iconName);
+  
+  // This removes the non-serializable Firestore Timestamp objects before passing to a Client Component.
+  const { createdAt, updatedAt, ...serializableService } = serviceData;
 
   return (
     <div className="max-w-4xl mx-auto py-8 space-y-8">
@@ -73,14 +76,14 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
       </div>
 
       <article className="bg-card p-6 sm:p-8 rounded-xl shadow-xl">
-        {service.imageUrl && (
+        {serviceData.imageUrl && (
           <div className="relative w-full h-64 sm:h-80 mb-6 rounded-lg overflow-hidden">
             <Image
-              src={service.imageUrl}
-              alt={service.name}
+              src={serviceData.imageUrl}
+              alt={serviceData.name}
               layout="fill"
               objectFit="cover"
-              data-ai-hint={service.dataAiHint || "acción servicio"}
+              data-ai-hint={serviceData.dataAiHint || "acción servicio"}
             />
           </div>
         )}
@@ -88,15 +91,15 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
         <header className="mb-6">
           <div className="flex items-center gap-3 mb-2">
             {IconComponent && <IconComponent className="h-10 w-10 text-primary" />}
-            <h1 className="text-4xl font-headline font-bold text-primary">{service.name}</h1>
+            <h1 className="text-4xl font-headline font-bold text-primary">{serviceData.name}</h1>
           </div>
-          <p className="text-lg text-muted-foreground">{service.description}</p>
+          <p className="text-lg text-muted-foreground">{serviceData.description}</p>
         </header>
 
         <section className="mb-6">
           <h2 className="text-2xl font-semibold font-headline mb-3">Detalles del Servicio</h2>
           <div className="space-y-2 text-foreground/90">
-            <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Categoría:</strong> {service.category}</p>
+            <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Categoría:</strong> {serviceData.category}</p>
             <p className="flex items-center gap-2"><Tag size={18} className="text-accent" /><strong>Precio:</strong> Basado en cotización personalizada</p>
           </div>
         </section>
@@ -104,7 +107,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
         <section className="mb-6">
           <h2 className="text-2xl font-semibold font-headline mb-3">Tareas Comunes</h2>
           <ul className="space-y-2">
-            {service.commonTasks.map((task, index) => (
+            {serviceData.commonTasks.map((task, index) => (
               <li key={index} className="flex items-start gap-2">
                 <CheckCircle size={20} className="text-green-500 mt-1 shrink-0" />
                 <span>{task}</span>
@@ -113,7 +116,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
           </ul>
         </section>
 
-        <ServiceDetailFooter service={service} />
+        <ServiceDetailFooter service={serializableService as Service} />
       </article>
     </div>
   );
