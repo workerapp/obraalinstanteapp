@@ -184,6 +184,8 @@ export default function RequestQuotationPage() {
   const displayServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : (displayServiceNameFromState || null);
   const displayHandymanName = handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (form.watch("handymanName") || null);
   const isSupplierQuote = searchParams.has('handymanId') && !searchParams.has('serviceId');
+  const hasSpecificProvider = !!handymanIdFromQuery;
+
 
   return (
     <div className="max-w-2xl mx-auto py-8">
@@ -206,10 +208,40 @@ export default function RequestQuotationPage() {
               <FormField control={form.control} name="contactPhone" render={({ field }) => ( <FormItem> <FormLabel>Número de Teléfono (Opcional)</FormLabel> <FormControl><Input type="tel" placeholder="Tu número de teléfono" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección (para entrega o servicio)</FormLabel> <FormControl><Input placeholder="Calle 123, Ciudad, Provincia" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
 
-              {serviceIdFromQuery || isSupplierQuote ? (
-                <FormItem> <FormLabel>Solicitando a</FormLabel> <div className="flex items-center gap-2 p-3 rounded-md border bg-muted"> <Package className="h-5 w-5 text-muted-foreground" /> <span className="text-sm text-foreground">{displayHandymanName || 'Destinatario Específico'}</span> </div> <FormDescription> {isSupplierQuote ? `Solicitando cotización de productos a ${displayHandymanName}.` : `Solicitando cotización para ${displayServiceName} de ${displayHandymanName}.`} </FormDescription> </FormItem>
-              ) : problemFromQuery && !serviceIdFromQuery ? (
-                 <FormItem> <FormLabel>Servicio Requerido</FormLabel> <div className="flex items-center gap-2 p-3 rounded-md border bg-muted"> <FileText className="h-5 w-5 text-muted-foreground" /> <span className="text-sm text-foreground">Consulta General (basada en tu descripción)</span> </div> <FormDescription>Tu problema descrito a la IA se usará como base para la cotización.</FormDescription> </FormItem>
+              {hasSpecificProvider ? (
+                <FormItem>
+                  <FormLabel>Solicitando a</FormLabel>
+                  <div className="flex items-center gap-2 p-3 rounded-md border bg-muted">
+                    <Package className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm text-foreground">{displayHandymanName || 'Destinatario Específico'}</span>
+                  </div>
+                  <FormDescription>
+                    {isSupplierQuote
+                      ? `Solicitando cotización de productos a ${displayHandymanName}.`
+                      : `Solicitando cotización para "${displayServiceName}" de ${displayHandymanName}.`
+                    }
+                  </FormDescription>
+                </FormItem>
+              ) : serviceIdFromQuery ? (
+                 <FormItem>
+                    <FormLabel>Servicio Seleccionado</FormLabel>
+                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm text-foreground">{displayServiceName || 'Servicio General'}</span>
+                    </div>
+                    <FormDescription>
+                        Tu solicitud será enviada como una consulta pública para el servicio de "{displayServiceName}". Los operarios y proveedores disponibles podrán responder.
+                    </FormDescription>
+                </FormItem>
+              ) : problemFromQuery ? (
+                 <FormItem>
+                    <FormLabel>Servicio Requerido</FormLabel>
+                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm text-foreground">Consulta General (basada en tu descripción)</span>
+                    </div>
+                    <FormDescription>Tu problema descrito a la IA se usará como base para la cotización.</FormDescription>
+                 </FormItem>
               ) : (
                   <FormField 
                     control={form.control} 
