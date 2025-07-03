@@ -10,6 +10,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 const formSchema = z.object({
   fullName: z.string().min(2, { message: "El nombre completo debe tener al menos 2 caracteres." }),
@@ -23,9 +25,11 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
+type Role = "customer" | "handyman" | "supplier";
 
 export default function SignUpForm() {
   const { signUp, loading: authLoading } = useAuth();
+  const searchParams = useSearchParams();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -37,6 +41,14 @@ export default function SignUpForm() {
       role: "customer",
     },
   });
+
+  useEffect(() => {
+    const roleFromQuery = searchParams.get('role');
+    if (roleFromQuery && ["customer", "handyman", "supplier"].includes(roleFromQuery)) {
+      form.setValue('role', roleFromQuery as Role, { shouldValidate: true });
+    }
+  }, [searchParams, form]);
+
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     await signUp(data.email, data.password, data.fullName, data.role);
@@ -106,7 +118,7 @@ export default function SignUpForm() {
               <FormControl>
                 <RadioGroup
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                   className="flex flex-col space-y-1"
                 >
                   <FormItem className="flex items-center space-x-3 space-y-0">

@@ -69,7 +69,7 @@ const fetchRequestMessages = async (requestId: string | undefined): Promise<Requ
   if (!requestId) return [];
   
   const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
-  const q = query(messagesRef);
+  const q = query(messagesRef, orderBy("createdAt", "asc"));
   
   const querySnapshot = await getDocs(q);
   const messages: RequestMessage[] = [];
@@ -78,13 +78,6 @@ const fetchRequestMessages = async (requestId: string | undefined): Promise<Requ
     messages.push({ id: doc.id, ...data } as RequestMessage);
   });
   
-  // Client-side sorting because orderBy() might require a composite index
-  messages.sort((a, b) => {
-    const aTime = a.createdAt?.toMillis() || 0;
-    const bTime = b.createdAt?.toMillis() || 0;
-    return aTime - bTime;
-  });
-
   return messages;
 };
 
@@ -327,7 +320,7 @@ export default function RequestDetailPage() {
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Error al Cargar Mensajes</AlertTitle>
                     <AlertDescription>
-                        No se pudo cargar el historial. Esto puede deberse a un problema de permisos en la base de datos (Reglas de Seguridad de Firestore).
+                        No se pudo cargar el historial. Esto puede deberse a un problema de permisos o de falta de un índice en la base de datos (Reglas de Seguridad o Índices de Firestore).
                         <br/>
                         <small>Detalle: {messagesError.message}</small>
                     </AlertDescription>

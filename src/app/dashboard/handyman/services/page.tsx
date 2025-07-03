@@ -72,18 +72,12 @@ const priceTypeTranslations: Record<PriceType, string> = {
 async function fetchHandymanServices(handymanUid: string): Promise<HandymanService[]> {
   if (!handymanUid) return [];
   const servicesRef = collection(firestore, "handymanServices");
-  const q = query(servicesRef, where("handymanUid", "==", handymanUid));
+  const q = query(servicesRef, where("handymanUid", "==", handymanUid), orderBy("createdAt", "desc"));
   
   const querySnapshot = await getDocs(q);
   const services: HandymanService[] = [];
   querySnapshot.forEach((doc) => {
     services.push({ id: doc.id, ...doc.data() } as HandymanService);
-  });
-  
-  services.sort((a, b) => {
-    const aTime = (a.createdAt as any)?.toMillis() || 0;
-    const bTime = (b.createdAt as any)?.toMillis() || 0;
-    return bTime - aTime;
   });
 
   return services;

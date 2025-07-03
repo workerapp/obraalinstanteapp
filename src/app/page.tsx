@@ -25,12 +25,15 @@ export default function HomePage() {
           <p className="text-xl text-foreground/80 mb-8 max-w-2xl mx-auto">
             Tu solución integral para encontrar operarios calificados, proveedores de confianza y asesoramiento experto para tu hogar.
           </p>
-          <div className="space-x-4">
+          <div className="flex flex-wrap justify-center gap-4">
             <Button size="lg" asChild className="shadow-md hover:shadow-lg transition-shadow">
               <Link href="/services">Explorar Servicios</Link>
             </Button>
             <Button size="lg" variant="outline" asChild className="shadow-md hover:shadow-lg transition-shadow">
               <Link href="/handymen">Buscar un Operario</Link>
+            </Button>
+             <Button size="lg" variant="outline" asChild className="shadow-md hover:shadow-lg transition-shadow">
+              <Link href="/suppliers">Buscar un Proveedor</Link>
             </Button>
           </div>
         </div>

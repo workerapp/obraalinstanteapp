@@ -33,8 +33,7 @@ const fetchQuotationRequests = async (userId: string | undefined): Promise<Quota
   if (!userId) return [];
   
   const requestsRef = collection(firestore, "quotationRequests");
-  // Remove orderBy from query to avoid needing a composite index
-  const q = query(requestsRef, where("userId", "==", userId));
+  const q = query(requestsRef, where("userId", "==", userId), orderBy("requestedAt", "desc"));
   
   const querySnapshot = await getDocs(q);
   const requests: QuotationRequest[] = [];
@@ -51,9 +50,6 @@ const fetchQuotationRequests = async (userId: string | undefined): Promise<Quota
     } as QuotationRequest);
   });
   
-  // Sort on the client-side
-  requests.sort((a, b) => (b.requestedAt?.toMillis() || 0) - (a.requestedAt?.toMillis() || 0));
-
   return requests;
 };
 
@@ -287,7 +283,7 @@ export default function CustomerDashboardPage() {
             <Alert variant="destructive">
               <AlertTitle>Error al Cargar Solicitudes</AlertTitle>
               <AlertDescription>
-                No pudimos cargar tus solicitudes en este momento. Por favor, intenta de nuevo más tarde.
+                No pudimos cargar tus solicitudes en este momento. Si el problema persiste, puede ser necesario crear un índice en la base de datos.
                 <br />
                 <small>{requestsError.message}</small>
               </AlertDescription>
