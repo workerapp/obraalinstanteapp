@@ -1,4 +1,3 @@
-
 // src/app/services/[id]/page.tsx
 import type { Service } from '@/types/service';
 import Image from 'next/image';
@@ -10,6 +9,7 @@ import type { LucideIcon } from 'lucide-react';
 import { firestore } from '@/firebase/clientApp';
 import { doc, getDoc } from 'firebase/firestore';
 import { notFound } from 'next/navigation';
+import ServiceDetailFooter from '@/components/services/service-detail-footer';
 
 // Helper function to get Lucide icon component by name string
 const getIcon = (name?: string | null): LucideIcon => {
@@ -113,18 +113,7 @@ export default async function ServiceDetailPage({ params }: ServiceDetailPagePro
           </ul>
         </section>
 
-        <footer className="mt-8 pt-6 border-t">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <Button size="lg" asChild className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground shadow-md">
-              <Link href={`/request-quotation?serviceId=${service.id}&serviceName=${encodeURIComponent(service.name)}`}>Solicitar Cotización</Link>
-            </Button>
-            <Button variant="outline" size="lg" asChild className="w-full sm:w-auto shadow-md">
-              <Link href={`/handymen?category=${encodeURIComponent(service.category)}`} className="flex items-center gap-2">
-                <Users size={18} /> Buscar un Operario para este Servicio
-              </Link>
-            </Button>
-          </div>
-        </footer>
+        <ServiceDetailFooter service={service} />
       </article>
     </div>
   );
