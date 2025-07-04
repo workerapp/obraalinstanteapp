@@ -4,8 +4,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { doc, getDoc, Timestamp, collection, query, orderBy, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
-import { firestore, storage } from '@/firebase/clientApp'; // Import storage
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'; // Import storage functions
+import { firestore } from '@/firebase/clientApp'; 
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import type { QuotationRequest } from '@/types/quotationRequest';
 import type { RequestMessage } from '@/types/requestMessage';
@@ -99,7 +98,7 @@ export default function RequestDetailPage() {
     defaultValues: { messageText: "" },
   });
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isSendingImage, setIsSendingImage] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
   const { data: request, isLoading, error, isError } = useQuery<QuotationRequest | null, Error>({
@@ -146,49 +145,63 @@ export default function RequestDetailPage() {
   const handleImageFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        toast({ title: "Archivo Demasiado Grande", description: "Por favor, selecciona una imagen de menos de 5MB.", variant: "destructive" });
+      if (file.size > 500 * 1024) { // 500KB limit
+        toast({ 
+            title: "Imagen Demasiado Grande", 
+            description: "Por favor, selecciona una imagen de menos de 500KB. Puedes usar una herramienta online para comprimirla.", 
+            variant: "destructive",
+            duration: 7000
+        });
         return;
       }
       setSelectedImage(file);
     }
   };
 
-  const handleImageUpload = async () => {
+  const handleImageSend = async () => {
     if (!selectedImage || !typedUser || !requestId) return;
 
-    setIsUploadingImage(true);
-    toast({ title: "Subiendo Imagen...", description: "Tu imagen se está subiendo. Por favor, espera." });
+    if (selectedImage.size > 500 * 1024) { // Re-check just in case
+        toast({ title: "Imagen Demasiado Grande", description: "Por favor, selecciona una imagen de menos de 500KB.", variant: "destructive", duration: 7000 });
+        return;
+    }
 
-    const filePath = `chatImages/${requestId}/${Date.now()}_${selectedImage.name}`;
-    const imageRef = storageRef(storage, filePath);
+    setIsSendingImage(true);
+    toast({ title: "Procesando Imagen...", description: "Tu imagen se está adjuntando al chat." });
 
     try {
-      await uploadBytes(imageRef, selectedImage);
-      const downloadURL = await getDownloadURL(imageRef);
+        const reader = new FileReader();
+        reader.readAsDataURL(selectedImage);
+        reader.onload = async () => {
+            const base64Image = reader.result as string;
 
-      const newMessage: Partial<RequestMessage> = {
-        imageUrl: downloadURL,
-        senderId: typedUser.uid,
-        senderName: typedUser.displayName || "Usuario Anónimo",
-        senderRole: typedUser.role as 'customer' | 'handyman' | 'admin' | 'supplier' || 'customer',
-        createdAt: serverTimestamp(),
-        text: `Imagen: ${selectedImage.name}` // Add a text fallback
-      };
-      
-      const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
-      await addDoc(messagesRef, newMessage);
+            const newMessage: Partial<RequestMessage> = {
+                imageUrl: base64Image,
+                senderId: typedUser.uid,
+                senderName: typedUser.displayName || "Usuario Anónimo",
+                senderRole: typedUser.role as 'customer' | 'handyman' | 'admin' | 'supplier' || 'customer',
+                createdAt: serverTimestamp(),
+                text: `Imagen: ${selectedImage.name}`
+            };
 
-      setSelectedImage(null);
-      if (imageInputRef.current) imageInputRef.current.value = "";
-      queryClient.invalidateQueries({ queryKey: ['requestMessages', requestId] });
-      toast({ title: "Imagen Enviada", description: "La imagen se ha enviado correctamente." });
+            const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
+            await addDoc(messagesRef, newMessage);
 
+            setSelectedImage(null);
+            if (imageInputRef.current) imageInputRef.current.value = "";
+            queryClient.invalidateQueries({ queryKey: ['requestMessages', requestId] });
+            toast({ title: "Imagen Enviada", description: "La imagen se ha enviado correctamente." });
+            setIsSendingImage(false);
+        };
+        reader.onerror = (error) => {
+            console.error("Error al leer el archivo:", error);
+            toast({ title: "Error al Procesar", description: "No se pudo procesar la imagen seleccionada.", variant: "destructive" });
+            setIsSendingImage(false);
+        };
     } catch (error: any) {
-      console.error("Error al subir imagen:", error);
-      toast({ title: "Error al Subir Imagen", description: error.message || "No se pudo subir la imagen.", variant: "destructive" });
-    } finally {
-      setIsUploadingImage(false);
+        console.error("Error al enviar imagen:", error);
+        toast({ title: "Error al Enviar Imagen", description: error.message || "No se pudo enviar la imagen.", variant: "destructive" });
+        setIsSendingImage(false);
     }
   };
 
@@ -389,8 +402,8 @@ export default function RequestDetailPage() {
                 <ImageIcon className="h-5 w-5 text-muted-foreground" />
                 <span className="truncate">{selectedImage.name}</span>
               </div>
-              <Button onClick={handleImageUpload} size="sm" disabled={isUploadingImage}>
-                {isUploadingImage ? <Loader2 className="animate-spin mr-2" /> : <Upload className="mr-2 h-4 w-4" />}
+              <Button onClick={handleImageSend} size="sm" disabled={isSendingImage}>
+                {isSendingImage ? <Loader2 className="animate-spin mr-2" /> : <Upload className="mr-2 h-4 w-4" />}
                 Enviar Imagen
               </Button>
             </div>
@@ -417,12 +430,12 @@ export default function RequestDetailPage() {
                 )}
               />
               <div className="flex justify-between items-center">
-                 <Button type="submit" disabled={isSendingMessage || isUploadingImage}>
+                 <Button type="submit" disabled={isSendingMessage || isSendingImage}>
                   {isSendingMessage ? <Loader2 className="animate-spin mr-2"/> : <Send className="mr-2 h-4 w-4"/>}
                   Enviar Mensaje
                 </Button>
                 <input type="file" accept="image/*" ref={imageInputRef} onChange={handleImageFileChange} className="hidden" />
-                <Button type="button" variant="outline" onClick={() => imageInputRef.current?.click()} disabled={isUploadingImage}>
+                <Button type="button" variant="outline" onClick={() => imageInputRef.current?.click()} disabled={isSendingImage}>
                     <Paperclip className="mr-2 h-4 w-4"/> Adjuntar Imagen
                 </Button>
               </div>
