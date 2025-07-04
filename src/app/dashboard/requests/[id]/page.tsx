@@ -4,7 +4,8 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { doc, getDoc, Timestamp, collection, query, orderBy, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
-import { firestore } from '@/firebase/clientApp';
+import { firestore, storage } from '@/firebase/clientApp'; // Import storage
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'; // Import storage functions
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import type { QuotationRequest } from '@/types/quotationRequest';
 import type { RequestMessage } from '@/types/requestMessage';
@@ -14,7 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone, Send, History } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone, Send, History, Paperclip, Image as ImageIcon, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
@@ -22,7 +23,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import Image from 'next/image';
 
 const messageFormSchema = z.object({
   messageText: z.string().min(1, "El mensaje no puede estar vacío.").max(1000, "El mensaje no puede exceder los 1000 caracteres."),
@@ -90,12 +92,15 @@ export default function RequestDetailPage() {
   const requestId = typeof params.id === 'string' ? params.id : undefined;
   const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const messageForm = useForm<MessageFormData>({
     resolver: zodResolver(messageFormSchema),
     defaultValues: { messageText: "" },
   });
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
   const { data: request, isLoading, error, isError } = useQuery<QuotationRequest | null, Error>({
     queryKey: ['quotationRequestDetails', requestId, typedUser?.uid],
@@ -117,48 +122,73 @@ export default function RequestDetailPage() {
     }
     setIsSendingMessage(true);
     
-    const newMessage: RequestMessage = {
-        id: `temp-${Date.now()}`, // Temporary ID
+    const newMessage: Partial<RequestMessage> = {
         text: data.messageText,
         senderId: typedUser.uid,
         senderName: typedUser.displayName || "Usuario Anónimo",
         senderRole: typedUser.role as 'customer' | 'handyman' | 'admin' | 'supplier' || 'customer',
-        createdAt: Timestamp.now(), // Use local timestamp for immediate display
+        createdAt: serverTimestamp(),
     };
     
-    messageForm.reset();
-
-    // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-    await queryClient.cancelQueries({ queryKey: ['requestMessages', requestId] });
-
-    // Snapshot the previous value
-    const previousMessages = queryClient.getQueryData<RequestMessage[]>(['requestMessages', requestId]);
-
-    // Optimistically update to the new value
-    queryClient.setQueryData<RequestMessage[]>(['requestMessages', requestId], (old = []) => [...old, newMessage]);
-
     try {
         const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
-        await addDoc(messagesRef, {
-            text: newMessage.text,
-            senderId: newMessage.senderId,
-            senderName: newMessage.senderName,
-            senderRole: newMessage.senderRole,
-            createdAt: serverTimestamp(),
-        });
-        toast({
-            title: "Mensaje Enviado",
-            description: "Tu mensaje ha sido registrado.",
-        });
-    } catch (error: any) {
-        // If the mutation fails, roll back the optimistic update
-        queryClient.setQueryData(['requestMessages', requestId], previousMessages);
-        console.error("Error al enviar mensaje:", error);
-        toast({ title: "Error al Enviar", description: "No se pudo enviar tu mensaje. Revisa la consola para más detalles.", variant: "destructive"});
-    } finally {
-        // Always refetch after success or failure to ensure data consistency
+        await addDoc(messagesRef, newMessage);
+        messageForm.reset();
         queryClient.invalidateQueries({ queryKey: ['requestMessages', requestId] });
+    } catch (error: any) {
+        console.error("Error al enviar mensaje:", error);
+        toast({ title: "Error al Enviar", description: "No se pudo enviar tu mensaje.", variant: "destructive"});
+    } finally {
         setIsSendingMessage(false);
+    }
+  };
+
+  const handleImageFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({ title: "Archivo Demasiado Grande", description: "Por favor, selecciona una imagen de menos de 5MB.", variant: "destructive" });
+        return;
+      }
+      setSelectedImage(file);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    if (!selectedImage || !typedUser || !requestId) return;
+
+    setIsUploadingImage(true);
+    toast({ title: "Subiendo Imagen...", description: "Tu imagen se está subiendo. Por favor, espera." });
+
+    const filePath = `chatImages/${requestId}/${Date.now()}_${selectedImage.name}`;
+    const imageRef = storageRef(storage, filePath);
+
+    try {
+      await uploadBytes(imageRef, selectedImage);
+      const downloadURL = await getDownloadURL(imageRef);
+
+      const newMessage: Partial<RequestMessage> = {
+        imageUrl: downloadURL,
+        senderId: typedUser.uid,
+        senderName: typedUser.displayName || "Usuario Anónimo",
+        senderRole: typedUser.role as 'customer' | 'handyman' | 'admin' | 'supplier' || 'customer',
+        createdAt: serverTimestamp(),
+        text: `Imagen: ${selectedImage.name}` // Add a text fallback
+      };
+      
+      const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
+      await addDoc(messagesRef, newMessage);
+
+      setSelectedImage(null);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+      queryClient.invalidateQueries({ queryKey: ['requestMessages', requestId] });
+      toast({ title: "Imagen Enviada", description: "La imagen se ha enviado correctamente." });
+
+    } catch (error: any) {
+      console.error("Error al subir imagen:", error);
+      toast({ title: "Error al Subir Imagen", description: error.message || "No se pudo subir la imagen.", variant: "destructive" });
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -309,7 +339,7 @@ export default function RequestDetailPage() {
       <Card className="shadow-xl">
         <CardHeader>
             <CardTitle className="flex items-center"><MessageSquare className="mr-3 h-6 w-6 text-primary"/> Historial de Mensajes</CardTitle>
-            <CardDescription>Comunícate con el cliente o el operario aquí.</CardDescription>
+            <CardDescription>Comunícate con el cliente o el operario aquí. Puedes adjuntar imágenes.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-4 max-h-96 overflow-y-auto p-4 border rounded-md bg-muted/50">
@@ -319,11 +349,7 @@ export default function RequestDetailPage() {
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Error al Cargar Mensajes</AlertTitle>
-                    <AlertDescription>
-                        No se pudo cargar el historial. Esto puede deberse a un problema de permisos o de falta de un índice en la base de datos (Reglas de Seguridad o Índices de Firestore).
-                        <br/>
-                        <small>Detalle: {messagesError.message}</small>
-                    </AlertDescription>
+                    <AlertDescription>No se pudo cargar el historial. Revisa tus permisos o la configuración de la base de datos.</AlertDescription>
                 </Alert>
              )}
 
@@ -335,7 +361,13 @@ export default function RequestDetailPage() {
                                 <span className="font-bold text-sm">{message.senderName}</span>
                                 <Badge variant="outline" className={`text-xs h-5 ${getRoleBadgeClass(message.senderRole)}`}>{message.senderRole}</Badge>
                             </div>
-                            <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                            {message.imageUrl ? (
+                              <a href={message.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block">
+                                <Image src={message.imageUrl} alt={`Imagen de ${message.senderName}`} width={250} height={250} className="rounded-md object-cover max-w-full" />
+                              </a>
+                            ) : (
+                                <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                            )}
                             <p className="text-xs opacity-70 mt-2 text-right">
                                 {message.createdAt instanceof Timestamp ? format(message.createdAt.toDate(), 'Pp', { locale: es }) : 'Enviando...'}
                             </p>
@@ -350,6 +382,19 @@ export default function RequestDetailPage() {
           </div>
           
           <Separator/>
+          
+          {selectedImage && (
+            <div className="p-3 border rounded-md bg-background flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm">
+                <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                <span className="truncate">{selectedImage.name}</span>
+              </div>
+              <Button onClick={handleImageUpload} size="sm" disabled={isUploadingImage}>
+                {isUploadingImage ? <Loader2 className="animate-spin mr-2" /> : <Upload className="mr-2 h-4 w-4" />}
+                Enviar Imagen
+              </Button>
+            </div>
+          )}
 
           <Form {...messageForm}>
             <form onSubmit={messageForm.handleSubmit(onMessageSubmit)} className="space-y-3">
@@ -358,11 +403,11 @@ export default function RequestDetailPage() {
                 name="messageText"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Enviar un nuevo mensaje</FormLabel>
+                    <FormLabel className="sr-only">Enviar un nuevo mensaje</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="Escribe tu mensaje, pregunta o actualización aquí..."
-                        rows={4}
+                        placeholder="Escribe tu mensaje..."
+                        rows={3}
                         className="resize-y"
                         {...field}
                       />
@@ -371,10 +416,16 @@ export default function RequestDetailPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={isSendingMessage} className="w-full sm:w-auto">
-                {isSendingMessage ? <Loader2 className="animate-spin mr-2"/> : <Send className="mr-2"/>}
-                Enviar Mensaje
-              </Button>
+              <div className="flex justify-between items-center">
+                 <Button type="submit" disabled={isSendingMessage || isUploadingImage}>
+                  {isSendingMessage ? <Loader2 className="animate-spin mr-2"/> : <Send className="mr-2 h-4 w-4"/>}
+                  Enviar Mensaje
+                </Button>
+                <input type="file" accept="image/*" ref={imageInputRef} onChange={handleImageFileChange} className="hidden" />
+                <Button type="button" variant="outline" onClick={() => imageInputRef.current?.click()} disabled={isUploadingImage}>
+                    <Paperclip className="mr-2 h-4 w-4"/> Adjuntar Imagen
+                </Button>
+              </div>
             </form>
           </Form>
         </CardContent>
