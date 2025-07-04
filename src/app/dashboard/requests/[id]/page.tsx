@@ -4,7 +4,8 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { doc, getDoc, Timestamp, collection, query, orderBy, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
-import { firestore } from '@/firebase/clientApp'; 
+import { firestore, storage } from '@/firebase/clientApp'; 
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import type { QuotationRequest } from '@/types/quotationRequest';
 import type { RequestMessage } from '@/types/requestMessage';
@@ -145,10 +146,10 @@ export default function RequestDetailPage() {
   const handleImageFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 500 * 1024) { // 500KB limit
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
         toast({ 
             title: "Imagen Demasiado Grande", 
-            description: "Por favor, selecciona una imagen de menos de 500KB. Puedes usar una herramienta online para comprimirla.", 
+            description: "Por favor, selecciona una imagen de menos de 5MB.", 
             variant: "destructive",
             duration: 7000
         });
@@ -161,46 +162,34 @@ export default function RequestDetailPage() {
   const handleImageSend = async () => {
     if (!selectedImage || !typedUser || !requestId) return;
 
-    if (selectedImage.size > 500 * 1024) { // Re-check just in case
-        toast({ title: "Imagen Demasiado Grande", description: "Por favor, selecciona una imagen de menos de 500KB.", variant: "destructive", duration: 7000 });
-        return;
-    }
-
     setIsSendingImage(true);
-    toast({ title: "Procesando Imagen...", description: "Tu imagen se está adjuntando al chat." });
+    toast({ title: "Subiendo Imagen...", description: "Tu imagen se está procesando." });
 
     try {
-        const reader = new FileReader();
-        reader.readAsDataURL(selectedImage);
-        reader.onload = async () => {
-            const base64Image = reader.result as string;
+        const imageRef = storageRef(storage, `quotationRequests/${requestId}/${Date.now()}_${selectedImage.name}`);
+        const uploadResult = await uploadBytes(imageRef, selectedImage);
+        const downloadURL = await getDownloadURL(uploadResult.ref);
 
-            const newMessage: Partial<RequestMessage> = {
-                imageUrl: base64Image,
-                senderId: typedUser.uid,
-                senderName: typedUser.displayName || "Usuario Anónimo",
-                senderRole: typedUser.role as 'customer' | 'handyman' | 'admin' | 'supplier' || 'customer',
-                createdAt: serverTimestamp(),
-                text: `Imagen: ${selectedImage.name}`
-            };
-
-            const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
-            await addDoc(messagesRef, newMessage);
-
-            setSelectedImage(null);
-            if (imageInputRef.current) imageInputRef.current.value = "";
-            queryClient.invalidateQueries({ queryKey: ['requestMessages', requestId] });
-            toast({ title: "Imagen Enviada", description: "La imagen se ha enviado correctamente." });
-            setIsSendingImage(false);
+        const newMessage: Partial<RequestMessage> = {
+            imageUrl: downloadURL,
+            senderId: typedUser.uid,
+            senderName: typedUser.displayName || "Usuario Anónimo",
+            senderRole: typedUser.role as 'customer' | 'handyman' | 'admin' | 'supplier' || 'customer',
+            createdAt: serverTimestamp(),
+            text: `Imagen: ${selectedImage.name}`
         };
-        reader.onerror = (error) => {
-            console.error("Error al leer el archivo:", error);
-            toast({ title: "Error al Procesar", description: "No se pudo procesar la imagen seleccionada.", variant: "destructive" });
-            setIsSendingImage(false);
-        };
+
+        const messagesRef = collection(firestore, `quotationRequests/${requestId}/messages`);
+        await addDoc(messagesRef, newMessage);
+
+        setSelectedImage(null);
+        if (imageInputRef.current) imageInputRef.current.value = "";
+        queryClient.invalidateQueries({ queryKey: ['requestMessages', requestId] });
+        toast({ title: "Imagen Enviada", description: "La imagen se ha enviado correctamente." });
     } catch (error: any) {
         console.error("Error al enviar imagen:", error);
         toast({ title: "Error al Enviar Imagen", description: error.message || "No se pudo enviar la imagen.", variant: "destructive" });
+    } finally {
         setIsSendingImage(false);
     }
   };
