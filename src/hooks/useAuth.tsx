@@ -3,9 +3,9 @@
 
 import type React from 'react';
 import { useState, useEffect, createContext, useContext, type PropsWithChildren } from 'react';
-import { type User as FirebaseUser, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import { type User as FirebaseUser, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth, firestore } from '@/firebase/clientApp';
-import { doc, setDoc, getDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, onSnapshot, updateDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,6 +19,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, pass: string, fullName: string, role: string) => Promise<AppUser | null>;
   signIn: (email: string, pass: string) => Promise<AppUser | null>;
+  signInWithGoogle: () => Promise<AppUser | null>;
   signOutUser: () => Promise<void>;
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
 }
@@ -122,13 +123,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
         photoURL: null,
       };
 
-      // Add isApproved field only for roles that need it.
       if (finalRole === 'handyman' || finalRole === 'supplier') {
         userDocData.isApproved = false;
       } else if (finalRole === 'admin') {
         userDocData.isApproved = true;
       }
-      // For 'customer', the field is simply not added.
 
       const userDocRef = doc(firestore, "users", userCredential.user.uid);
       await setDoc(userDocRef, userDocData);
@@ -178,8 +177,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
           finalRole = userData.role || 'customer';
           finalUser = { ...firebaseUser, ...userData } as AppUser;
       } else {
-          // This handles an edge case where a user exists in Auth but not in Firestore.
-          // We create a default Firestore document for them.
           console.warn(`User ${firebaseUser.uid} exists in Auth but not in Firestore. Creating default document.`);
           finalRole = isUserAdminByEmail ? 'admin' : 'customer';
           const defaultDocData = {
@@ -194,7 +191,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
           finalUser = { ...firebaseUser, ...defaultDocData } as AppUser;
       }
       
-      // Override role if it's the admin email, ensuring it has precedence.
       if (isUserAdminByEmail) {
         finalRole = 'admin';
         finalUser!.role = 'admin';
@@ -226,6 +222,79 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   };
 
+  const signInWithGoogle = async (): Promise<AppUser | null> => {
+    setLoading(true);
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const googleUser = result.user;
+      
+      const userDocRef = doc(firestore, "users", googleUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      let finalUser: AppUser;
+      const isUserAdminByEmail = googleUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      let finalRole = 'customer'; // Default role for new Google sign-ups
+
+      if (userDocSnap.exists()) {
+        // User exists, log them in
+        const userData = userDocSnap.data();
+        finalRole = userData.role || 'customer';
+        await updateDoc(userDocRef, {
+            displayName: googleUser.displayName || userData.displayName,
+            photoURL: googleUser.photoURL || userData.photoURL,
+            updatedAt: serverTimestamp(),
+        });
+        finalUser = { ...googleUser, ...userData } as AppUser;
+        toast({ title: "Sesión Iniciada", description: `¡Bienvenido/a de nuevo, ${googleUser.displayName}!` });
+      } else {
+        // New user, create a document for them
+        finalRole = isUserAdminByEmail ? 'admin' : 'customer';
+        const newUserDocData: any = {
+            uid: googleUser.uid,
+            email: googleUser.email,
+            displayName: googleUser.displayName,
+            photoURL: googleUser.photoURL,
+            role: finalRole,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        };
+
+        if (finalRole === 'admin') {
+            newUserDocData.isApproved = true;
+        }
+
+        await setDoc(userDocRef, newUserDocData);
+        finalUser = { ...googleUser, ...newUserDocData } as AppUser;
+        toast({ title: "¡Cuenta Creada!", description: `¡Bienvenido/a, ${googleUser.displayName}!` });
+      }
+
+      if (isUserAdminByEmail) {
+        finalRole = 'admin';
+        finalUser.role = 'admin';
+        finalUser.isApproved = true;
+      }
+      
+      const redirectPath = finalRole === 'admin' ? '/admin/overview'
+                         : finalRole === 'handyman' ? '/dashboard/handyman'
+                         : finalRole === 'supplier' ? '/dashboard/supplier'
+                         : '/dashboard/customer';
+      router.push(redirectPath);
+      
+      setUser(finalUser);
+      return finalUser;
+
+    } catch (error: any) {
+      console.error("Error al iniciar sesión con Google:", error);
+      toast({ title: "Error con Google", description: error.message || "No se pudo iniciar sesión con Google.", variant: "destructive" });
+      setUser(null);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   const signOutUser = async () => {
     setLoading(true);
     try {
@@ -240,7 +309,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   };
   
-  const value = { user, loading, signUp, signIn, signOutUser, setUser };
+  const value = { user, loading, signUp, signIn, signInWithGoogle, signOutUser, setUser };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
