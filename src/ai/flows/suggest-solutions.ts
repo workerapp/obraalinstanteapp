@@ -57,15 +57,26 @@ const findTopRatedHandymen = ai.defineTool(
       return [];
     }
 
+    // Normalize skills to handle case-sensitivity (e.g., 'plomería' vs 'Plomería')
+    const normalizedSkills = input.skills.flatMap(skill => {
+        if (!skill) return [];
+        const lower = skill.toLowerCase();
+        const capitalized = lower.charAt(0).toUpperCase() + lower.slice(1);
+        return [...new Set([lower, capitalized])]; 
+    });
+
+    if (normalizedSkills.length === 0) {
+      return [];
+    }
+    
     try {
       const usersRef = collection(firestore, 'users');
+      // Query without ordering to include users that may not have a 'rating' field yet.
       const q = query(
         usersRef,
         where('role', '==', 'handyman'),
         where('isApproved', '==', true),
-        where('skills', 'array-contains-any', input.skills),
-        orderBy('rating', 'desc'),
-        limit(3)
+        where('skills', 'array-contains-any', normalizedSkills)
       );
 
       const querySnapshot = await getDocs(q);
@@ -75,11 +86,17 @@ const findTopRatedHandymen = ai.defineTool(
         handymen.push({
           id: doc.id,
           name: data.displayName || 'Nombre no disponible',
-          rating: data.rating || 0,
-          reviewsCount: data.reviewsCount || 0,
+          rating: data.rating || 0, // Default to 0 if no rating
+          reviewsCount: data.reviewsCount || 0, // Default to 0 if no reviews
         });
       });
-      return handymen;
+      
+      // Sort in code to handle users without a rating field correctly
+      handymen.sort((a, b) => b.rating - a.rating);
+
+      // Return the top 3
+      return handymen.slice(0, 3);
+
     } catch (e: any) {
       console.error("Error executing findTopRatedHandymen tool:", e);
       // Re-throw the error so the flow can catch it and report it to the user.
@@ -103,7 +120,7 @@ Basándote en la descripción del problema proporcionada por el cliente, sigue e
 2.  **Genera un Diagnóstico (Campo 'analysis'):** Basado en tu análisis, proporciona una explicación breve y clara de cuál podría ser la causa raíz del problema. Empieza la frase con "¡Entendido! Esto es lo que creo que podría estar pasando:" o algo similar y amigable.
 3.  **Genera Soluciones (Campo 'suggestedSolutions'):** Propón una lista de posibles soluciones. Sé claro y conciso.
 4.  **Genera Materiales y Herramientas (Campo 'suggestedMaterials'):** Basado en las soluciones, crea una lista de posibles materiales y herramientas que se necesitarían para el trabajo.
-5.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Utiliza términos comunes y bien definidos, como "Plomería", "Electricidad", "Carpintería", "Albañilería", "Pintura". Es crucial que los nombres de las habilidades sean precisos para que la herramienta de búsqueda funcione.
+5.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Utiliza términos comunes y bien definidos, como "Plomería", "Electricidad", "Carpintería", "Albañilería", "Pintura", "Soldadura". La herramienta buscará coincidencias exactas con los perfiles de los operarios.
 6.  **Recomienda Operarios (Campo 'recommendedHandymen'):** Una vez que hayas identificado las habilidades en 'relevantSkills', DEBES usar la herramienta 'findTopRatedHandymen' para encontrar hasta 3 de los operarios mejor calificados que posean esas habilidades. Es fundamental que uses la herramienta y coloques su respuesta (incluso si es un array vacío) en el campo 'recommendedHandymen' de la salida JSON. Si la herramienta no devuelve a nadie, el array simplemente estará vacío.
 
 La descripción del problema es: {{{problemDescription}}}
