@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, UserCircle, ArrowLeft, Save, Upload, ImageIcon } from 'lucide-react';
+import { Loader2, UserCircle, ArrowLeft, Save, Upload, ImageIcon, Trash2 } from 'lucide-react';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore, auth, storage } from '@/firebase/clientApp';
 import { doc, getDoc, updateDoc, serverTimestamp, collection, query, orderBy } from 'firebase/firestore';
@@ -23,6 +23,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ProductCategory } from '@/types/productCategory';
 import { Checkbox } from '@/components/ui/checkbox';
 import Image from 'next/image';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 // Schema for the supplier profile form
 const profileFormSchema = z.object({
@@ -49,7 +50,7 @@ async function fetchPlatformProductCategories(): Promise<ProductCategory[]> {
 }
 
 export default function SupplierProfilePage() {
-  const { user, loading: authLoading, setUser: setAuthUser } = useAuth(); 
+  const { user, loading: authLoading, setUser: setAuthUser, deleteCurrentUserAccount } = useAuth(); 
   const typedUser = user as AppUser | null;
   const router = useRouter();
   const { toast } = useToast();
@@ -58,6 +59,7 @@ export default function SupplierProfilePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: platformCategories, isLoading: isLoadingCategories } = useQuery({
     queryKey: ['productCategories'],
@@ -190,6 +192,12 @@ export default function SupplierProfilePage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    await deleteCurrentUserAccount();
+    setIsDeleting(false);
   };
 
   if (authLoading || isFetchingProfile) {
@@ -370,6 +378,50 @@ export default function SupplierProfilePage() {
           </Form>
         </CardContent>
       </Card>
+      
+      <Card className="border-destructive shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-destructive">Zona de Peligro</CardTitle>
+          <CardDescription>Acciones permanentes e irreversibles.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+              Eliminar tu cuenta borrará permanentemente toda tu información, incluyendo tu perfil, productos, e historial. Esta acción no se puede deshacer.
+          </p>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={authLoading}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar Mi Cuenta Permanentemente
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta acción es irreversible. Todos tus datos serán eliminados.
+                  Para confirmar, haz clic en "Confirmar Eliminación".
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting || authLoading}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  {isDeleting ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Eliminando...</>
+                  ) : (
+                    <><Trash2 className="mr-2 h-4 w-4" />Confirmar Eliminación</>
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
+
     </div>
   );
 }

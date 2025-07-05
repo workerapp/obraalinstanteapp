@@ -3,9 +3,9 @@
 
 import type React from 'react';
 import { useState, useEffect, createContext, useContext, type PropsWithChildren } from 'react';
-import { type User as FirebaseUser, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { type User as FirebaseUser, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, GoogleAuthProvider, signInWithPopup, deleteUser } from 'firebase/auth';
 import { auth, firestore } from '@/firebase/clientApp';
-import { doc, setDoc, getDoc, serverTimestamp, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,13 +22,14 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<AppUser | null>;
   signOutUser: () => Promise<void>;
   setUser: React.Dispatch<React.SetStateAction<AppUser | null>>;
+  deleteCurrentUserAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Lista de UIDs de administradores autorizados. Más seguro que por email.
 // Para añadir un admin: 1. Crear una cuenta normal. 2. Obtener su UID. 3. Añadirlo aquí y redesplegar.
-const ADMIN_UIDS = ['PASTE_YOUR_ADMIN_UID_HERE'];
+const ADMIN_UIDS = ['Ge7aYGTeHKfIAue6lLZRs7bXZsk2'];
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -295,8 +296,40 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setLoading(false);
     }
   };
+
+  const deleteCurrentUserAccount = async () => {
+    if (!auth.currentUser) {
+        toast({ title: "No Autenticado", description: "No hay un usuario para eliminar.", variant: "destructive" });
+        return;
+    }
+
+    setLoading(true);
+    const userToDelete = auth.currentUser;
+
+    try {
+        // Step 1: Delete Firestore document. This is crucial to do first.
+        const userDocRef = doc(firestore, "users", userToDelete.uid);
+        await deleteDoc(userDocRef);
+
+        // Step 2: Delete the user from Firebase Auth.
+        await deleteUser(userToDelete);
+        
+        toast({ title: "Cuenta Eliminada", description: "Tu cuenta y tus datos han sido eliminados permanentemente." });
+        router.push('/'); // Redirect to home after successful deletion
+    
+    } catch (error: any) {
+        console.error("Error al eliminar la cuenta:", error);
+        let description = "Ocurrió un error inesperado al intentar eliminar tu cuenta.";
+        if (error.code === 'auth/requires-recent-login') {
+            description = "Esta acción es sensible y requiere un inicio de sesión reciente. Por favor, cierra sesión, vuelve a iniciarla e inténtalo de nuevo.";
+        }
+        toast({ title: "Error al Eliminar", description, variant: "destructive" });
+    } finally {
+        setLoading(false);
+    }
+  };
   
-  const value = { user, loading, signUp, signIn, signInWithGoogle, signOutUser, setUser };
+  const value = { user, loading, signUp, signIn, signInWithGoogle, signOutUser, setUser, deleteCurrentUserAccount };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
