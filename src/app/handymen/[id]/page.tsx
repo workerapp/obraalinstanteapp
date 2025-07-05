@@ -5,25 +5,20 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, notFound, useRouter } from 'next/navigation';
 import type { Handyman } from '@/types/handyman';
 import type { HandymanService } from '@/types/handymanService';
+import type { Review } from '@/types/review';
 import { firestore } from '@/firebase/clientApp';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Star, MapPin, CalendarDays, MessageSquare, Phone, CheckCircle, Briefcase, Tag, Loader2, UserCircle2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, CalendarDays, MessageSquare, Phone, CheckCircle, Briefcase, Tag, Loader2, UserCircle2, AlertTriangle, StarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
-interface Review {
-  id: number;
-  author: string;
-  rating: number;
-  comment: string;
-  date: string;
-}
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const ADMIN_WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP_NUMBER || "+573017412292";
 
@@ -54,7 +49,7 @@ const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null
     tagline: userData.tagline || 'Operario profesional y confiable',
     aboutMe: userData.aboutMe || undefined,
     skills: Array.isArray(userData.skills) && userData.skills.length > 0 ? userData.skills : ['Servicios Generales'],
-    rating: typeof userData.rating === 'number' ? userData.rating : 4.0,
+    rating: typeof userData.rating === 'number' ? userData.rating : 0,
     reviewsCount: typeof userData.reviewsCount === 'number' ? userData.reviewsCount : 0,
     imageUrl: userData.photoURL || userData.imageUrl || 'https://placehold.co/300x300.png',
     dataAiHint: 'persona profesional',
@@ -102,6 +97,18 @@ async function fetchServicesForHandyman(handymanId: string): Promise<HandymanSer
   return services;
 }
 
+async function fetchReviewsForUser(userId: string): Promise<Review[]> {
+  if (!userId) return [];
+  const reviewsRef = collection(firestore, `users/${userId}/reviews`);
+  const q = query(reviewsRef, orderBy("createdAt", "desc"));
+  const querySnapshot = await getDocs(q);
+  const reviews: Review[] = [];
+  querySnapshot.forEach((doc) => {
+    reviews.push({ id: doc.id, ...doc.data() } as Review);
+  });
+  return reviews;
+}
+
 export default function HandymanDetailPage() {
   const { toast } = useToast();
   const params = useParams();
@@ -118,6 +125,12 @@ export default function HandymanDetailPage() {
   const { data: offeredServices, isLoading: isLoadingServices, error: servicesError } = useQuery({
     queryKey: ['handymanServices', handymanId],
     queryFn: () => fetchServicesForHandyman(handymanId),
+    enabled: !!handymanId,
+  });
+  
+  const { data: reviews, isLoading: isLoadingReviews } = useQuery({
+    queryKey: ['handymanReviews', handymanId],
+    queryFn: () => fetchReviewsForUser(handymanId),
     enabled: !!handymanId,
   });
 
@@ -143,11 +156,6 @@ export default function HandymanDetailPage() {
   if (!handyman) {
     notFound();
   }
-
-  const reviews = [
-    { id: 1, author: "Alicia B.", rating: 5, comment: "¡Fantástico! Arregló mi grifo que goteaba en poco tiempo.", date: "2023-03-15" },
-    { id: 2, author: "Roberto C.", rating: 4, comment: "Buen trabajo en el cableado eléctrico. Profesional y ordenado.", date: "2023-02-20" },
-  ];
 
   const handleWhatsAppContact = () => {
     if (!ADMIN_WHATSAPP_NUMBER) {
@@ -239,6 +247,40 @@ export default function HandymanDetailPage() {
           ) : (
             <p className="text-muted-foreground text-center py-6">Este operario no ha publicado servicios específicos.</p>
           ))}
+        </section>
+        
+        <Separator className="my-8" />
+        <section>
+          <h2 className="text-2xl font-semibold font-headline mb-4 flex items-center">
+            <StarIcon size={24} className="mr-3 text-primary" /> Reseñas y Calificaciones
+          </h2>
+          {isLoadingReviews && <div className="flex items-center py-6"><Loader2 className="h-6 w-6 animate-spin text-primary mr-2" /><p>Cargando reseñas...</p></div>}
+          {!isLoadingReviews && reviews && reviews.length > 0 ? (
+            <div className="space-y-6">
+              {reviews.map((review) => (
+                <Card key={review.id} className="bg-background">
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <p className="font-semibold">{review.authorName}</p>
+                      <div className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={16} className={i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'} />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {review.createdAt instanceof Timestamp ? format(review.createdAt.toDate(), 'PPP', { locale: es }) : ''}
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-foreground/90 whitespace-pre-wrap">{review.comment}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            !isLoadingReviews && <p className="text-muted-foreground text-center py-6">Este operario aún no tiene reseñas.</p>
+          )}
         </section>
       </div>
     </div>

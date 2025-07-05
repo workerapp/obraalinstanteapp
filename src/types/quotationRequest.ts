@@ -30,4 +30,5 @@ export interface QuotationRequest {
   platformFeeCalculated?: number; // Monto de la comisión calculada para la plataforma
   handymanEarnings?: number; // Ganancias netas para el operario (quotedAmount - platformFeeCalculated)
   commissionPaymentStatus?: "Pendiente" | "Pagada"; // Nuevo campo para el estado de pago de la comisión
+  isReviewed?: boolean; // Nuevo campo para saber si el cliente ya dejó una reseña
 }

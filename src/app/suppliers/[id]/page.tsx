@@ -5,8 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, notFound, useRouter } from 'next/navigation';
 import type { Supplier } from '@/types/supplier';
 import type { Product } from '@/types/product';
+import type { Review } from '@/types/review';
 import { firestore } from '@/firebase/clientApp';
-import { doc, getDoc, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -17,10 +18,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import ProductCard from '@/components/products/product-card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
-interface Review {
-  id: number; author: string; rating: number; comment: string; date: string;
-}
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const ADMIN_WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP_NUMBER || "+573017412292";
 
@@ -40,7 +39,7 @@ const mapFirestoreUserToSupplier = (uid: string, userData: any): Supplier | null
     companyName: userData.displayName || `Proveedor ${uid.substring(0, 6)}`,
     tagline: userData.tagline || 'Productos de calidad para tus proyectos',
     categories: Array.isArray(userData.skills) && userData.skills.length > 0 ? userData.skills : ['Materiales Generales'],
-    rating: typeof userData.rating === 'number' ? userData.rating : 4.0,
+    rating: typeof userData.rating === 'number' ? userData.rating : 0,
     reviewsCount: typeof userData.reviewsCount === 'number' ? userData.reviewsCount : 0,
     logoUrl: userData.photoURL || userData.logoUrl || 'https://placehold.co/300x300.png',
     dataAiHint: 'logo empresa',
@@ -75,6 +74,18 @@ async function fetchProductsForSupplier(supplierId: string): Promise<Product[]> 
   return products.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+async function fetchReviewsForUser(userId: string): Promise<Review[]> {
+  if (!userId) return [];
+  const reviewsRef = collection(firestore, `users/${userId}/reviews`);
+  const q = query(reviewsRef, orderBy("createdAt", "desc"));
+  const querySnapshot = await getDocs(q);
+  const reviews: Review[] = [];
+  querySnapshot.forEach((doc) => {
+    reviews.push({ id: doc.id, ...doc.data() } as Review);
+  });
+  return reviews;
+}
+
 export default function SupplierDetailPage() {
   const { toast } = useToast();
   const params = useParams();
@@ -91,6 +102,12 @@ export default function SupplierDetailPage() {
   const { data: products, isLoading: isLoadingProducts, error: productsError } = useQuery({
     queryKey: ['supplierProducts', supplierId],
     queryFn: () => fetchProductsForSupplier(supplierId),
+    enabled: !!supplierId,
+  });
+
+  const { data: reviews, isLoading: isLoadingReviews } = useQuery({
+    queryKey: ['supplierReviews', supplierId],
+    queryFn: () => fetchReviewsForUser(supplierId),
     enabled: !!supplierId,
   });
 
@@ -114,11 +131,6 @@ export default function SupplierDetailPage() {
   if (!supplier) {
     notFound();
   }
-
-  const reviews: Review[] = [
-    { id: 1, author: "Constructora ABC", rating: 5, comment: "Siempre tienen stock y entregan a tiempo. ¡Excelentes precios!", date: "2023-04-10" },
-    { id: 2, author: "Juan Pérez (Operario)", rating: 4, comment: "Buena atención y me asesoraron bien con los materiales.", date: "2023-03-25" },
-  ];
 
   const handleWhatsAppContact = () => {
     const message = encodeURIComponent(`Hola, quisiera contactar al proveedor ${supplier.companyName} (ID: ${supplier.id}) que vi en Obra al Instante.`);
@@ -173,6 +185,41 @@ export default function SupplierDetailPage() {
             <p className="text-muted-foreground text-center py-6">Este proveedor no ha publicado productos.</p>
           ))}
         </section>
+
+        <Separator className="my-8" />
+        <section>
+          <h2 className="text-2xl font-semibold font-headline mb-4 flex items-center">
+            <StarIcon size={24} className="mr-3 text-primary" /> Reseñas y Calificaciones
+          </h2>
+          {isLoadingReviews && <div className="flex items-center py-6"><Loader2 className="h-6 w-6 animate-spin text-primary mr-2" /><p>Cargando reseñas...</p></div>}
+          {!isLoadingReviews && reviews && reviews.length > 0 ? (
+            <div className="space-y-6">
+              {reviews.map((review) => (
+                <Card key={review.id} className="bg-background">
+                  <CardHeader>
+                    <div className="flex justify-between items-center">
+                      <p className="font-semibold">{review.authorName}</p>
+                      <div className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={16} className={i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'} />
+                        ))}
+                      </div>
+                    </div>
+                     <p className="text-xs text-muted-foreground">
+                      {review.createdAt instanceof Timestamp ? format(review.createdAt.toDate(), 'PPP', { locale: es }) : ''}
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-foreground/90 whitespace-pre-wrap">{review.comment}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            !isLoadingReviews && <p className="text-muted-foreground text-center py-6">Este proveedor aún no tiene reseñas.</p>
+          )}
+        </section>
+
       </div>
     </div>
   );

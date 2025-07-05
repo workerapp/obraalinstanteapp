@@ -15,7 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone, Send, History, Paperclip, Image as ImageIcon, Upload } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft, User, Wrench, MapPin, Calendar, MessageSquare, Tag, FileText, DollarSign, Phone, Send, History, Paperclip, Image as ImageIcon, Upload, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
@@ -25,6 +25,8 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useRef } from 'react';
 import Image from 'next/image';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ReviewForm } from '@/components/reviews/review-form';
 
 const messageFormSchema = z.object({
   messageText: z.string().min(1, "El mensaje no puede estar vacío.").max(1000, "El mensaje no puede exceder los 1000 caracteres."),
@@ -101,6 +103,7 @@ export default function RequestDetailPage() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [isSendingImage, setIsSendingImage] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
 
   const { data: request, isLoading, error, isError } = useQuery<QuotationRequest | null, Error>({
     queryKey: ['quotationRequestDetails', requestId, typedUser?.uid],
@@ -288,9 +291,9 @@ export default function RequestDetailPage() {
             <h3 className="text-xl font-semibold mb-2 flex items-center"><Wrench className="mr-2 text-accent h-5 w-5"/>Información del Servicio</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <p><strong>Servicio:</strong> {request.serviceName}</p>
-              {request.handymanName && <p><strong>Operario Solicitado:</strong> {request.handymanName}</p>}
+              {request.handymanName && <p><strong>Operario/Proveedor:</strong> {request.handymanName}</p>}
             </div>
-            <p className="text-sm mt-2"><strong>Descripción del Problema:</strong></p>
+            <p className="text-sm mt-2"><strong>Descripción del Problema/Necesidad:</strong></p>
             <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">{request.problemDescription}</p>
           </div>
           
@@ -337,6 +340,44 @@ export default function RequestDetailPage() {
         </CardContent>
       </Card>
       
+      {typedUser?.role === 'customer' && request.status === 'Completada' && !request.isReviewed && request.handymanId && (
+        <Card className="shadow-xl bg-primary/5 border-primary/20">
+            <CardHeader>
+                <CardTitle className="flex items-center text-primary"><Star className="mr-2"/>¿Cómo fue tu experiencia?</CardTitle>
+                <CardDescription>
+                    Tu opinión es importante. Ayuda a otros miembros de la comunidad dejando una reseña sobre el trabajo de {request.handymanName}.
+                </CardDescription>
+            </CardHeader>
+            <CardFooter>
+                <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <Star className="mr-2 h-4 w-4" /> Dejar una Reseña
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                         <DialogHeader>
+                            <DialogTitle>Califica el servicio</DialogTitle>
+                         </DialogHeader>
+                         {request.handymanId && request.handymanName && typedUser.displayName &&
+                            <ReviewForm
+                                targetId={request.handymanId}
+                                targetName={request.handymanName}
+                                authorId={typedUser.uid}
+                                authorName={typedUser.displayName}
+                                requestId={request.id}
+                                onReviewSubmit={() => {
+                                    setIsReviewDialogOpen(false);
+                                    queryClient.invalidateQueries({ queryKey: ['quotationRequestDetails', requestId, typedUser?.uid] });
+                                }}
+                            />
+                         }
+                    </DialogContent>
+                </Dialog>
+            </CardFooter>
+        </Card>
+      )}
+
       {/* Messaging Section */}
       <Card className="shadow-xl">
         <CardHeader>
