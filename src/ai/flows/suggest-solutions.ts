@@ -1,8 +1,8 @@
-
 'use server';
 
 /**
  * @fileOverview AI assistant that analyzes a home maintenance problem and suggests a diagnosis, solutions, relevant handyman skills, and materials.
+ * It now also recommends top-rated handymen for the job.
  *
  * - suggestSolutions - A function that handles the analysis process.
  * - SuggestSolutionsInput - The input type for the suggestSolutions function.
@@ -11,6 +11,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { firestore } from '@/firebase/clientApp';
+import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 
 const SuggestSolutionsInputSchema = z.object({
   problemDescription: z.string().describe('Detailed description of the customer\u0027s problem.'),
@@ -21,7 +23,13 @@ const SuggestSolutionsOutputSchema = z.object({
   analysis: z.string().describe('Un breve análisis y diagnóstico del problema, explicando la posible causa. En ESPAÑOL.'),
   suggestedSolutions: z.array(z.string()).describe('Lista de posibles soluciones al problema, en ESPAÑOL.'),
   relevantSkills: z.array(z.string()).describe('Lista de habilidades de operario relevantes para las soluciones, en ESPAÑOL.'),
-  suggestedMaterials: z.array(z.string()).describe('Lista de posibles materiales y herramientas necesarios para las soluciones, en ESPAÑOL.')
+  suggestedMaterials: z.array(z.string()).describe('Lista de posibles materiales y herramientas necesarios para las soluciones, en ESPAÑOL.'),
+  recommendedHandymen: z.array(z.object({
+    id: z.string().describe('The unique ID of the handyman.'),
+    name: z.string().describe('The name of the handyman.'),
+    rating: z.number().describe('The average rating of the handyman.'),
+    reviewsCount: z.number().describe('The number of reviews the handyman has.'),
+  })).describe('A list of up to 3 top-rated handymen recommended for the job. This should be populated using the findTopRatedHandymen tool. In SPANISH.')
 });
 export type SuggestSolutionsOutput = z.infer<typeof SuggestSolutionsOutputSchema>;
 
@@ -29,12 +37,66 @@ export async function suggestSolutions(input: SuggestSolutionsInput): Promise<Su
   return suggestSolutionsFlow(input);
 }
 
+
+const findTopRatedHandymen = ai.defineTool(
+  {
+    name: 'findTopRatedHandymen',
+    description: 'Finds the top-rated, approved handymen based on a list of required skills. Returns up to 3.',
+    inputSchema: z.object({
+      skills: z.array(z.string()).describe("A list of skills to search for. For example: ['Plomería', 'Electricidad']."),
+    }),
+    outputSchema: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      rating: z.number(),
+      reviewsCount: z.number(),
+    })),
+  },
+  async (input) => {
+    if (!input.skills || input.skills.length === 0) {
+      return [];
+    }
+
+    try {
+      const usersRef = collection(firestore, 'users');
+      const q = query(
+        usersRef,
+        where('role', '==', 'handyman'),
+        where('isApproved', '==', true),
+        where('skills', 'array-contains-any', input.skills),
+        orderBy('rating', 'desc'),
+        limit(3)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const handymen: any[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        handymen.push({
+          id: doc.id,
+          name: data.displayName || 'Nombre no disponible',
+          rating: data.rating || 0,
+          reviewsCount: data.reviewsCount || 0,
+        });
+      });
+      return handymen;
+    } catch (e: any) {
+      console.error("Error fetching handymen with tool:", e);
+      // It's possible Firestore throws a 'failed-precondition' if an index is missing.
+      // The tool should not crash the flow.
+      return [];
+    }
+  }
+);
+
+
 const prompt = ai.definePrompt({
   name: 'suggestSolutionsPrompt',
   input: {schema: SuggestSolutionsInputSchema},
   output: {schema: SuggestSolutionsOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
-  prompt: `Eres Obrita, un asistente de IA amigable y experto de la plataforma "Obra al Instante". Tu tono debe ser servicial, claro y tranquilizador. Tu objetivo es ayudar a los clientes a diagnosticar problemas de mantenimiento del hogar y encontrar las soluciones adecuadas. Proporcionarás un análisis detallado, sugerirás soluciones, una lista de materiales y las habilidades de operario más relevantes.
+  tools: [findTopRatedHandymen],
+  prompt: `Eres Obrita, un asistente de IA amigable y experto de la plataforma "Obra al Instante". Tu tono debe ser servicial, claro y tranquilizador. Tu objetivo es ayudar a los clientes a diagnosticar problemas de mantenimiento del hogar y encontrar las soluciones adecuadas.
 
 Basándote en la descripción del problema proporcionada por el cliente, sigue estos pasos en tu razonamiento:
 1.  **Analiza el problema:** Desglosa la descripción del cliente. Identifica el objeto principal (p. ej., puerta, grifo, pared) y la acción requerida (p. ej., reparar, instalar, construir).
@@ -42,11 +104,12 @@ Basándote en la descripción del problema proporcionada por el cliente, sigue e
 3.  **Genera Soluciones (Campo 'suggestedSolutions'):** Propón una lista de posibles soluciones. Sé claro y conciso.
 4.  **Genera Materiales y Herramientas (Campo 'suggestedMaterials'):** Basado en las soluciones, crea una lista de posibles materiales y herramientas que se necesitarían para el trabajo.
 5.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Es crucial que consideres todas las posibilidades relevantes.
+6.  **Recomienda Operarios (Campo 'recommendedHandymen'):** Una vez que hayas identificado las habilidades en 'relevantSkills', DEBES usar la herramienta 'findTopRatedHandymen' para encontrar hasta 3 de los operarios mejor calificados que posean esas habilidades. Pasa la lista de habilidades a la herramienta. La respuesta de la herramienta debe ser la que pueble el campo 'recommendedHandymen' en la salida. Si la herramienta no devuelve a nadie, deja el campo como un array vacío.
 
 La descripción del problema es: {{{problemDescription}}}
 
 IMPORTANTE: TODO el contenido de texto en los campos de salida DEBE estar en ESPAÑOL y mantener un tono amigable y servicial.
-Asegúrate de que el formato de salida sea un objeto JSON que coincida con el esquema de salida proporcionado.
+Asegúrate de que el formato de salida sea un objeto JSON que coincida con el esquema de salida proporcionado, incluyendo las recomendaciones de operarios si la herramienta los encuentra.
   `,
 });
 
@@ -63,11 +126,6 @@ const suggestSolutionsFlow = ai.defineFlow(
         console.error('AI prompt returned undefined or null output');
         throw new Error('La IA no pudo generar una respuesta.');
       }
-      // Ensure the fields exist, even if empty, as per schema
-      output.analysis = output.analysis || "No se pudo generar un análisis.";
-      output.suggestedSolutions = output.suggestedSolutions || [];
-      output.relevantSkills = output.relevantSkills || [];
-      output.suggestedMaterials = output.suggestedMaterials || [];
       return output;
     } catch (flowError) {
       console.error('Error within suggestSolutionsFlow:', flowError);

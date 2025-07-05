@@ -1,4 +1,3 @@
-
 // src/app/ai-assistant/page.tsx
 "use client";
 
@@ -11,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Sparkles, Lightbulb, Wrench, Send, AlertTriangle, Search, MessageSquare, ClipboardList } from 'lucide-react';
+import { Loader2, Sparkles, Lightbulb, Wrench, Send, AlertTriangle, Search, MessageSquare, ClipboardList, Award, Star, UserCheck } from 'lucide-react';
 import { suggestSolutions, type SuggestSolutionsOutput } from '@/ai/flows/suggest-solutions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
@@ -64,7 +63,7 @@ export default function AiAssistantPage() {
           <Sparkles className="mx-auto h-16 w-16 text-primary mb-4" />
           <CardTitle className="text-3xl font-headline">Asistente de IA</CardTitle>
           <CardDescription>
-            ¡Hola! Soy Obrita, tu asistente personal. Describe tu problema o necesidad y te daré un diagnóstico, posibles soluciones y los tipos de operarios que podrías necesitar.
+            ¡Hola! Soy Obrita, tu asistente personal. Describe tu problema y te daré un diagnóstico, soluciones, materiales y te recomendaré a los mejores operarios.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -120,6 +119,32 @@ export default function AiAssistantPage() {
                 <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Lightbulb className="mr-3 h-6 w-6" />Mi Análisis del Problema</h3>
                 <p className="text-foreground/90 bg-muted p-4 rounded-md border">{aiResponse.analysis}</p>
               </div>
+              
+              {aiResponse.recommendedHandymen && aiResponse.recommendedHandymen.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Award className="mr-3 h-6 w-6" />Operarios Recomendados para ti</h3>
+                  <Card>
+                    <CardContent className="p-4 space-y-3">
+                      {aiResponse.recommendedHandymen.map((handyman) => (
+                        <div key={handyman.id} className="flex justify-between items-center bg-background p-3 rounded-lg border">
+                          <div>
+                            <p className="font-semibold text-base">{handyman.name}</p>
+                            <div className="flex items-center text-sm text-muted-foreground">
+                              <Star className="w-4 h-4 mr-1 text-yellow-500 fill-yellow-400" />
+                              <span>{handyman.rating.toFixed(1)} ({handyman.reviewsCount} reseñas)</span>
+                            </div>
+                          </div>
+                          <Button asChild size="sm">
+                            <Link href={`/handymen/${handyman.id}`}>
+                              <UserCheck className="mr-2 h-4 w-4" /> Ver Perfil
+                            </Link>
+                          </Button>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {aiResponse.suggestedMaterials && aiResponse.suggestedMaterials.length > 0 && (
                 <div className="space-y-4">
@@ -137,7 +162,7 @@ export default function AiAssistantPage() {
               )}
 
               <div className="space-y-4">
-                <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Wrench className="mr-3 h-6 w-6" />Soluciones y Operarios Recomendados</h3>
+                <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Wrench className="mr-3 h-6 w-6" />Soluciones y Habilidades Sugeridas</h3>
                 <Card>
                   <CardContent className="p-4 space-y-4">
                     {aiResponse.suggestedSolutions && aiResponse.suggestedSolutions.length > 0 && (
@@ -153,7 +178,7 @@ export default function AiAssistantPage() {
                      {aiResponse.suggestedSolutions.length > 0 && aiResponse.relevantSkills.length > 0 && <Separator />}
                     {aiResponse.relevantSkills && aiResponse.relevantSkills.length > 0 && (
                       <div>
-                        <h4 className="font-semibold mb-2">Operarios Recomendados:</h4>
+                        <h4 className="font-semibold mb-2">Habilidades Requeridas:</h4>
                         <div className="flex flex-wrap gap-2">
                           {aiResponse.relevantSkills.map((skill, index) => (
                             <Button key={`skill-${index}`} asChild variant="secondary" size="sm">
