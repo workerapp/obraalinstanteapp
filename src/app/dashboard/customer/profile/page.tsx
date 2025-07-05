@@ -1,4 +1,3 @@
-
 // src/app/dashboard/customer/profile/page.tsx
 "use client";
 
@@ -10,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, UserCircle, ArrowLeft, Save, Upload } from 'lucide-react';
+import { Loader2, UserCircle, ArrowLeft, Save, Upload, ImageIcon } from 'lucide-react';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore, auth, storage } from '@/firebase/clientApp';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -85,6 +84,10 @@ export default function CustomerProfilePage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({ title: "Imagen muy grande", description: "Por favor, sube una imagen de menos de 5MB.", variant: "destructive" });
+        return;
+      }
       setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -206,12 +209,12 @@ export default function CustomerProfilePage() {
                <FormItem>
                 <FormLabel>Foto de Perfil</FormLabel>
                 <div className="flex items-center gap-4">
-                  <div className="relative h-24 w-24 rounded-full overflow-hidden bg-muted">
+                  <div className="relative h-24 w-24 rounded-full overflow-hidden bg-muted border">
                     {displayPhoto ? (
                       <Image src={displayPhoto} alt="Vista previa de perfil" layout="fill" objectFit="cover" />
                     ) : (
                       <div className="flex items-center justify-center h-full w-full">
-                        <UserCircle className="h-16 w-16 text-muted-foreground" />
+                        <ImageIcon className="h-12 w-12 text-muted-foreground" />
                       </div>
                     )}
                   </div>
@@ -234,18 +237,7 @@ export default function CustomerProfilePage() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="photoURL"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>O pega una URL de imagen (opcional)</FormLabel>
-                    <FormControl><Input type="url" placeholder="https://ejemplo.com/imagen.png" {...field} value={field.value || ''} /></FormControl>
-                    <FormDescription>Si subes una foto, este campo será actualizado automáticamente.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              
               <Button type="submit" disabled={isLoading || isFetchingProfile} className="w-full">
                 {isLoading ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando Cambios...</>

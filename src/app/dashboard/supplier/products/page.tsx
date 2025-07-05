@@ -1,7 +1,7 @@
 // src/app/dashboard/supplier/products/page.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { 
@@ -28,12 +28,13 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { PlusCircle, Package, ArrowLeft, Loader2, Trash2 } from 'lucide-react';
+import { PlusCircle, Package, ArrowLeft, Loader2, Trash2, Upload, ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
-import { firestore } from '@/firebase/clientApp';
+import { firestore, storage } from '@/firebase/clientApp';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -54,7 +55,6 @@ const productFormSchema = z.object({
   ),
   unit: z.string().min(1, "La unidad es requerida (ej: bulto, galón, unidad).").max(30),
   isActive: z.boolean().default(true),
-  imageUrl: z.string().url("Debe ser una URL válida para la imagen.").optional().or(z.literal('')),
   dataAiHint: z.string().max(50, "La pista de IA no debe exceder 50 caracteres.").optional().or(z.literal('')),
 });
 
@@ -99,6 +99,10 @@ export default function SupplierProductsPage() {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [isDeletingProduct, setIsDeletingProduct] = useState(false);
 
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const { data: platformCategories, isLoading: isLoadingCategories } = useQuery({
     queryKey: ['productCategories'],
     queryFn: fetchPlatformProductCategories
@@ -107,14 +111,7 @@ export default function SupplierProductsPage() {
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
     defaultValues: {
-      name: "",
-      category: "",
-      description: "",
-      price: undefined,
-      unit: "",
-      isActive: true,
-      imageUrl: "",
-      dataAiHint: "",
+      name: "", category: "", description: "", price: undefined, unit: "", isActive: true, dataAiHint: "",
     },
   });
 
@@ -137,31 +134,45 @@ export default function SupplierProductsPage() {
   useEffect(() => {
     if (!isDialogOpen) { 
       setEditingProductId(null); 
+      setSelectedFile(null);
+      setPreviewUrl(null);
       form.reset({
-        name: "", category: "", description: "", price: undefined, unit: "", isActive: true, imageUrl: "", dataAiHint: ""
+        name: "", category: "", description: "", price: undefined, unit: "", isActive: true, dataAiHint: ""
       });
     }
   }, [isDialogOpen, form]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({ title: "Imagen muy grande", description: "Por favor, sube una imagen de menos de 5MB.", variant: "destructive" });
+        return;
+      }
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPreviewUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleEdit = (product: Product) => {
     setEditingProductId(product.id!);
     form.reset({
-      name: product.name,
-      category: product.category,
-      description: product.description,
-      price: product.price,
-      unit: product.unit,
-      isActive: product.isActive,
-      imageUrl: product.imageUrl || "",
-      dataAiHint: product.dataAiHint || "",
+      name: product.name, category: product.category, description: product.description, price: product.price,
+      unit: product.unit, isActive: product.isActive, dataAiHint: product.dataAiHint || "",
     });
+    setPreviewUrl(product.imageUrl || null);
+    setSelectedFile(null);
     setIsDialogOpen(true);
   };
   
   const handleNewProductClick = () => {
     setEditingProductId(null);
+    setSelectedFile(null);
+    setPreviewUrl(null);
     form.reset({
-      name: "", category: "", description: "", price: undefined, unit: "", isActive: true, imageUrl: "", dataAiHint: ""
+      name: "", category: "", description: "", price: undefined, unit: "", isActive: true, dataAiHint: ""
     });
     setIsDialogOpen(true);
   };
@@ -170,6 +181,17 @@ export default function SupplierProductsPage() {
     if (!typedUser?.uid) return;
     setIsSubmitting(true);
     try {
+      const existingProduct = editingProductId ? products.find(p => p.id === editingProductId) : null;
+      let finalImageUrl: string | null = existingProduct?.imageUrl || null;
+
+      if (selectedFile) {
+        toast({ title: "Subiendo imagen..." });
+        const imagePath = `supplier-products/${typedUser.uid}/${editingProductId || Date.now()}/${selectedFile.name}`;
+        const imageRef = storageRef(storage, imagePath);
+        await uploadBytes(imageRef, selectedFile);
+        finalImageUrl = await getDownloadURL(imageRef);
+      }
+      
       const productDataForFirestore: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> & { updatedAt: Timestamp; createdAt?: Timestamp } = {
         supplierUid: typedUser.uid,
         name: data.name,
@@ -179,7 +201,7 @@ export default function SupplierProductsPage() {
         unit: data.unit,
         currency: "COP",
         isActive: data.isActive,
-        imageUrl: data.imageUrl || null,
+        imageUrl: finalImageUrl,
         dataAiHint: data.dataAiHint || null,
         updatedAt: serverTimestamp() as Timestamp,
       };
@@ -254,40 +276,31 @@ export default function SupplierProductsPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 pr-1">
                 <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre del Producto</FormLabel><FormControl><Input placeholder="Ej: Cemento Gris Argos 50kg" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Categoría del Producto</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        value={field.value} 
-                        defaultValue={field.value}
-                        disabled={isLoadingCategories}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={isLoadingCategories ? "Cargando..." : "Selecciona una categoría"} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {platformCategories?.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>Selecciona la categoría que mejor describa este producto.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría del Producto</FormLabel> <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value} disabled={isLoadingCategories}> <FormControl> <SelectTrigger> <SelectValue placeholder={isLoadingCategories ? "Cargando..." : "Selecciona una categoría"} /> </SelectTrigger> </FormControl> <SelectContent> {platformCategories?.map((cat) => ( <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem> ))} </SelectContent> </Select> <FormDescription>Selecciona la categoría que mejor describa este producto.</FormDescription> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Describe el producto, sus usos, marca, etc." rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Precio (COP)</FormLabel><FormControl><Input type="number" placeholder="Ej: 28000" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="unit" render={({ field }) => (<FormItem><FormLabel>Unidad</FormLabel><FormControl><Input placeholder="Ej: bulto, galón, unidad" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
-                <FormField control={form.control} name="imageUrl" render={({ field }) => (<FormItem><FormLabel>URL de Imagen (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/producto.png" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormItem>
+                  <FormLabel>Imagen del Producto</FormLabel>
+                  <div className="flex items-center gap-4">
+                      <div className="relative h-24 w-24 rounded-md overflow-hidden bg-muted border">
+                      {previewUrl ? (
+                          <Image src={previewUrl} alt="Vista previa" layout="fill" objectFit="cover" />
+                      ) : (
+                          <div className="flex items-center justify-center h-full w-full">
+                            <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                          </div>
+                      )}
+                      </div>
+                      <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                      <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        {previewUrl ? 'Cambiar' : 'Subir'} Imagen
+                      </Button>
+                  </div>
+                </FormItem>
                 <FormField control={form.control} name="dataAiHint" render={({ field }) => (<FormItem><FormLabel>Pista para IA (placeholders)</FormLabel><FormControl><Input placeholder="Ej: 'bulto cemento'" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="isActive" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Producto Activo</FormLabel><FormDescription>Visible para los clientes.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
               </form>

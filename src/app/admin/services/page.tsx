@@ -1,8 +1,7 @@
-
 // src/app/admin/services/page.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { 
@@ -29,12 +28,13 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { PlusCircle, ListChecks, ArrowLeft, Loader2, Trash2 } from 'lucide-react';
+import { PlusCircle, ListChecks, ArrowLeft, Loader2, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { firestore } from '@/firebase/clientApp';
+import { firestore, storage } from '@/firebase/clientApp';
 import { collection, addDoc, serverTimestamp, query, getDocs, orderBy, Timestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -51,7 +51,6 @@ const serviceFormSchema = z.object({
   commonTasks: z.string().min(10, "Debe haber al menos una tarea común."),
   iconName: z.string().optional(),
   isActive: z.boolean().default(true),
-  imageUrl: z.string().url("Debe ser una URL válida para la imagen.").optional().or(z.literal('')),
   dataAiHint: z.string().max(50, "La pista de IA no debe exceder 50 caracteres.").optional().or(z.literal('')),
 });
 
@@ -89,6 +88,10 @@ export default function AdminServicesPage() {
   const [serviceToDeleteId, setServiceToDeleteId] = useState<string | null>(null);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [isDeletingService, setIsDeletingService] = useState(false);
+  
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceFormSchema),
@@ -99,7 +102,6 @@ export default function AdminServicesPage() {
       commonTasks: "",
       iconName: "",
       isActive: true,
-      imageUrl: "",
       dataAiHint: "",
     },
   });
@@ -121,15 +123,10 @@ export default function AdminServicesPage() {
   useEffect(() => {
     if (!isDialogOpen) { 
       setEditingServiceId(null); 
+      setSelectedFile(null);
+      setPreviewUrl(null);
       form.reset({
-        name: "",
-        category: "",
-        description: "",
-        commonTasks: "",
-        iconName: "",
-        isActive: true,
-        imageUrl: "",
-        dataAiHint: "",
+        name: "", category: "", description: "", commonTasks: "", iconName: "", isActive: true, dataAiHint: "",
       });
     }
   }, [isDialogOpen, form]);
@@ -147,15 +144,41 @@ export default function AdminServicesPage() {
         commonTasks: Array.isArray(service.commonTasks) ? service.commonTasks.join('\n') : '',
         iconName: service.iconName || "",
         isActive: service.isActive !== false,
-        imageUrl: service.imageUrl || "",
         dataAiHint: service.dataAiHint || "",
     });
+    setPreviewUrl(service.imageUrl || null);
+    setSelectedFile(null);
     setIsDialogOpen(true);
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({ title: "Imagen muy grande", description: "Por favor, sube una imagen de menos de 5MB.", variant: "destructive" });
+        return;
+      }
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPreviewUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    }
   };
 
   const onSubmit: SubmitHandler<ServiceFormData> = async (data) => {
     setIsSubmitting(true);
     try {
+      const existingService = editingServiceId ? services.find(s => s.id === editingServiceId) : null;
+      let finalImageUrl: string | null = existingService?.imageUrl || null;
+
+      if (selectedFile) {
+        toast({ title: "Subiendo imagen...", description: "Por favor espera." });
+        const imagePath = `platform-services/${editingServiceId || data.name.replace(/\s+/g, '-') + '-' + Date.now()}/${selectedFile.name}`;
+        const imageRef = storageRef(storage, imagePath);
+        await uploadBytes(imageRef, selectedFile);
+        finalImageUrl = await getDownloadURL(imageRef);
+      }
+
       const commonTasksArray = data.commonTasks.split('\n').map(task => task.trim()).filter(Boolean);
 
       const serviceData: Omit<Service, 'id' | 'createdAt' | 'updatedAt'> & { updatedAt: Timestamp; createdAt?: Timestamp, isActive: boolean } = {
@@ -164,7 +187,7 @@ export default function AdminServicesPage() {
         description: data.description,
         commonTasks: commonTasksArray,
         iconName: data.iconName || null,
-        imageUrl: data.imageUrl || null,
+        imageUrl: finalImageUrl,
         dataAiHint: data.dataAiHint || null,
         isActive: data.isActive,
         updatedAt: serverTimestamp() as Timestamp,
@@ -180,7 +203,6 @@ export default function AdminServicesPage() {
         toast({ title: "Servicio Añadido", description: `El servicio "${data.name}" ha sido creado.` });
       }
       
-      // Refetch services to show the changes
       fetchPlatformServices().then(setServices);
       setIsDialogOpen(false); 
     } catch (error: any) {
@@ -236,15 +258,10 @@ export default function AdminServicesPage() {
 
   const handleOpenDialogForNewService = () => {
     setEditingServiceId(null); 
+    setSelectedFile(null);
+    setPreviewUrl(null);
     form.reset({
-        name: "",
-        category: "",
-        description: "",
-        commonTasks: "",
-        iconName: "",
-        isActive: true,
-        imageUrl: "",
-        dataAiHint: "",
+        name: "", category: "", description: "", commonTasks: "", iconName: "", isActive: true, dataAiHint: "",
     });
     setIsDialogOpen(true);
   };
@@ -279,8 +296,28 @@ export default function AdminServicesPage() {
                 <FormField control={form.control} name="commonTasks" render={({ field }) => (<FormItem><FormLabel>Tareas Comunes</FormLabel><FormControl><Textarea placeholder="Reparar grifos...
 Destapar desagües...
 Instalar calentadores..." rows={4} {...field} /></FormControl><FormDescription>Una tarea por línea.</FormDescription><FormMessage /></FormItem>)} />
+                
+                <FormItem>
+                  <FormLabel>Imagen del Servicio</FormLabel>
+                  <div className="flex items-center gap-4">
+                      <div className="relative h-24 w-24 rounded-md overflow-hidden bg-muted border">
+                      {previewUrl ? (
+                          <Image src={previewUrl} alt="Vista previa" layout="fill" objectFit="cover" />
+                      ) : (
+                          <div className="flex items-center justify-center h-full w-full">
+                          <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                          </div>
+                      )}
+                      </div>
+                      <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                      <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        {previewUrl ? 'Cambiar' : 'Subir'} Imagen
+                      </Button>
+                  </div>
+                </FormItem>
+                
                 <FormField control={form.control} name="iconName" render={({ field }) => (<FormItem><FormLabel>Nombre del Ícono (Lucide)</FormLabel><FormControl><Input placeholder="Ej: Wrench" {...field} /></FormControl><FormDescription>Visita lucide.dev para explorar íconos. Copia el nombre exacto (ej: 'Wrench', 'Paintbrush') y pégalo aquí.</FormDescription><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="imageUrl" render={({ field }) => (<FormItem><FormLabel>URL de Imagen (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/imagen.png" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="dataAiHint" render={({ field }) => (<FormItem><FormLabel>Pista para IA (para placeholders)</FormLabel><FormControl><Input placeholder="Ej: 'plomero trabajando'" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="isActive" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Servicio Activo</FormLabel><FormDescription>Los clientes podrán ver este servicio.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
               </form>
@@ -343,5 +380,3 @@ Instalar calentadores..." rows={4} {...field} /></FormControl><FormDescription>U
     </div>
   );
 }
-
-    
