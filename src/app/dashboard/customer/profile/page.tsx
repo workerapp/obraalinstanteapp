@@ -2,7 +2,7 @@
 // src/app/dashboard/customer/profile/page.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,14 +10,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, UserCircle, ArrowLeft, Save } from 'lucide-react';
+import { Loader2, UserCircle, ArrowLeft, Save, Upload } from 'lucide-react';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
-import { firestore, auth } from '@/firebase/clientApp';
+import { firestore, auth, storage } from '@/firebase/clientApp';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { updateProfile as updateFirebaseAuthProfile, type User as FirebaseUser } from 'firebase/auth'; // Import FirebaseUser type
+import { updateProfile as updateFirebaseAuthProfile, type User as FirebaseUser } from 'firebase/auth';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 const profileFormSchema = z.object({
   displayName: z.string().min(2, "El nombre completo es requerido.").max(50),
@@ -33,6 +35,9 @@ export default function CustomerProfilePage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingProfile, setIsFetchingProfile] = useState(true);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
@@ -41,6 +46,8 @@ export default function CustomerProfilePage() {
       photoURL: "",
     },
   });
+  
+  const currentPhotoUrl = form.watch('photoURL');
 
   useEffect(() => {
     if (typedUser?.uid) {
@@ -74,6 +81,18 @@ export default function CustomerProfilePage() {
         setIsFetchingProfile(false);
     }
   }, [typedUser, form, toast, authLoading]);
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const onSubmit: SubmitHandler<ProfileFormData> = async (data) => {
     if (!typedUser?.uid || !auth.currentUser) {
@@ -82,41 +101,53 @@ export default function CustomerProfilePage() {
     }
     setIsLoading(true);
     try {
+      let finalPhotoURL = data.photoURL || null;
+
+      if (selectedFile) {
+        toast({ title: "Subiendo imagen...", description: "Por favor espera." });
+        const imageRef = storageRef(storage, `profile-pictures/${typedUser.uid}/${selectedFile.name}`);
+        await uploadBytes(imageRef, selectedFile);
+        finalPhotoURL = await getDownloadURL(imageRef);
+        form.setValue('photoURL', finalPhotoURL);
+      }
+
       const userDocRef = doc(firestore, "users", typedUser.uid);
       
       const firestoreUpdateData: any = {
         displayName: data.displayName,
-        photoURL: data.photoURL || null,
+        photoURL: finalPhotoURL,
         updatedAt: serverTimestamp(),
       };
-      // Ensure role is preserved if the document already exists or set if it's a new profile for some reason
+
       const userDocSnap = await getDoc(userDocRef);
       if (!userDocSnap.exists()) {
-        firestoreUpdateData.role = typedUser.role || 'customer'; // Default to customer if role not in typedUser
+        firestoreUpdateData.role = typedUser.role || 'customer';
         firestoreUpdateData.email = typedUser.email;
         firestoreUpdateData.uid = typedUser.uid;
         firestoreUpdateData.createdAt = serverTimestamp();
       }
 
-
-      await updateDoc(userDocRef, firestoreUpdateData);
+      await updateDoc(userDocRef, firestoreUpdateData, { merge: true });
 
       await updateFirebaseAuthProfile(auth.currentUser, {
         displayName: data.displayName,
-        photoURL: data.photoURL || null,
+        photoURL: finalPhotoURL,
       });
       
       if (setAuthUser && auth.currentUser) {
         const updatedAuthUser: AppUser = {
           ...(auth.currentUser as FirebaseUser), 
           displayName: data.displayName,
-          photoURL: data.photoURL || null,
+          photoURL: finalPhotoURL,
           role: typedUser.role, 
         } as AppUser; 
         setAuthUser(updatedAuthUser);
       }
-
+      
+      setSelectedFile(null);
+      setPreviewUrl(null);
       toast({ title: "Perfil Actualizado", description: "Tu información de perfil ha sido guardada." });
+
     } catch (error: any) {
       console.error("Error updating profile:", error);
       toast({ title: "Error al Actualizar", description: error.message || "No se pudo guardar tu perfil.", variant: "destructive" });
@@ -145,6 +176,8 @@ export default function CustomerProfilePage() {
     );
   }
   
+  const displayPhoto = previewUrl || currentPhotoUrl;
+
   return (
     <div className="max-w-2xl mx-auto py-8 space-y-6">
        <div className="flex items-center justify-between">
@@ -170,6 +203,26 @@ export default function CustomerProfilePage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+               <FormItem>
+                <FormLabel>Foto de Perfil</FormLabel>
+                <div className="flex items-center gap-4">
+                  <div className="relative h-24 w-24 rounded-full overflow-hidden bg-muted">
+                    {displayPhoto ? (
+                      <Image src={displayPhoto} alt="Vista previa de perfil" layout="fill" objectFit="cover" />
+                    ) : (
+                      <div className="flex items-center justify-center h-full w-full">
+                        <UserCircle className="h-16 w-16 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                  <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Cambiar Foto
+                  </Button>
+                </div>
+               </FormItem>
+
               <FormField
                 control={form.control}
                 name="displayName"
@@ -186,9 +239,9 @@ export default function CustomerProfilePage() {
                 name="photoURL"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>URL de tu Foto de Perfil (Opcional)</FormLabel>
-                    <FormControl><Input type="url" placeholder="https://ejemplo.com/imagen.png" {...field} /></FormControl>
-                    <FormDescription>Pega un enlace a una imagen tuya alojada públicamente.</FormDescription>
+                    <FormLabel>O pega una URL de imagen (opcional)</FormLabel>
+                    <FormControl><Input type="url" placeholder="https://ejemplo.com/imagen.png" {...field} value={field.value || ''} /></FormControl>
+                    <FormDescription>Si subes una foto, este campo será actualizado automáticamente.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -207,4 +260,3 @@ export default function CustomerProfilePage() {
     </div>
   );
 }
-
