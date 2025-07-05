@@ -252,7 +252,7 @@ export default function SupplierProfilePage() {
                 <div className="flex items-center gap-4">
                   <div className="relative h-24 w-24 rounded-full overflow-hidden bg-muted border">
                     {displayPhoto ? (
-                      <Image src={displayPhoto} alt="Vista previa del logo" layout="fill" objectFit="cover" />
+                      <Image src={displayPhoto} alt="Vista previa del logo" layout="fill" objectFit="contain" className="p-1" />
                     ) : (
                       <div className="flex items-center justify-center h-full w-full">
                         <ImageIcon className="h-12 w-12 text-muted-foreground" />
