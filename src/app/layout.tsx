@@ -1,7 +1,7 @@
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { PT_Sans } from 'next/font/google'; // Using next/font for PT Sans
+import { PT_Sans, Oswald } from 'next/font/google'; // Using next/font
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import Navbar from '@/components/layout/navbar';
@@ -9,12 +9,20 @@ import Footer from '@/components/layout/footer';
 import Providers from '@/components/layout/providers';
 import { AuthProvider } from '@/hooks/useAuth'; // Import AuthProvider
 
-// Configure PT Sans font
+// Configure PT Sans font for body text
 const ptSans = PT_Sans({
   subsets: ['latin'],
   weight: ['400', '700'],
-  variable: '--font-pt-sans', // CSS variable for PT Sans
+  variable: '--font-pt-sans',
 });
+
+// Configure Oswald font for headlines
+const oswald = Oswald({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  variable: '--font-oswald',
+});
+
 
 export const metadata: Metadata = {
   title: 'Obra al Instante - Tu Solución de Servicios para el Hogar',
@@ -28,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${ptSans.variable} h-full`}>
+    <html lang="es" className={`${ptSans.variable} ${oswald.variable} h-full`}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
