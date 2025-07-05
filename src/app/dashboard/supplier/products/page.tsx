@@ -145,10 +145,6 @@ export default function SupplierProductsPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        toast({ title: "Imagen muy grande", description: "Por favor, sube una imagen de menos de 5MB.", variant: "destructive" });
-        return;
-      }
       setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setPreviewUrl(reader.result as string);
@@ -276,7 +272,7 @@ export default function SupplierProductsPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 pr-1">
                 <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre del Producto</FormLabel><FormControl><Input placeholder="Ej: Cemento Gris Argos 50kg" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría del Producto</FormLabel> <Select onValueChange={field.onChange} value={field.value} disabled={isLoadingCategories}> <FormControl> <SelectTrigger> <SelectValue placeholder={isLoadingCategories ? "Cargando..." : "Selecciona una categoría"} /> </SelectTrigger> </FormControl> <SelectContent> {platformCategories?.map((cat) => ( <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem> ))} </SelectContent> </Select> <FormDescription>Selecciona la categoría que mejor describa este producto.</FormDescription> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría del Producto</FormLabel> <FormControl><Select onValueChange={field.onChange} value={field.value} disabled={isLoadingCategories}> <SelectTrigger> <SelectValue placeholder={isLoadingCategories ? "Cargando..." : "Selecciona una categoría"} /> </SelectTrigger> <SelectContent> {platformCategories?.map((cat) => ( <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem> ))} </SelectContent> </Select></FormControl> <FormDescription>Selecciona la categoría que mejor describa este producto.</FormDescription> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Describe el producto, sus usos, marca, etc." rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Precio (COP)</FormLabel><FormControl><Input type="number" placeholder="Ej: 28000" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
