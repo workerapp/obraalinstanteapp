@@ -56,52 +56,50 @@ const findTopRatedHandymen = ai.defineTool(
     if (!input.skills || input.skills.length === 0) {
       return [];
     }
-
-    // Normalize skills to handle case-sensitivity (e.g., 'plomería' vs 'Plomería')
-    const normalizedSkills = input.skills.flatMap(skill => {
-        if (!skill) return [];
-        const lower = skill.toLowerCase();
-        const capitalized = lower.charAt(0).toUpperCase() + lower.slice(1);
-        return [...new Set([lower, capitalized])]; 
-    });
-
-    if (normalizedSkills.length === 0) {
-      return [];
-    }
+    
+    // Create a set of the required skills, all lowercase, for efficient, case-insensitive lookup.
+    const requiredSkillsLower = new Set(input.skills.map(skill => skill.toLowerCase()));
     
     try {
       const usersRef = collection(firestore, 'users');
-      // Query without ordering to include users that may not have a 'rating' field yet.
+      
+      // 1. Fetch ALL approved handymen. This is less efficient at scale but avoids complex index requirements.
       const q = query(
         usersRef,
         where('role', '==', 'handyman'),
-        where('isApproved', '==', true),
-        where('skills', 'array-contains-any', normalizedSkills)
+        where('isApproved', '==', true)
       );
 
       const querySnapshot = await getDocs(q);
-      const handymen: any[] = [];
+      const allApprovedHandymen: any[] = [];
       querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        handymen.push({
-          id: doc.id,
-          name: data.displayName || 'Nombre no disponible',
-          rating: data.rating || 0, // Default to 0 if no rating
-          reviewsCount: data.reviewsCount || 0, // Default to 0 if no reviews
-        });
+        allApprovedHandymen.push({ id: doc.id, ...doc.data() });
       });
-      
-      // Sort in code to handle users without a rating field correctly
-      handymen.sort((a, b) => b.rating - a.rating);
 
-      // Return the top 3
-      return handymen.slice(0, 3);
+      // 2. Filter the results in code, case-insensitively.
+      const matchingHandymen = allApprovedHandymen.filter(handyman => {
+        if (!handyman.skills || !Array.isArray(handyman.skills)) {
+          return false;
+        }
+        // Check if the handyman has at least one of the required skills.
+        return handyman.skills.some((userSkill: string) => requiredSkillsLower.has(userSkill.toLowerCase()));
+      }).map(data => ({
+        id: data.id,
+        name: data.displayName || 'Nombre no disponible',
+        rating: data.rating || 0,
+        reviewsCount: data.reviewsCount || 0,
+      }));
+
+      // 3. Sort by rating to get the top-rated ones.
+      matchingHandymen.sort((a, b) => b.rating - a.rating);
+
+      // 4. Return the top 3.
+      return matchingHandymen.slice(0, 3);
 
     } catch (e: any) {
       console.error("Error executing findTopRatedHandymen tool:", e);
-      // Re-throw the error so the flow can catch it and report it to the user.
-      // This is often due to a missing Firestore index.
-      throw new Error(`Error al buscar operarios. Es posible que falte un índice en Firestore. Detalle: ${e.message}`);
+      // If the basic query fails, it's likely a permissions issue or a needed simple index.
+      throw new Error(`Error al buscar operarios. Es posible que falte un índice simple en Firestore. Detalle: ${e.message}`);
     }
   }
 );
