@@ -41,7 +41,7 @@ export async function suggestSolutions(input: SuggestSolutionsInput): Promise<Su
 const findTopRatedHandymen = ai.defineTool(
   {
     name: 'findTopRatedHandymen',
-    description: 'Finds the top-rated, approved handymen based on a list of required skills. Returns up to 3.',
+    description: 'Finds the top-rated, approved handymen based on a list of required skills. Only handymen who have been manually approved by an administrator will be returned. Returns up to 3.',
     inputSchema: z.object({
       skills: z.array(z.string()).describe("A list of skills to search for. For example: ['Plomería', 'Electricidad']."),
     }),
@@ -57,13 +57,11 @@ const findTopRatedHandymen = ai.defineTool(
       return [];
     }
     
-    // Create a set of the required skills, all lowercase, for efficient, case-insensitive lookup.
     const requiredSkillsLower = new Set(input.skills.map(skill => skill.toLowerCase()));
     
     try {
       const usersRef = collection(firestore, 'users');
       
-      // 1. Fetch ALL approved handymen. This is less efficient at scale but avoids complex index requirements.
       const q = query(
         usersRef,
         where('role', '==', 'handyman'),
@@ -76,12 +74,10 @@ const findTopRatedHandymen = ai.defineTool(
         allApprovedHandymen.push({ id: doc.id, ...doc.data() });
       });
 
-      // 2. Filter the results in code, case-insensitively.
       const matchingHandymen = allApprovedHandymen.filter(handyman => {
         if (!handyman.skills || !Array.isArray(handyman.skills)) {
           return false;
         }
-        // Check if the handyman has at least one of the required skills.
         return handyman.skills.some((userSkill: string) => requiredSkillsLower.has(userSkill.toLowerCase()));
       }).map(data => ({
         id: data.id,
@@ -90,15 +86,12 @@ const findTopRatedHandymen = ai.defineTool(
         reviewsCount: data.reviewsCount || 0,
       }));
 
-      // 3. Sort by rating to get the top-rated ones.
       matchingHandymen.sort((a, b) => b.rating - a.rating);
 
-      // 4. Return the top 3.
       return matchingHandymen.slice(0, 3);
 
     } catch (e: any) {
       console.error("Error executing findTopRatedHandymen tool:", e);
-      // If the basic query fails, it's likely a permissions issue or a needed simple index.
       throw new Error(`Error al buscar operarios. Es posible que falte un índice simple en Firestore. Detalle: ${e.message}`);
     }
   }
@@ -118,8 +111,8 @@ Basándote en la descripción del problema proporcionada por el cliente, sigue e
 2.  **Genera un Diagnóstico (Campo 'analysis'):** Basado en tu análisis, proporciona una explicación breve y clara de cuál podría ser la causa raíz del problema. Empieza la frase con "¡Entendido! Esto es lo que creo que podría estar pasando:" o algo similar y amigable.
 3.  **Genera Soluciones (Campo 'suggestedSolutions'):** Propón una lista de posibles soluciones. Sé claro y conciso.
 4.  **Genera Materiales y Herramientas (Campo 'suggestedMaterials'):** Basado en las soluciones, crea una lista de posibles materiales y herramientas que se necesitarían para el trabajo.
-5.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Utiliza términos comunes y bien definidos, como "Plomería", "Electricidad", "Carpintería", "Albañilería", "Pintura", "Soldadura". La herramienta buscará coincidencias exactas con los perfiles de los operarios.
-6.  **Recomienda Operarios (Campo 'recommendedHandymen'):** Una vez que hayas identificado las habilidades en 'relevantSkills', DEBES usar la herramienta 'findTopRatedHandymen' para encontrar hasta 3 de los operarios mejor calificados que posean esas habilidades. Es fundamental que uses la herramienta y coloques su respuesta (incluso si es un array vacío) en el campo 'recommendedHandymen' de la salida JSON. Si la herramienta no devuelve a nadie, el array simplemente estará vacío.
+5.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Utiliza términos comunes y bien definidos, como "Plomería", "Electricidad", "Carpintería", "Albañilería", "Pintura", "Soldadura". La herramienta buscará coincidencias con los perfiles de los operarios.
+6.  **Recomienda Operarios (Campo 'recommendedHandymen'):** Una vez que hayas identificado las habilidades en 'relevantSkills', DEBES usar la herramienta 'findTopRatedHandymen' para encontrar hasta 3 de los operarios mejor calificados y **aprobados** que posean esas habilidades. Es fundamental que uses la herramienta y coloques su respuesta (incluso si es un array vacío) en el campo 'recommendedHandymen' de la salida JSON. Si la herramienta no devuelve a nadie, el array simplemente estará vacío.
 
 La descripción del problema es: {{{problemDescription}}}
 
