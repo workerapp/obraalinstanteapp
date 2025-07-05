@@ -1,4 +1,3 @@
-
 // src/components/handymen/handyman-profile-card.tsx
 import Image from 'next/image';
 import Link from 'next/link';
@@ -17,13 +16,13 @@ export default function HandymanProfileCard({ handyman }: HandymanProfileCardPro
     <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden">
       <CardHeader className="p-0">
         {handyman.imageUrl && (
-          <div className="relative w-full h-56">
+          <div className="relative w-full h-56 bg-muted">
             <Image
               src={handyman.imageUrl}
               alt={handyman.name}
               layout="fill"
-              objectFit="cover"
-              className="rounded-t-md"
+              objectFit="contain"
+              className="rounded-t-md p-2"
               data-ai-hint={handyman.dataAiHint || "persona retrato"}
             />
           </div>

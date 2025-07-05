@@ -283,7 +283,7 @@ export default function SupplierProductsPage() {
                   <div className="flex items-center gap-4">
                       <div className="relative h-24 w-24 rounded-md overflow-hidden bg-muted border">
                       {previewUrl ? (
-                          <Image src={previewUrl} alt="Vista previa" layout="fill" objectFit="cover" />
+                          <Image src={previewUrl} alt="Vista previa" layout="fill" objectFit="contain" />
                       ) : (
                           <div className="flex items-center justify-center h-full w-full">
                             <ImageIcon className="h-10 w-10 text-muted-foreground" />
@@ -326,7 +326,7 @@ export default function SupplierProductsPage() {
                 <Card key={product.id} className={`bg-background ${!product.isActive ? 'opacity-60' : ''}`}>
                   <CardHeader><div className="flex justify-between items-start"><div><CardTitle className="text-lg">{product.name}</CardTitle><CardDescription>{product.category}</CardDescription></div><span className={`px-2 py-1 text-xs rounded-full ${product.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>{product.isActive ? 'Activo' : 'Inactivo'}</span></div></CardHeader>
                   <CardContent className="flex gap-4">
-                    {product.imageUrl && <div className="hidden sm:block relative h-24 w-24 shrink-0 overflow-hidden rounded-md border"><Image src={product.imageUrl} alt={`Imagen de ${product.name}`} layout="fill" objectFit="cover" data-ai-hint={product.dataAiHint || "producto construccion"} /></div>}
+                    {product.imageUrl && <div className="hidden sm:block relative h-24 w-24 shrink-0 overflow-hidden rounded-md border bg-muted"><Image src={product.imageUrl} alt={`Imagen de ${product.name}`} layout="fill" objectFit="contain" className="p-2" data-ai-hint={product.dataAiHint || "producto construccion"} /></div>}
                     <div className="flex-grow">
                       <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{product.description}</p>
                       <p className="font-semibold">${(product.price || 0).toLocaleString('es-CO')} / {product.unit}</p>

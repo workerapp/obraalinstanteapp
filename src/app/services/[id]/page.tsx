@@ -139,12 +139,13 @@ export default function ServiceDetailPage() {
 
       <article className="bg-card p-6 sm:p-8 rounded-xl shadow-xl">
         {serviceData.imageUrl && (
-          <div className="relative w-full h-64 sm:h-80 mb-6 rounded-lg overflow-hidden">
+          <div className="relative w-full h-64 sm:h-80 mb-6 rounded-lg overflow-hidden bg-muted">
             <Image
               src={serviceData.imageUrl}
               alt={serviceData.name}
               layout="fill"
-              objectFit="cover"
+              objectFit="contain"
+              className="p-2"
               data-ai-hint={serviceData.dataAiHint || "acción servicio"}
               priority
             />

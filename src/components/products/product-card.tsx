@@ -22,12 +22,13 @@ export default function ProductCard({ product, supplier }: ProductCardProps) {
     <Card className="flex flex-col h-full bg-background hover:shadow-md transition-shadow">
       <CardHeader>
         {product.imageUrl && (
-          <div className="relative w-full h-40 mb-3 overflow-hidden rounded-md border">
+          <div className="relative w-full h-40 mb-3 overflow-hidden rounded-md border bg-muted">
             <Image
               src={product.imageUrl}
               alt={`Imagen de ${product.name}`}
               layout="fill"
-              objectFit="cover"
+              objectFit="contain"
+              className="p-2"
               data-ai-hint={product.dataAiHint || "producto construccion"}
             />
           </div>

@@ -349,7 +349,7 @@ export default function HandymanServicesPage() {
                   <div className="flex items-center gap-4">
                       <div className="relative h-24 w-24 rounded-md overflow-hidden bg-muted border">
                       {previewUrl ? (
-                          <Image src={previewUrl} alt="Vista previa" layout="fill" objectFit="cover" />
+                          <Image src={previewUrl} alt="Vista previa" layout="fill" objectFit="contain" />
                       ) : (
                           <div className="flex items-center justify-center h-full w-full">
                           <ImageIcon className="h-10 w-10 text-muted-foreground" />
@@ -398,7 +398,7 @@ export default function HandymanServicesPage() {
                 <Card key={service.id} className={`bg-background ${!service.isActive ? 'opacity-60' : ''}`}>
                   <CardHeader><div className="flex justify-between items-start"><div><CardTitle className="text-lg">{service.name}</CardTitle><CardDescription>{service.category}</CardDescription></div><span className={`px-2 py-1 text-xs rounded-full ${service.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>{service.isActive ? 'Activo' : 'Inactivo'}</span></div></CardHeader>
                   <CardContent>
-                    {service.imageUrl && <div className="mb-3 relative h-32 w-full sm:w-48 overflow-hidden rounded-md border"><Image src={service.imageUrl} alt={`Imagen para ${service.name}`} layout="fill" objectFit="cover" data-ai-hint={service.dataAiHint || "servicio ejemplo"}/></div>}
+                    {service.imageUrl && <div className="mb-3 relative h-32 w-full sm:w-48 overflow-hidden rounded-md border bg-muted"><Image src={service.imageUrl} alt={`Imagen para ${service.name}`} layout="fill" objectFit="contain" className="p-2" data-ai-hint={service.dataAiHint || "servicio ejemplo"}/></div>}
                     <p className="text-sm text-muted-foreground mb-1 line-clamp-3" title={service.description}>{service.description}</p>
                     <p className="text-sm"><strong>Precio:</strong> {priceTypeTranslations[service.priceType]}{service.priceType !== 'consultar' && service.priceValue && ` - $${Number(service.priceValue).toLocaleString('es-CO')} ${service.currency || 'COP'}`}</p>
                     {service.createdAt && typeof (service.createdAt as any).toDate === 'function' && <p className="text-xs text-muted-foreground mt-2">Añadido: {format((service.createdAt as any).toDate(), "PPP", { locale: es })}</p>}

@@ -180,8 +180,8 @@ export default function HandymanDetailPage() {
       <div className="bg-card p-6 sm:p-8 rounded-xl shadow-xl">
         <div className="grid md:grid-cols-3 gap-6 md:gap-8">
           <div className="md:col-span-1">
-            <div className="relative w-full aspect-square rounded-lg overflow-hidden shadow-md mb-4">
-              <Image src={handyman.imageUrl!} alt={handyman.name} layout="fill" objectFit="cover" data-ai-hint={handyman.dataAiHint || "persona profesional"} />
+            <div className="relative w-full aspect-square rounded-lg overflow-hidden shadow-md mb-4 bg-muted">
+              <Image src={handyman.imageUrl!} alt={handyman.name} layout="fill" objectFit="contain" className="p-2" data-ai-hint={handyman.dataAiHint || "persona profesional"} />
             </div>
             <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 mb-2">
               <Link href={`/request-quotation?handymanId=${handyman.id}&handymanName=${encodeURIComponent(handyman.name)}`}>

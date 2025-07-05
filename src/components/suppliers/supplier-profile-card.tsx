@@ -16,13 +16,13 @@ export default function SupplierProfileCard({ supplier }: SupplierProfileCardPro
     <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden">
       <CardHeader className="p-0">
         {supplier.logoUrl && (
-          <div className="relative w-full h-56 bg-muted">
+          <div className="relative w-full h-56 bg-muted p-4">
             <Image
               src={supplier.logoUrl}
               alt={supplier.companyName}
               layout="fill"
               objectFit="contain" // Use contain for logos to avoid cropping
-              className="rounded-t-md p-4"
+              className="rounded-t-md"
               data-ai-hint={supplier.dataAiHint || "logo empresa"}
             />
           </div>

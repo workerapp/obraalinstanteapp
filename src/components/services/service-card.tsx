@@ -1,4 +1,3 @@
-
 // src/components/services/service-card.tsx
 "use client";
 import Image from 'next/image';
@@ -39,13 +38,13 @@ export default function ServiceCard({ service }: ServiceCardProps) {
     <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden">
       <CardHeader>
         {service.imageUrl && (
-          <div className="relative w-full h-48 mb-4">
+          <div className="relative w-full h-48 mb-4 bg-muted">
             <Image
               src={service.imageUrl}
               alt={service.name}
               layout="fill"
-              objectFit="cover"
-              className="rounded-t-md"
+              objectFit="contain"
+              className="rounded-t-md p-2"
               data-ai-hint={service.dataAiHint || "servicio operario"}
             />
           </div>
