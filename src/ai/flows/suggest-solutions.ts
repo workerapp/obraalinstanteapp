@@ -81,10 +81,10 @@ const findTopRatedHandymen = ai.defineTool(
       });
       return handymen;
     } catch (e: any) {
-      console.error("Error fetching handymen with tool:", e);
-      // It's possible Firestore throws a 'failed-precondition' if an index is missing.
-      // The tool should not crash the flow.
-      return [];
+      console.error("Error executing findTopRatedHandymen tool:", e);
+      // Re-throw the error so the flow can catch it and report it to the user.
+      // This is often due to a missing Firestore index.
+      throw new Error(`Error al buscar operarios. Es posible que falte un índice en Firestore. Detalle: ${e.message}`);
     }
   }
 );
@@ -103,8 +103,8 @@ Basándote en la descripción del problema proporcionada por el cliente, sigue e
 2.  **Genera un Diagnóstico (Campo 'analysis'):** Basado en tu análisis, proporciona una explicación breve y clara de cuál podría ser la causa raíz del problema. Empieza la frase con "¡Entendido! Esto es lo que creo que podría estar pasando:" o algo similar y amigable.
 3.  **Genera Soluciones (Campo 'suggestedSolutions'):** Propón una lista de posibles soluciones. Sé claro y conciso.
 4.  **Genera Materiales y Herramientas (Campo 'suggestedMaterials'):** Basado en las soluciones, crea una lista de posibles materiales y herramientas que se necesitarían para el trabajo.
-5.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Es crucial que consideres todas las posibilidades relevantes.
-6.  **Recomienda Operarios (Campo 'recommendedHandymen'):** Una vez que hayas identificado las habilidades en 'relevantSkills', DEBES usar la herramienta 'findTopRatedHandymen' para encontrar hasta 3 de los operarios mejor calificados que posean esas habilidades. Pasa la lista de habilidades a la herramienta. La respuesta de la herramienta debe ser la que pueble el campo 'recommendedHandymen' en la salida. Si la herramienta no devuelve a nadie, deja el campo como un array vacío.
+5.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Utiliza términos comunes y bien definidos, como "Plomería", "Electricidad", "Carpintería", "Albañilería", "Pintura". Es crucial que los nombres de las habilidades sean precisos para que la herramienta de búsqueda funcione.
+6.  **Recomienda Operarios (Campo 'recommendedHandymen'):** Una vez que hayas identificado las habilidades en 'relevantSkills', DEBES usar la herramienta 'findTopRatedHandymen' para encontrar hasta 3 de los operarios mejor calificados que posean esas habilidades. Es fundamental que uses la herramienta y coloques su respuesta (incluso si es un array vacío) en el campo 'recommendedHandymen' de la salida JSON. Si la herramienta no devuelve a nadie, el array simplemente estará vacío.
 
 La descripción del problema es: {{{problemDescription}}}
 
