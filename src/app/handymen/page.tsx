@@ -7,12 +7,14 @@ import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import type { Handyman } from '@/types/handyman';
 import HandymanProfileCard from '@/components/handymen/handyman-profile-card';
-import { Users, AlertTriangle, SearchX, Loader2 } from 'lucide-react';
+import { Users, AlertTriangle, SearchX, Loader2, Search } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardFooter, CardHeader, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useState, useMemo, useEffect } from 'react';
+import { Input } from '@/components/ui/input';
 
 // Helper function to map Firestore user data to Handyman type
 const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman => {
@@ -52,20 +54,12 @@ const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman =>
   };
 };
 
-async function getHandymen(category?: string): Promise<{ handymen: Handyman[]; error?: string }> {
+// This function now fetches ALL approved handymen. Filtering will happen on the client.
+async function getHandymen(): Promise<{ handymen: Handyman[]; error?: string }> {
   try {
     const usersRef = collection(firestore, "users");
-    const queryConstraints = [
-      where("role", "==", "handyman"),
-      where("isApproved", "==", true),
-    ];
-
-    if (category) {
-      console.log(`Filtering handymen by category/skill: "${category}"`);
-      queryConstraints.push(where("skills", "array-contains", category));
-    }
+    const q = query(usersRef, where("role", "==", "handyman"), where("isApproved", "==", true));
     
-    const q = query(usersRef, ...queryConstraints);
     const querySnapshot = await getDocs(q);
     
     const handymenList: Handyman[] = [];
@@ -120,20 +114,56 @@ function HandymenGridSkeleton() {
 
 export default function HandymenPage() {
   const searchParams = useSearchParams();
-  const category = searchParams.get('category') ? decodeURIComponent(searchParams.get('category')!) : undefined;
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  
+  // Set initial category from URL, but only once.
+  useEffect(() => {
+    const categoryFromUrl = searchParams.get('category') ? decodeURIComponent(searchParams.get('category')!) : null;
+    setSelectedCategory(categoryFromUrl);
+  }, [searchParams]);
 
   const { data, isLoading, isError, error: queryError } = useQuery({
-    queryKey: ['handymen', category],
-    queryFn: () => getHandymen(category),
+    queryKey: ['allHandymen'], // Simplified key to fetch all
+    queryFn: () => getHandymen(), // Fetch all, no category passed
   });
+  
+  const allCategories = useMemo(() => {
+    if (!data?.handymen) return [];
+    const categories = new Set<string>();
+    data.handymen.forEach(h => h.skills?.forEach(s => categories.add(s)));
+    return Array.from(categories).sort();
+  }, [data?.handymen]);
 
-  const displayedHandymen = data?.handymen || [];
+  const filteredHandymen = useMemo(() => {
+    if (!data?.handymen) return [];
+    return data.handymen
+      .filter(handyman => {
+        // Category filter
+        if (selectedCategory) {
+          return handyman.skills?.includes(selectedCategory);
+        }
+        return true;
+      })
+      .filter(handyman => {
+        // Search term filter
+        if (searchTerm.trim() === '') return true;
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return (
+          handyman.name.toLowerCase().includes(lowercasedTerm) ||
+          (handyman.tagline && handyman.tagline.toLowerCase().includes(lowercasedTerm)) ||
+          handyman.skills?.some(skill => skill.toLowerCase().includes(lowercasedTerm))
+        );
+      });
+  }, [data?.handymen, searchTerm, selectedCategory]);
+
   const fetchError = data?.error || (isError ? (queryError as Error).message : null);
 
-  const pageTitle = category ? `Operarios para ${category}` : "Encuentra un Operario";
-  const pageDescription = category 
-    ? `Explora nuestro directorio de operarios calificados en ${category}.`
-    : "Explora nuestro directorio de operarios calificados y de confianza.";
+  const pageTitle = selectedCategory ? `Operarios para ${selectedCategory}` : "Encuentra un Operario";
+  const pageDescription = selectedCategory 
+    ? `Explora nuestro directorio de operarios calificados en ${selectedCategory}.`
+    : "Explora nuestro directorio de operarios calificados y de confianza. Usa la búsqueda y los filtros para encontrar al profesional perfecto.";
 
   return (
     <div className="space-y-8">
@@ -142,6 +172,40 @@ export default function HandymenPage() {
         <h1 className="text-4xl font-headline font-bold text-primary mb-2">{pageTitle}</h1>
         <p className="text-lg text-foreground/80 max-w-2xl mx-auto">{pageDescription}</p>
       </section>
+      
+      <Card className="p-4 mb-8 shadow-md">
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nombre, habilidad, etc."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10"
+          />
+        </div>
+        <div>
+          <p className="text-sm font-medium mb-2 text-muted-foreground">Filtrar por categoría:</p>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              size="sm"
+              variant={selectedCategory === null ? 'default' : 'outline'}
+              onClick={() => setSelectedCategory(null)}
+            >
+              Todos
+            </Button>
+            {allCategories.map(category => (
+              <Button
+                key={category}
+                size="sm"
+                variant={selectedCategory === category ? 'default' : 'outline'}
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </Card>
 
       {isLoading && <HandymenGridSkeleton />}
 
@@ -153,26 +217,26 @@ export default function HandymenPage() {
         </Alert>
       )}
 
-      {!isLoading && !fetchError && displayedHandymen.length > 0 && (
+      {!isLoading && !fetchError && filteredHandymen.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayedHandymen.map((handyman) => (
+          {filteredHandymen.map((handyman) => (
             <HandymanProfileCard key={handyman.id} handyman={handyman} />
           ))}
         </div>
       )}
 
-      {!isLoading && !fetchError && displayedHandymen.length === 0 && (
+      {!isLoading && !fetchError && filteredHandymen.length === 0 && (
         <div className="text-center py-10">
           <SearchX className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <p className="text-muted-foreground text-lg font-semibold">
-            {category ? `No se encontraron operarios para "${category}"` : "No hay operarios aprobados disponibles"}
+            No se encontraron resultados
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            Intenta con otra categoría o vuelve más tarde.
+            Intenta ajustar tu búsqueda o filtros.
           </p>
-          {category && (
-            <Button asChild variant="link" className="mt-4">
-              <Link href="/handymen">Ver Todos los Operarios</Link>
+          {(searchTerm || selectedCategory) && (
+             <Button variant="link" onClick={() => { setSearchTerm(''); setSelectedCategory(null); }}>
+              Limpiar filtros
             </Button>
           )}
         </div>

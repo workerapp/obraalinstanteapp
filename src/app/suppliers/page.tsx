@@ -7,12 +7,14 @@ import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import type { Supplier } from '@/types/supplier';
 import SupplierProfileCard from '@/components/suppliers/supplier-profile-card';
-import { Package, AlertTriangle, SearchX, Loader2 } from 'lucide-react';
+import { Package, AlertTriangle, SearchX, Loader2, Search } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardFooter, CardHeader, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useState, useMemo, useEffect } from 'react';
+import { Input } from '@/components/ui/input';
 
 const mapFirestoreUserToSupplierList = (uid: string, userData: any): Supplier => {
   let memberSince = 'Fecha de registro no disponible';
@@ -46,19 +48,10 @@ const mapFirestoreUserToSupplierList = (uid: string, userData: any): Supplier =>
   };
 };
 
-async function getSuppliers(category?: string): Promise<{ suppliers: Supplier[]; error?: string }> {
+async function getSuppliers(): Promise<{ suppliers: Supplier[]; error?: string }> {
   try {
     const usersRef = collection(firestore, "users");
-    const queryConstraints = [
-      where("role", "==", "supplier"),
-      where("isApproved", "==", true),
-    ];
-
-    if (category) {
-      queryConstraints.push(where("skills", "array-contains", category));
-    }
-    
-    const q = query(usersRef, ...queryConstraints);
+    const q = query(usersRef, where("role", "==", "supplier"), where("isApproved", "==", true));
     const querySnapshot = await getDocs(q);
     
     const supplierList: Supplier[] = [];
@@ -108,20 +101,55 @@ function SuppliersGridSkeleton() {
 
 export default function SuppliersPage() {
   const searchParams = useSearchParams();
-  const category = searchParams.get('category') ? decodeURIComponent(searchParams.get('category')!) : undefined;
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    const categoryFromUrl = searchParams.get('category') ? decodeURIComponent(searchParams.get('category')!) : null;
+    setSelectedCategory(categoryFromUrl);
+  }, [searchParams]);
 
   const { data, isLoading, isError, error: queryError } = useQuery({
-    queryKey: ['suppliers', category],
-    queryFn: () => getSuppliers(category),
+    queryKey: ['allSuppliers'],
+    queryFn: () => getSuppliers(),
   });
 
-  const displayedSuppliers = data?.suppliers || [];
+  const allCategories = useMemo(() => {
+    if (!data?.suppliers) return [];
+    const categories = new Set<string>();
+    data.suppliers.forEach(s => s.categories?.forEach(c => categories.add(c)));
+    return Array.from(categories).sort();
+  }, [data?.suppliers]);
+
+  const filteredSuppliers = useMemo(() => {
+    if (!data?.suppliers) return [];
+    return data.suppliers
+      .filter(supplier => {
+        // Category filter
+        if (selectedCategory) {
+          return supplier.categories?.includes(selectedCategory);
+        }
+        return true;
+      })
+      .filter(supplier => {
+        // Search term filter
+        if (searchTerm.trim() === '') return true;
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return (
+          supplier.companyName.toLowerCase().includes(lowercasedTerm) ||
+          (supplier.tagline && supplier.tagline.toLowerCase().includes(lowercasedTerm)) ||
+          supplier.categories?.some(cat => cat.toLowerCase().includes(lowercasedTerm))
+        );
+      });
+  }, [data?.suppliers, searchTerm, selectedCategory]);
+
   const fetchError = data?.error || (isError ? (queryError as Error).message : null);
 
-  const pageTitle = category ? `Proveedores de ${category}` : "Encuentra un Proveedor";
-  const pageDescription = category 
-    ? `Explora nuestro directorio de proveedores de ${category}.`
-    : "Explora nuestro directorio de proveedores de confianza para materiales y productos.";
+  const pageTitle = selectedCategory ? `Proveedores de ${selectedCategory}` : "Encuentra un Proveedor";
+  const pageDescription = selectedCategory 
+    ? `Explora nuestro directorio de proveedores de ${selectedCategory}.`
+    : "Explora nuestro directorio de proveedores de confianza para materiales y productos. Usa la búsqueda y los filtros para encontrar lo que necesitas.";
 
   return (
     <div className="space-y-8">
@@ -130,6 +158,40 @@ export default function SuppliersPage() {
         <h1 className="text-4xl font-headline font-bold text-primary mb-2">{pageTitle}</h1>
         <p className="text-lg text-foreground/80 max-w-2xl mx-auto">{pageDescription}</p>
       </section>
+
+      <Card className="p-4 mb-8 shadow-md">
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nombre o categoría de producto..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10"
+          />
+        </div>
+        <div>
+          <p className="text-sm font-medium mb-2 text-muted-foreground">Filtrar por categoría:</p>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              size="sm"
+              variant={selectedCategory === null ? 'default' : 'outline'}
+              onClick={() => setSelectedCategory(null)}
+            >
+              Todos
+            </Button>
+            {allCategories.map(category => (
+              <Button
+                key={category}
+                size="sm"
+                variant={selectedCategory === category ? 'default' : 'outline'}
+                onClick={() => setSelectedCategory(category)}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </Card>
 
       {isLoading && <SuppliersGridSkeleton />}
 
@@ -141,24 +203,26 @@ export default function SuppliersPage() {
         </Alert>
       )}
 
-      {!isLoading && !fetchError && displayedSuppliers.length > 0 && (
+      {!isLoading && !fetchError && filteredSuppliers.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {displayedSuppliers.map((supplier) => (
+          {filteredSuppliers.map((supplier) => (
             <SupplierProfileCard key={supplier.id} supplier={supplier} />
           ))}
         </div>
       )}
 
-      {!isLoading && !fetchError && displayedSuppliers.length === 0 && (
+      {!isLoading && !fetchError && filteredSuppliers.length === 0 && (
         <div className="text-center py-10">
           <SearchX className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <p className="text-muted-foreground text-lg font-semibold">
-            {category ? `No se encontraron proveedores para "${category}"` : "No hay proveedores disponibles"}
+            No se encontraron resultados
           </p>
-          <p className="text-sm text-muted-foreground mt-2">Intenta con otra categoría o vuelve más tarde.</p>
-          {category && (
-            <Button asChild variant="link" className="mt-4">
-              <Link href="/suppliers">Ver Todos los Proveedores</Link>
+          <p className="text-sm text-muted-foreground mt-2">
+            Intenta ajustar tu búsqueda o filtros.
+          </p>
+           {(searchTerm || selectedCategory) && (
+             <Button variant="link" onClick={() => { setSearchTerm(''); setSelectedCategory(null); }}>
+              Limpiar filtros
             </Button>
           )}
         </div>
