@@ -26,7 +26,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'default-admin-email@example.com'; 
+// Lista de UIDs de administradores autorizados. Más seguro que por email.
+// Para añadir un admin: 1. Crear una cuenta normal. 2. Obtener su UID. 3. Añadirlo aquí y redesplegar.
+const ADMIN_UIDS = ['PASTE_YOUR_ADMIN_UID_HERE'];
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -50,7 +52,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         unsubscribeFromUserDoc = onSnapshot(userDocRef, (userDocSnap) => {
           let finalUser: AppUser;
           
-          const isUserAdminByEmail = firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+          const isUserAdminByUid = ADMIN_UIDS.includes(firebaseUser.uid);
 
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data();
@@ -58,16 +60,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
               ...firebaseUser,
               displayName: userData.displayName || firebaseUser.displayName,
               photoURL: userData.photoURL || firebaseUser.photoURL,
-              // La verificación del email de admin tiene prioridad absoluta.
-              role: isUserAdminByEmail ? 'admin' : userData.role || 'customer',
-              isApproved: isUserAdminByEmail ? true : userData.isApproved,
+              // La verificación del UID de admin tiene prioridad absoluta.
+              role: isUserAdminByUid ? 'admin' : userData.role || 'customer',
+              isApproved: isUserAdminByUid ? true : userData.isApproved,
             };
           } else {
-            // El documento no existe, así que lo creamos si es necesario, o usamos datos base.
+            // El documento no existe, creamos un estado temporal. Se creará en BD si es necesario.
             finalUser = {
                 ...firebaseUser,
-                role: isUserAdminByEmail ? 'admin' : 'customer',
-                isApproved: isUserAdminByEmail ? true : false,
+                role: isUserAdminByUid ? 'admin' : 'customer',
+                isApproved: isUserAdminByUid ? true : false,
             } as AppUser;
           }
           
@@ -77,7 +79,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }, (error) => {
           console.error("Error listening to user document:", error);
           let errorUser: AppUser = firebaseUser as AppUser;
-          if (firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+          if (ADMIN_UIDS.includes(firebaseUser.uid)) {
             errorUser.role = 'admin';
             errorUser.isApproved = true;
           }
@@ -102,11 +104,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const signUp = async (email: string, pass: string, fullName: string, role: string): Promise<AppUser | null> => {
     setLoading(true);
     try {
+      // Un admin no puede ser creado desde el formulario de registro. 
+      // Debe ser una cuenta existente cuyo UID se añade a la lista ADMIN_UIDS.
+      if (role === 'admin') {
+          throw new Error("El rol de administrador no se puede asignar al registrarse.");
+      }
+
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
       await updateProfile(userCredential.user, { displayName: fullName });
 
-      const isUserAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-      const finalRole = isUserAdmin ? 'admin' : role;
+      const finalRole = role; // No hay verificación de admin aquí
       
       const userDocData: any = {
         uid: userCredential.user.uid,
@@ -125,8 +132,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       if (finalRole === 'handyman' || finalRole === 'supplier') {
         userDocData.isApproved = false;
-      } else if (finalRole === 'admin') {
-        userDocData.isApproved = true;
       }
 
       const userDocRef = doc(firestore, "users", userCredential.user.uid);
@@ -138,8 +143,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       toast({ title: "¡Cuenta Creada!", description: successMessage });
       
-      const redirectPath = finalRole === 'admin' ? '/admin/overview'
-                         : finalRole === 'handyman' ? '/dashboard/handyman'
+      const redirectPath = finalRole === 'handyman' ? '/dashboard/handyman'
                          : finalRole === 'supplier' ? '/dashboard/supplier'
                          : '/dashboard/customer';
       router.push(redirectPath);
@@ -169,29 +173,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const userDocRef = doc(firestore, "users", firebaseUser.uid);
       const userDocSnap = await getDoc(userDocRef);
       
-      const isUserAdminByEmail = firebaseUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-      let finalRole = 'customer'; // Default role
+      const isUserAdminByUid = ADMIN_UIDS.includes(firebaseUser.uid);
+      let finalRole = 'customer';
 
       if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
           finalRole = userData.role || 'customer';
           finalUser = { ...firebaseUser, ...userData } as AppUser;
       } else {
-          console.warn(`User ${firebaseUser.uid} exists in Auth but not in Firestore. Creating default document.`);
-          finalRole = isUserAdminByEmail ? 'admin' : 'customer';
-          const defaultDocData = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              role: finalRole,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-          };
-          await setDoc(userDocRef, defaultDocData, { merge: true });
-          finalUser = { ...firebaseUser, ...defaultDocData } as AppUser;
+          console.warn(`User ${firebaseUser.uid} exists in Auth but not in Firestore. Using default role.`);
+          finalUser = { ...firebaseUser, role: 'customer', isApproved: false } as AppUser;
       }
       
-      if (isUserAdminByEmail) {
+      if (isUserAdminByUid) {
         finalRole = 'admin';
         finalUser!.role = 'admin';
         finalUser!.isApproved = true;
@@ -233,11 +227,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const userDocSnap = await getDoc(userDocRef);
 
       let finalUser: AppUser;
-      const isUserAdminByEmail = googleUser.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-      let finalRole = 'customer'; // Default role for new Google sign-ups
+      const isUserAdminByUid = ADMIN_UIDS.includes(googleUser.uid);
+      let finalRole = 'customer';
 
       if (userDocSnap.exists()) {
-        // User exists, log them in
         const userData = userDocSnap.data();
         finalRole = userData.role || 'customer';
         await updateDoc(userDocRef, {
@@ -248,8 +241,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         finalUser = { ...googleUser, ...userData } as AppUser;
         toast({ title: "Sesión Iniciada", description: `¡Bienvenido/a de nuevo, ${googleUser.displayName}!` });
       } else {
-        // New user, create a document for them
-        finalRole = isUserAdminByEmail ? 'admin' : 'customer';
+        finalRole = 'customer'; // New Google users are always customers initially
         const newUserDocData: any = {
             uid: googleUser.uid,
             email: googleUser.email,
@@ -259,17 +251,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
         };
-
-        if (finalRole === 'admin') {
-            newUserDocData.isApproved = true;
-        }
-
         await setDoc(userDocRef, newUserDocData);
         finalUser = { ...googleUser, ...newUserDocData } as AppUser;
         toast({ title: "¡Cuenta Creada!", description: `¡Bienvenido/a, ${googleUser.displayName}!` });
       }
 
-      if (isUserAdminByEmail) {
+      if (isUserAdminByUid) {
         finalRole = 'admin';
         finalUser.role = 'admin';
         finalUser.isApproved = true;
