@@ -43,7 +43,7 @@ const findTopRatedHandymen = ai.defineTool(
     name: 'findTopRatedHandymen',
     description: 'Finds the top-rated, approved handymen based on a list of required skills. Only handymen who have been manually approved by an administrator will be returned. Returns up to 3.',
     inputSchema: z.object({
-      skills: z.array(z.string()).describe("A list of skills to search for. For example: ['Plomería', 'Electricidad']."),
+      skills: z.array(z.string()).describe("A list of skills to search for. For example: ['Plomería', 'Electricidad', 'Soldadura']."),
     }),
     outputSchema: z.array(z.object({
       id: z.string(),
@@ -62,19 +62,24 @@ const findTopRatedHandymen = ai.defineTool(
     try {
       const usersRef = collection(firestore, 'users');
       
+      // Simplified query to avoid composite index issues.
+      // We now fetch all handymen and filter for approval in the code.
       const q = query(
         usersRef,
-        where('role', '==', 'handyman'),
-        where('isApproved', '==', true)
+        where('role', '==', 'handyman')
       );
 
       const querySnapshot = await getDocs(q);
-      const allApprovedHandymen: any[] = [];
+      const allHandymen: any[] = [];
       querySnapshot.forEach((doc) => {
-        allApprovedHandymen.push({ id: doc.id, ...doc.data() });
+        allHandymen.push({ id: doc.id, ...doc.data() });
       });
-
-      const matchingHandymen = allApprovedHandymen.filter(handyman => {
+      
+      const matchingHandymen = allHandymen.filter(handyman => {
+        // Filter for approved status and skills in the code.
+        if (handyman.isApproved !== true) {
+          return false;
+        }
         if (!handyman.skills || !Array.isArray(handyman.skills)) {
           return false;
         }
@@ -92,7 +97,7 @@ const findTopRatedHandymen = ai.defineTool(
 
     } catch (e: any) {
       console.error("Error executing findTopRatedHandymen tool:", e);
-      throw new Error(`Error al buscar operarios. Es posible que falte un índice simple en Firestore. Detalle: ${e.message}`);
+      throw new Error(`Error al buscar operarios. Detalle: ${e.message}`);
     }
   }
 );
