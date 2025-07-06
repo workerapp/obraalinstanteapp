@@ -11,6 +11,6 @@ export interface Handyman {
   memberSince?: string; 
   dataAiHint?: string;
   phone?: string;
-  aboutMe?: string;
+  about?: string;
   isApproved?: boolean; // Estado de aprobación del operario
 }

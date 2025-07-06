@@ -13,7 +13,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Loader2, UserCircle, ArrowLeft, Save, Upload, ImageIcon, Trash2 } from 'lucide-react';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore, auth, storage } from '@/firebase/clientApp';
-import { doc, getDoc, updateDoc, serverTimestamp, collection, query, orderBy } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp, collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { updateProfile as updateFirebaseAuthProfile, type User as FirebaseUser } from 'firebase/auth';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +29,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 const profileFormSchema = z.object({
   displayName: z.string().min(2, "El nombre de la empresa es requerido.").max(100),
   tagline: z.string().max(100, "El lema no debe exceder los 100 caracteres.").optional().or(z.literal('')),
-  aboutMe: z.string().max(1000, "La descripción 'Sobre la Empresa' no debe exceder los 1000 caracteres.").optional().or(z.literal('')),
+  about: z.string().max(1000, "La descripción 'Sobre la Empresa' no debe exceder los 1000 caracteres.").optional().or(z.literal('')),
   location: z.string().max(100, "La ubicación no debe exceder los 100 caracteres.").optional().or(z.literal('')),
   phone: z.string().regex(/^[+]?[0-9\s-()]*$/, "Número de teléfono inválido.").max(20).optional().or(z.literal('')),
   skills: z.array(z.string()).default([]), // Represents categories
@@ -71,7 +71,7 @@ export default function SupplierProfilePage() {
     defaultValues: {
       displayName: "",
       tagline: "",
-      aboutMe: "",
+      about: "",
       location: "",
       phone: "",
       skills: [], // Represents categories
@@ -93,7 +93,7 @@ export default function SupplierProfilePage() {
             form.reset({
               displayName: data.displayName || typedUser.displayName || "",
               tagline: data.tagline || "",
-              aboutMe: data.aboutMe || "",
+              about: data.about || "",
               location: data.location || "",
               phone: data.phone || "",
               skills: data.skills || [],
@@ -157,7 +157,7 @@ export default function SupplierProfilePage() {
       const firestoreUpdateData: any = {
         displayName: data.displayName,
         tagline: data.tagline || null,
-        aboutMe: data.aboutMe || null,
+        about: data.about || null,
         location: data.location || null,
         phone: data.phone || null,
         skills: data.skills || [], // Saving as an array for querying
@@ -291,7 +291,7 @@ export default function SupplierProfilePage() {
               />
               <FormField
                 control={form.control}
-                name="aboutMe"
+                name="about"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Sobre la Empresa (Opcional)</FormLabel>

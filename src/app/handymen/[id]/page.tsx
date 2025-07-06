@@ -47,7 +47,7 @@ const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null
     id: uid,
     name: userData.displayName || `Operario ${uid.substring(0, 6)}`,
     tagline: userData.tagline || 'Operario profesional y confiable',
-    aboutMe: userData.aboutMe || undefined,
+    about: userData.about || undefined,
     skills: Array.isArray(userData.skills) && userData.skills.length > 0 ? userData.skills : ['Servicios Generales'],
     rating: typeof userData.rating === 'number' ? userData.rating : 0,
     reviewsCount: typeof userData.reviewsCount === 'number' ? userData.reviewsCount : 0,
@@ -218,7 +218,7 @@ export default function HandymanDetailPage() {
             
             <section className="mb-6">
               <h2 className="text-xl font-semibold font-headline mb-3 flex items-center"><UserCircle2 size={22} className="mr-2 text-accent"/> Sobre Mí</h2>
-              <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">{handyman.aboutMe || 'No hay descripción disponible.'}</p>
+              <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">{handyman.about || 'No hay descripción disponible.'}</p>
             </section>
           </div>
         </div>

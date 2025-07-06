@@ -3,71 +3,23 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
-import { firestore } from '@/firebase/clientApp';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import type { Supplier } from '@/types/supplier';
 import SupplierProfileCard from '@/components/suppliers/supplier-profile-card';
 import { Package, AlertTriangle, SearchX, Loader2, Search } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardFooter, CardHeader, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 
-const mapFirestoreUserToSupplierList = (uid: string, userData: any): Supplier => {
-  let memberSince = 'Fecha de registro no disponible';
-  if (userData.createdAt) {
-    try {
-      let createdAtDate: Date | null = null;
-      if (userData.createdAt instanceof Timestamp) createdAtDate = userData.createdAt.toDate();
-      else if (typeof userData.createdAt === 'string') createdAtDate = new Date(userData.createdAt);
-      else if (typeof userData.createdAt.seconds === 'number') createdAtDate = new Date(userData.createdAt.seconds * 1000);
-      
-      if (createdAtDate && !isNaN(createdAtDate.getTime())) {
-        memberSince = `Se unió en ${createdAtDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}`;
-      }
-    } catch (e) {
-      console.error(`Error formatting 'createdAt' for supplier ${uid}:`, e);
-    }
+async function fetchSuppliersFromApi(): Promise<{ suppliers: Supplier[]; error?: string }> {
+  const response = await fetch('/api/suppliers');
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to fetch suppliers');
   }
-
-  return {
-    id: uid,
-    companyName: userData.displayName || `Proveedor ${uid.substring(0, 6)}`,
-    tagline: userData.tagline || 'Productos de calidad para tu proyecto',
-    categories: Array.isArray(userData.skills) && userData.skills.length > 0 ? userData.skills : ['Materiales de Construcción'],
-    rating: typeof userData.rating === 'number' ? userData.rating : 4.0,
-    reviewsCount: typeof userData.reviewsCount === 'number' ? userData.reviewsCount : 0,
-    logoUrl: userData.photoURL || userData.logoUrl || 'https://placehold.co/300x300.png',
-    dataAiHint: 'logo empresa',
-    location: userData.location || 'Ubicación no registrada',
-    memberSince: memberSince,
-    isApproved: userData.isApproved || false,
-  };
-};
-
-async function getSuppliers(): Promise<{ suppliers: Supplier[]; error?: string }> {
-  try {
-    const usersRef = collection(firestore, "users");
-    const q = query(usersRef, where("role", "==", "supplier"), where("isApproved", "==", true));
-    const querySnapshot = await getDocs(q);
-    
-    const supplierList: Supplier[] = [];
-    querySnapshot.forEach((doc) => {
-      supplierList.push(mapFirestoreUserToSupplierList(doc.id, doc.data()));
-    });
-    
-    return { suppliers: supplierList };
-  } catch (error: any) {
-    console.error("Error fetching suppliers from Firestore:", error);
-    let errorMessage = "No se pudieron cargar los proveedores.";
-    if (error.code === 'failed-precondition') {
-      errorMessage = "Firestore requiere un índice para esta consulta. Revisa la consola para un enlace de creación.";
-    }
-    return { suppliers: [], error: errorMessage };
-  }
+  return response.json();
 }
 
 function SuppliersGridSkeleton() {
@@ -112,7 +64,7 @@ export default function SuppliersPage() {
 
   const { data, isLoading, isError, error: queryError } = useQuery({
     queryKey: ['allSuppliers'],
-    queryFn: () => getSuppliers(),
+    queryFn: fetchSuppliersFromApi,
   });
 
   const allCategories = useMemo(() => {
@@ -128,7 +80,7 @@ export default function SuppliersPage() {
       .filter(supplier => {
         // Category filter
         if (selectedCategory) {
-          return supplier.categories?.includes(selectedCategory);
+          return supplier.categories?.some(cat => cat.toLowerCase() === selectedCategory.toLowerCase());
         }
         return true;
       })
@@ -183,7 +135,7 @@ export default function SuppliersPage() {
               <Button
                 key={category}
                 size="sm"
-                variant={selectedCategory === category ? 'default' : 'outline'}
+                variant={selectedCategory?.toLowerCase() === category.toLowerCase() ? 'default' : 'outline'}
                 onClick={() => setSelectedCategory(category)}
               >
                 {category}
