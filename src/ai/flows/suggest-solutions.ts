@@ -53,19 +53,20 @@ const findTopRatedHandymen = ai.defineTool(
     })),
   },
   async (input) => {
-    // Firestore's 'array-contains-any' is case-sensitive. We will create a query-friendly list.
-    // The AI is prompted to return capitalized skills, but we can add lowercase for safety.
+    console.log(`[findTopRatedHandymen Tool] Executing with skills: ${JSON.stringify(input.skills)}`);
+
     const skillsToQuery = [...new Set(input.skills.flatMap(skill => [skill, skill.toLowerCase(), skill.charAt(0).toUpperCase() + skill.slice(1).toLowerCase()]))];
     
+    console.log(`[findTopRatedHandymen Tool] Querying Firestore with skill variants: ${JSON.stringify(skillsToQuery)}`);
+
     if (!skillsToQuery || skillsToQuery.length === 0) {
+      console.log('[findTopRatedHandymen Tool] No skills provided, returning empty array.');
       return [];
     }
     
     try {
       const usersRef = collection(firestore, 'users');
       
-      // This is a robust query that requires a composite index in Firestore.
-      // If the index is missing, Firestore will provide an error with a link to create it in the development console.
       const q = query(
         usersRef,
         where('role', '==', 'handyman'),
@@ -87,16 +88,20 @@ const findTopRatedHandymen = ai.defineTool(
           };
       });
 
+      console.log(`[findTopRatedHandymen Tool] Found ${handymen.length} handymen.`);
       return handymen;
 
     } catch (e: any) {
+        console.error("================ ERROR EN LA HERRAMIENTA DE BÚSQUEDA ================");
+        console.error(`[findTopRatedHandymen Tool] Error Code: ${e.code}`);
+        console.error(`[findTopRatedHandymen Tool] Error Message: ${e.message}`);
+        console.error("====================================================================");
+        
         let errorMessage = `Error al buscar operarios. Detalle: ${e.message}`;
-        // Detect the specific Firestore error for missing index
         if (e.code === 'failed-precondition') {
-            errorMessage = "Firestore necesita un índice para esta búsqueda. Por favor, revisa la consola de desarrollo (terminal) donde se ejecuta la aplicación. Deberías ver un error con un enlace para crear el índice automáticamente. Haz clic en ese enlace, espera unos minutos a que el índice se construya y vuelve a intentarlo.";
+            errorMessage = "¡ÍNDICE DE FIRESTORE REQUERIDO! Revisa la consola del **TERMINAL** donde ejecutas 'npm run dev'. Debería haber un error con un enlace largo para crear el índice que necesita la base de datos. Haz clic en ese enlace, espera unos minutos a que el índice se construya y vuelve a intentarlo.";
         }
-        console.error("Error executing findTopRatedHandymen tool:", errorMessage, e);
-        // We throw the error so the AI and the user know something went wrong.
+        console.error("[findTopRatedHandymen Tool] Propagating error to UI:", errorMessage);
         throw new Error(errorMessage);
     }
   }
