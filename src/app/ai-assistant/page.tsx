@@ -81,22 +81,25 @@ export default function AiAssistantPage() {
             <Lightbulb className="h-5 w-5 text-primary" />
             <AlertTitle className="font-headline text-primary">Consejos para un mejor resultado</AlertTitle>
             <AlertDescription>
+                <p className="mb-3 text-foreground/80">
+                  Para darte el mejor análisis, imagina que describes el problema a un amigo. Sigue estos consejos usando un solo ejemplo coherente: <span className="font-semibold">"una mancha de humedad en el techo"</span>.
+                </p>
                 <ul className="list-none space-y-2 mt-2 text-foreground/80">
                     <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 mt-1 shrink-0 text-green-600" />
-                        <span><strong>Sé específico:</strong> En lugar de "tubería rota", prueba "hay una gotera constante bajo el lavamanos de la cocina".</span>
+                        <span><strong>Sé específico:</strong> En lugar de "techo mojado", prueba "hay una mancha de humedad en el techo de la sala, justo debajo del baño principal, y crece cuando usamos la ducha".</span>
                     </li>
                     <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 mt-1 shrink-0 text-green-600" />
-                        <span><strong>Menciona el objetivo:</strong> ¿Es una reparación, instalación o mantenimiento? "Quiero instalar una nueva ducha" es mejor que "problema en el baño".</span>
+                        <span><strong>Incluye el contexto:</strong> "La mancha es amarillenta y el techo es de drywall. El piso del baño es de cerámica".</span>
                     </li>
                     <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 mt-1 shrink-0 text-green-600" />
-                        <span><strong>Incluye el contexto:</strong> "La pared es de drywall y tiene una mancha de humedad" da pistas importantes para el diagnóstico.</span>
+                        <span><strong>Menciona el objetivo:</strong> ¿Es reparar, instalar o ambos? "Necesito encontrar y reparar la gotera, y luego reparar el drywall dañado".</span>
                     </li>
                      <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 mt-1 shrink-0 text-green-600" />
-                        <span><strong>Sugiere un profesional:</strong> Si tienes una idea, ¡menciónala! "La puerta del clóset está descolgada, creo que es un trabajo para un carpintero" ayuda a Obrita a confirmar y encontrar al experto adecuado.</span>
+                        <span><strong>Sugiere un profesional:</strong> Si tienes una idea, ¡dila! "Sospecho que el problema es de plomería, así que creo que necesito un plomero. Quizás después un pintor."</span>
                     </li>
                 </ul>
             </AlertDescription>
