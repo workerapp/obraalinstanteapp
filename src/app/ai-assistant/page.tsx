@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Sparkles, Lightbulb, Wrench, Send, AlertTriangle, Search, MessageSquare, ClipboardList, Award, Star, UserCheck } from 'lucide-react';
+import { Loader2, Sparkles, Lightbulb, Wrench, Send, AlertTriangle, Search, MessageSquare, ClipboardList, Award, Star, UserCheck, CheckCircle } from 'lucide-react';
 import type { SuggestSolutionsOutput } from '@/ai/flows/suggest-solutions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
@@ -77,6 +77,28 @@ export default function AiAssistantPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+           <Alert className="mb-6 border-primary/20 bg-primary/5">
+            <Lightbulb className="h-5 w-5 text-primary" />
+            <AlertTitle className="font-headline text-primary">Consejos para un mejor resultado</AlertTitle>
+            <AlertDescription>
+                <ul className="list-none space-y-2 mt-2 text-foreground/80">
+                    <li className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 mt-1 shrink-0 text-green-600" />
+                        <span><strong>Sé específico:</strong> En lugar de "tubería rota", prueba "hay una gotera constante bajo el lavamanos de la cocina".</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 mt-1 shrink-0 text-green-600" />
+                        <span><strong>Menciona el objetivo:</strong> ¿Es una reparación, instalación o mantenimiento? "Quiero instalar una nueva ducha" es mejor que "problema en el baño".</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 mt-1 shrink-0 text-green-600" />
+                        <span><strong>Incluye el contexto:</strong> "La pared es de drywall y tiene una mancha de humedad" da pistas importantes para el diagnóstico.</span>
+                    </li>
+                </ul>
+            </AlertDescription>
+          </Alert>
+          <Separator className="mb-6"/>
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
