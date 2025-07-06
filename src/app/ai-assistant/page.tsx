@@ -1,7 +1,7 @@
 // src/app/ai-assistant/page.tsx
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,11 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Sparkles, Lightbulb, Wrench, Send, AlertTriangle, Search, MessageSquare, ClipboardList, Award, Star, UserCheck, CheckCircle } from 'lucide-react';
+import { Loader2, Sparkles, Lightbulb, Wrench, Send, AlertTriangle, Search, MessageSquare, ClipboardList, Award, Star, UserCheck, CheckCircle, Upload, ImageIcon } from 'lucide-react';
 import type { SuggestSolutionsOutput } from '@/ai/flows/suggest-solutions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
 
 const formSchema = z.object({
   problemDescription: z.string().min(10, {
@@ -26,27 +28,70 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+const readFileAsDataURL = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function AiAssistantPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [aiResponse, setAiResponse] = useState<SuggestSolutionsOutput | null>(null);
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: { problemDescription: "" },
   });
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({ title: "Imagen muy grande", description: "Por favor, sube una imagen de menos de 5MB.", variant: "destructive" });
+        return;
+      }
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPreviewUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     setIsLoading(true);
     setError(null);
     setAiResponse(null);
+    
+    let photoDataUri: string | undefined = undefined;
+    if (selectedFile) {
+        try {
+            photoDataUri = await readFileAsDataURL(selectedFile);
+        } catch (readError) {
+            console.error("Error reading file:", readError);
+            setError("No se pudo leer el archivo de imagen.");
+            setIsLoading(false);
+            return;
+        }
+    }
+
     try {
       const response = await fetch('/api/ai-assistant', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ problemDescription: data.problemDescription }),
+        body: JSON.stringify({ 
+            problemDescription: data.problemDescription,
+            photoDataUri: photoDataUri 
+        }),
       });
 
       const result = await response.json();
@@ -73,7 +118,7 @@ export default function AiAssistantPage() {
           <Sparkles className="mx-auto h-16 w-16 text-primary mb-4" />
           <CardTitle className="text-3xl font-headline">Asistente de IA</CardTitle>
           <CardDescription>
-            ¡Hola! Soy Obrita, tu asistente personal. Describe tu problema y te daré un diagnóstico, soluciones, materiales y te recomendaré a los mejores operarios.
+            ¡Hola! Soy Obrita, tu asistente personal. Describe tu problema, adjunta una foto si quieres, y te daré un diagnóstico, soluciones, y te recomendaré a los mejores operarios.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -113,7 +158,7 @@ export default function AiAssistantPage() {
                 name="problemDescription"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="sr-only">Describe tu problema o necesidad</FormLabel>
+                    <FormLabel>Describe tu problema o necesidad</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Ej: Tengo una gotera en el techo del baño, aparece cuando llueve fuerte y ha dejado una mancha amarilla."
@@ -126,6 +171,30 @@ export default function AiAssistantPage() {
                   </FormItem>
                 )}
               />
+
+              <FormItem>
+                <FormLabel>Adjuntar Foto (Opcional)</FormLabel>
+                <FormControl>
+                    <div className="flex items-center gap-4">
+                        <div className="relative h-24 w-24 rounded-md overflow-hidden bg-muted border">
+                            {previewUrl ? (
+                                <Image src={previewUrl} alt="Vista previa de la imagen del problema" layout="fill" objectFit="contain" />
+                            ) : (
+                                <div className="flex items-center justify-center h-full w-full">
+                                <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                                </div>
+                            )}
+                        </div>
+                        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            {previewUrl ? 'Cambiar Foto' : 'Subir Foto'}
+                        </Button>
+                    </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+
               <Button type="submit" disabled={isLoading} className="w-full" size="lg">
                 {isLoading ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Analizando...</>

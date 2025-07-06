@@ -169,7 +169,7 @@ export default function RequestDetailPage() {
     toast({ title: "Subiendo Imagen...", description: "Tu imagen se está procesando." });
 
     try {
-        const imageRef = storageRef(storage, `quotationRequests/${requestId}/${Date.now()}_${selectedImage.name}`);
+        const imageRef = storageRef(storage, `quotationRequests/${requestId}/messages/${Date.now()}_${selectedImage.name}`);
         const uploadResult = await uploadBytes(imageRef, selectedImage);
         const downloadURL = await getDownloadURL(uploadResult.ref);
 
@@ -295,6 +295,15 @@ export default function RequestDetailPage() {
             </div>
             <p className="text-sm mt-2"><strong>Descripción del Problema/Necesidad:</strong></p>
             <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">{request.problemDescription}</p>
+            
+            {request.imageUrl && (
+              <div className="mt-4">
+                <h4 className="text-sm font-semibold mb-2">Imagen Adjunta:</h4>
+                <a href={request.imageUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block w-full max-w-sm">
+                  <Image src={request.imageUrl} alt="Imagen del problema adjuntada" width={400} height={400} className="rounded-md object-cover border" />
+                </a>
+              </div>
+            )}
           </div>
           
           <Separator />

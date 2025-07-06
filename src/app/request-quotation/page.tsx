@@ -11,16 +11,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Send, FileText, Package } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Loader2, Send, FileText, Package, Upload, ImageIcon, Paperclip } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
-import { firestore } from '@/firebase/clientApp';
+import { firestore, storage } from '@/firebase/clientApp';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { useQuery } from '@tanstack/react-query';
 import type { Service } from '@/types/service';
+import Image from 'next/image';
 
 const formSchema = z.object({
   contactFullName: z.string().min(2, "El nombre completo es requerido."),
@@ -61,6 +63,9 @@ export default function RequestQuotationPage() {
   const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
   const searchParams = useSearchParams();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: availableServices, isLoading: servicesLoading } = useQuery<Service[], Error>({
     queryKey: ['platformServices'],
@@ -115,6 +120,20 @@ export default function RequestQuotationPage() {
     }
   }, [watchedServiceId, availableServices, form]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({ title: "Imagen muy grande", description: "Por favor, sube una imagen de menos de 5MB.", variant: "destructive" });
+        return;
+      }
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPreviewUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     setIsSubmitting(true);
@@ -140,6 +159,21 @@ export default function RequestQuotationPage() {
         return;
     }
 
+    let imageUrl: string | null = null;
+    if (selectedFile) {
+        try {
+            toast({ title: "Subiendo imagen...", description: "Por favor espera." });
+            const imageRef = storageRef(storage, `quotation-requests/${typedUser.uid}/${Date.now()}_${selectedFile.name}`);
+            await uploadBytes(imageRef, selectedFile);
+            imageUrl = await getDownloadURL(imageRef);
+        } catch (error) {
+            console.error("Error al subir imagen: ", error);
+            toast({ title: "Error de Imagen", description: "No se pudo subir la imagen. Intenta de nuevo.", variant: "destructive" });
+            setIsSubmitting(false);
+            return;
+        }
+    }
+
     const quotationData = {
       userId: typedUser.uid,
       userFullName: typedUser.displayName || null,
@@ -152,6 +186,7 @@ export default function RequestQuotationPage() {
       serviceName: finalServiceName,
       problemDescription: data.problemDescription,
       preferredDate: data.preferredDate || null,
+      imageUrl: imageUrl, // Add the image URL here
       handymanId: data.handymanId || null,
       handymanName: data.handymanName || null,
       status: "Enviada" as const,
@@ -172,6 +207,8 @@ export default function RequestQuotationPage() {
         contactPhone: "", address: "", problemDescription: "",
         preferredDate: "", serviceId: "", serviceName: "", handymanId: "", handymanName: "",
       });
+      setSelectedFile(null);
+      setPreviewUrl(null);
     } catch (e) {
       console.error("Error al añadir documento: ", e);
       toast({ title: "Error al Enviar Solicitud", description: "Hubo un problema al guardar tu solicitud.", variant: "destructive" });
@@ -282,6 +319,30 @@ export default function RequestQuotationPage() {
                   </FormItem> 
                 )}
               />
+
+               <FormItem>
+                <FormLabel>Adjuntar Foto (Opcional)</FormLabel>
+                <FormControl>
+                    <div className="flex items-center gap-4">
+                        <div className="relative h-24 w-24 rounded-md overflow-hidden bg-muted border">
+                            {previewUrl ? (
+                                <Image src={previewUrl} alt="Vista previa de la imagen del problema" layout="fill" objectFit="contain" />
+                            ) : (
+                                <div className="flex items-center justify-center h-full w-full">
+                                <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                                </div>
+                            )}
+                        </div>
+                        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            {previewUrl ? 'Cambiar Foto' : 'Subir Foto'}
+                        </Button>
+                    </div>
+                </FormControl>
+                <FormDescription>Una imagen ayuda al profesional a entender mejor el problema.</FormDescription>
+               </FormItem>
+
 
               <FormField 
                 control={form.control} 

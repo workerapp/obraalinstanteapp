@@ -14,6 +14,7 @@ export interface QuotationRequest {
   serviceName: string; // Nombre del servicio
   problemDescription: string;
   preferredDate?: string; // Fecha preferida (opcional)
+  imageUrl?: string; // URL a la imagen del problema adjuntada por el usuario
   handymanId?: string; // ID del operario si se solicitó a uno específico (opcional)
   handymanName?: string; // Nombre del operario si se solicitó a uno específico (opcional)
   status: "Enviada" | "Revisando" | "Cotizada" | "Programada" | "Completada" | "Cancelada";

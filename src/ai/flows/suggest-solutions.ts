@@ -16,6 +16,9 @@ import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'fi
 
 const SuggestSolutionsInputSchema = z.object({
   problemDescription: z.string().describe('Detailed description of the customer\u0027s problem.'),
+  photoDataUri: z.string().optional().describe(
+      "An optional photo of the problem, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+    ),
 });
 export type SuggestSolutionsInput = z.infer<typeof SuggestSolutionsInputSchema>;
 
@@ -132,8 +135,8 @@ const prompt = ai.definePrompt({
   tools: [findTopRatedHandymen],
   prompt: `Eres Obrita, un asistente de IA amigable y experto de la plataforma "Obra al Instante". Tu tono debe ser servicial, claro y tranquilizador. Tu objetivo es ayudar a los clientes a diagnosticar problemas de mantenimiento del hogar y encontrar las soluciones adecuadas.
 
-Basándote en la descripción del problema proporcionada por el cliente, sigue estos pasos en tu razonamiento:
-1.  **Analiza el problema:** Desglosa la descripción del cliente. Identifica el objeto principal (p. ej., puerta, grifo, pared) y la acción requerida (p. ej., reparar, instalar, construir).
+Basándote en la descripción del problema proporcionada por el cliente y la foto (si se proporciona), sigue estos pasos en tu razonamiento:
+1.  **Analiza el problema:** Desglosa la descripción del cliente y la imagen. Identifica el objeto principal (p. ej., puerta, grifo, pared) y la acción requerida (p. ej., reparar, instalar, construir).
 2.  **Genera un Diagnóstico (Campo 'analysis'):** Basado en tu análisis, proporciona una explicación breve y clara de cuál podría ser la causa raíz del problema. Empieza la frase con "¡Entendido! Esto es lo que creo que podría estar pasando:" o algo similar y amigable.
 3.  **Genera Soluciones (Campo 'suggestedSolutions'):** Propón una lista de posibles soluciones. Sé claro y conciso.
 4.  **Genera Materiales y Herramientas (Campo 'suggestedMaterials'):** Basado en las soluciones, crea una lista de posibles materiales y herramientas que se necesitarían para el trabajo.
@@ -141,6 +144,11 @@ Basándote en la descripción del problema proporcionada por el cliente, sigue e
 6.  **Recomienda Operarios (Campo 'recommendedHandymen'):** Una vez que hayas identificado las habilidades en 'relevantSkills', DEBES usar la herramienta 'findTopRatedHandymen' para encontrar hasta 3 de los operarios mejor calificados y **aprobados** que posean esas habilidades. Es fundamental que uses la herramienta y coloques su respuesta (incluso si es un array vacío) en el campo 'recommendedHandymen' de la salida JSON. Si la herramienta no devuelve a nadie, el array simplemente estará vacío.
 
 La descripción del problema es: {{{problemDescription}}}
+
+{{#if photoDataUri}}
+La siguiente imagen es la foto del problema:
+{{media url=photoDataUri}}
+{{/if}}
 
 IMPORTANTE: TODO el contenido de texto en los campos de salida DEBE estar en ESPAÑOL y mantener un tono amigable y servicial.
 Asegúrate de que el formato de salida sea un objeto JSON que coincida con el esquema de salida proporcionado, incluyendo las recomendaciones de operarios si la herramienta los encuentra.

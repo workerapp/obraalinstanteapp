@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 const InputSchema = z.object({
   problemDescription: z.string().min(10, 'La descripción es muy corta').max(1000, 'La descripción es muy larga'),
+  photoDataUri: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
     }
 
     // Si la validación es exitosa, llamamos al flujo de IA
-    const result = await suggestSolutions(body);
+    const result = await suggestSolutions(validation.data);
     
     // Devolvemos el resultado exitoso
     return NextResponse.json(result);
