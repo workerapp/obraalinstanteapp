@@ -53,43 +53,59 @@ const findTopRatedHandymen = ai.defineTool(
     })),
   },
   async (input) => {
-    console.log(`[findTopRatedHandymen Tool] Executing with skills: ${JSON.stringify(input.skills)}`);
+    console.log(`[Tool Start] findTopRatedHandymen received skills: ${JSON.stringify(input.skills)}`);
 
-    const skillsToQuery = [...new Set(input.skills.flatMap(skill => [skill, skill.toLowerCase(), skill.charAt(0).toUpperCase() + skill.slice(1).toLowerCase()]))];
-    
-    console.log(`[findTopRatedHandymen Tool] Querying Firestore with skill variants: ${JSON.stringify(skillsToQuery)}`);
-
-    if (!skillsToQuery || skillsToQuery.length === 0) {
-      console.log('[findTopRatedHandymen Tool] No skills provided, returning empty array.');
+    if (!input.skills || input.skills.length === 0) {
+      console.log('[Tool End] No skills provided, returning empty array.');
       return [];
     }
-    
+
+    // Create a set of lowercase skills to search for, for case-insensitive matching.
+    const requiredSkillsLower = new Set(input.skills.map(s => s.toLowerCase()));
+    console.log(`[Tool Logic] Will search for handymen with any of these skills (case-insensitive): ${JSON.stringify(Array.from(requiredSkillsLower))}`);
+
     try {
+      // 1. Simple Query: Get all users who are handymen.
       const usersRef = collection(firestore, 'users');
+      const q = query(usersRef, where('role', '==', 'handyman'));
       
-      const q = query(
-        usersRef,
-        where('role', '==', 'handyman'),
-        where('isApproved', '==', true),
-        where('skills', 'array-contains-any', skillsToQuery),
-        orderBy('rating', 'desc'),
-        limit(3)
-      );
-
+      console.log('[Tool Firestore] Executing simple query for all handymen...');
       const querySnapshot = await getDocs(q);
-      
-      const handymen = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.displayName || 'Nombre no disponible',
-            rating: data.rating || 0,
-            reviewsCount: data.reviewsCount || 0,
-          };
-      });
+      const allHandymenDocs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log(`[Tool Firestore] Found ${allHandymenDocs.length} total user(s) with role 'handyman'.`);
 
-      console.log(`[findTopRatedHandymen Tool] Found ${handymen.length} handymen.`);
-      return handymen;
+      // 2. Filter in Code: Now we apply our complex logic in TypeScript.
+      const approvedAndSkilledHandymen = allHandymenDocs.filter(handyman => {
+        // Check for approval
+        if (handyman.isApproved !== true) {
+          return false;
+        }
+        
+        // Check for skills (case-insensitive)
+        if (!handyman.skills || !Array.isArray(handyman.skills)) {
+          return false;
+        }
+        
+        const handymanSkillsLower = handyman.skills.map((s: string) => s.toLowerCase());
+        const hasMatchingSkill = handymanSkillsLower.some((skill: string) => requiredSkillsLower.has(skill));
+        
+        return hasMatchingSkill;
+      });
+      console.log(`[Tool Logic] After filtering for approval and skills, found ${approvedAndSkilledHandymen.length} matching handymen.`);
+
+      // 3. Sort in Code:
+      approvedAndSkilledHandymen.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+      // 4. Limit and Format the result
+      const topHandymen = approvedAndSkilledHandymen.slice(0, 3).map(data => ({
+        id: data.id,
+        name: data.displayName || 'Nombre no disponible',
+        rating: data.rating || 0,
+        reviewsCount: data.reviewsCount || 0,
+      }));
+
+      console.log(`[Tool End] Returning ${topHandymen.length} top-rated handymen to the AI.`);
+      return topHandymen;
 
     } catch (e: any) {
         console.error("================ ERROR EN LA HERRAMIENTA DE BÚSQUEDA ================");
