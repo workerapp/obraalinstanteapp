@@ -94,6 +94,10 @@ export default function AiAssistantPage() {
                         <CheckCircle className="h-4 w-4 mt-1 shrink-0 text-green-600" />
                         <span><strong>Incluye el contexto:</strong> "La pared es de drywall y tiene una mancha de humedad" da pistas importantes para el diagnóstico.</span>
                     </li>
+                     <li className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 mt-1 shrink-0 text-green-600" />
+                        <span><strong>Sugiere un profesional:</strong> Si tienes una idea, ¡menciónala! "Creo que es un trabajo para un soldador" ayuda a Obrita a confirmar y encontrar al experto adecuado.</span>
+                    </li>
                 </ul>
             </AlertDescription>
           </Alert>
