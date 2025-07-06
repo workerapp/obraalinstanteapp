@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2, Sparkles, Lightbulb, Wrench, Send, AlertTriangle, Search, MessageSquare, ClipboardList, Award, Star, UserCheck } from 'lucide-react';
-import { suggestSolutions, type SuggestSolutionsOutput } from '@/ai/flows/suggest-solutions';
+import type { SuggestSolutionsOutput } from '@/ai/flows/suggest-solutions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -41,12 +41,22 @@ export default function AiAssistantPage() {
     setError(null);
     setAiResponse(null);
     try {
-      const response = await suggestSolutions({ problemDescription: data.problemDescription });
-      if (response) {
-        setAiResponse(response);
-      } else {
-        setError("La IA devolvió una respuesta inesperada. Inténtalo de nuevo.");
+      const response = await fetch('/api/ai-assistant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ problemDescription: data.problemDescription }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `Error: ${response.statusText}`);
       }
+
+      setAiResponse(result);
+
     } catch (err: any) {
       setError(err.message || "Lo sentimos, algo salió mal al obtener sugerencias.");
     } finally {
