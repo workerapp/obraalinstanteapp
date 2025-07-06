@@ -75,25 +75,33 @@ export default function HandymenPage() {
   
   const allCategories = useMemo(() => {
     if (!data?.handymen) return [];
-    const categories = new Set<string>();
-    data.handymen.forEach(h => h.skills?.forEach(s => categories.add(s)));
-    return Array.from(categories).sort();
+    // Use a Map to store unique categories, ignoring case, but preserving original casing for display.
+    const categories = new Map<string, string>();
+    data.handymen.forEach(h => h.skills?.forEach(s => {
+      if (s && !categories.has(s.toLowerCase())) {
+        categories.set(s.toLowerCase(), s);
+      }
+    }));
+    return Array.from(categories.values()).sort((a, b) => a.localeCompare(b));
   }, [data?.handymen]);
 
   const filteredHandymen = useMemo(() => {
     if (!data?.handymen) return [];
+    
+    const lowercasedTerm = searchTerm.toLowerCase().trim();
+
     return data.handymen
       .filter(handyman => {
-        // Category filter
+        // Case-insensitive category filter
         if (selectedCategory) {
-          return handyman.skills?.includes(selectedCategory);
+          return handyman.skills?.some(skill => skill.toLowerCase() === selectedCategory.toLowerCase());
         }
         return true;
       })
       .filter(handyman => {
-        // Search term filter
-        if (searchTerm.trim() === '') return true;
-        const lowercasedTerm = searchTerm.toLowerCase();
+        // Case-insensitive search term filter
+        if (lowercasedTerm === '') return true;
+        
         return (
           handyman.name.toLowerCase().includes(lowercasedTerm) ||
           (handyman.tagline && handyman.tagline.toLowerCase().includes(lowercasedTerm)) ||
