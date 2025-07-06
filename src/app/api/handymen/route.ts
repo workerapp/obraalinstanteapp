@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import type { Handyman } from '@/types/handyman';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman => {
   let memberSince = 'Fecha de registro no disponible';
@@ -18,7 +20,7 @@ const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman =>
       }
       
       if (createdAtDate && !isNaN(createdAtDate.getTime())) {
-        memberSince = `Se unió en ${createdAtDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}`;
+        memberSince = `Se unió en ${format(createdAtDate, 'MMMM yyyy', { locale: es })}`;
       }
     } catch (e) {
       console.error(`Error formatting 'createdAt' for user ${uid}:`, e);
@@ -38,6 +40,7 @@ const mapFirestoreUserToHandymanList = (uid: string, userData: any): Handyman =>
     memberSince: memberSince,
     phone: userData.phone || undefined,
     isApproved: userData.isApproved || false,
+    about: userData.about || undefined,
   };
 };
 

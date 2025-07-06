@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import type { Supplier } from '@/types/supplier';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const mapFirestoreUserToSupplierList = (uid: string, userData: any): Supplier => {
   let memberSince = 'Fecha de registro no disponible';
@@ -18,7 +20,7 @@ const mapFirestoreUserToSupplierList = (uid: string, userData: any): Supplier =>
       }
       
       if (createdAtDate && !isNaN(createdAtDate.getTime())) {
-        memberSince = `Se unió en ${createdAtDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}`;
+        memberSince = `Se unió en ${format(createdAtDate, 'MMMM yyyy', { locale: es })}`;
       }
     } catch (e) {
       console.error(`Error formatting 'createdAt' for supplier ${uid}:`, e);

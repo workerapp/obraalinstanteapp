@@ -30,8 +30,14 @@ const mapFirestoreUserToSupplier = (uid: string, userData: any): Supplier | null
   let memberSince = 'Fecha no disponible';
   if (userData.createdAt) {
     try {
-      const date = userData.createdAt instanceof Timestamp ? userData.createdAt.toDate() : new Date(userData.createdAt.seconds * 1000);
-      memberSince = `Se unió en ${date.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}`;
+      let createdAtDate: Date | null = null;
+      if (userData.createdAt instanceof Timestamp) createdAtDate = userData.createdAt.toDate();
+      else if (typeof userData.createdAt === 'string') createdAtDate = new Date(userData.createdAt);
+      else if (typeof userData.createdAt.seconds === 'number') createdAtDate = new Date(userData.createdAt.seconds * 1000);
+
+      if (createdAtDate && !isNaN(createdAtDate.getTime())) {
+          memberSince = `Se unió en ${format(createdAtDate, 'MMMM yyyy', { locale: es })}`;
+      }
     } catch (e) { console.error(`Error formatting date for supplier ${uid}:`, e); }
   }
   return {
@@ -45,7 +51,7 @@ const mapFirestoreUserToSupplier = (uid: string, userData: any): Supplier | null
     dataAiHint: 'logo empresa',
     location: userData.location || 'Ubicación no registrada',
     memberSince,
-    about: userData.aboutMe || undefined,
+    about: userData.about || undefined,
     isApproved: userData.isApproved || false,
   };
 };

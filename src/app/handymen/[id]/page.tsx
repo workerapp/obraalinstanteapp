@@ -36,7 +36,7 @@ const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null
       else if (typeof userData.createdAt.seconds === 'number') createdAtDate = new Date(userData.createdAt.seconds * 1000);
       
       if (createdAtDate && !isNaN(createdAtDate.getTime())) {
-          memberSince = `Se unió en ${createdAtDate.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })}`;
+          memberSince = `Se unió en ${format(createdAtDate, 'MMMM yyyy', { locale: es })}`;
       }
     } catch (e: any) {
       console.error(`Error formatting date for UID ${uid}: ${e.message}`);
