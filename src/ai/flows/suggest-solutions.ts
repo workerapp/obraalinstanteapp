@@ -10,7 +10,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 
@@ -43,7 +43,7 @@ const findTopRatedHandymen = ai.defineTool(
     name: 'findTopRatedHandymen',
     description: 'Finds the top-rated, approved handymen based on a list of required skills. Only handymen who have been manually approved by an administrator will be returned. Returns up to 3.',
     inputSchema: z.object({
-      skills: z.array(z.string()).describe("A list of skills to search for. For example: ['Plomería', 'Electricidad', 'Soldadura']."),
+      skills: z.array(z.string()).describe("A list of skills to search for. For example: ['Plomería', 'Electricidad', 'Soldadura']. This search is case-sensitive, so it's best to provide capitalized versions."),
     }),
     outputSchema: z.array(z.object({
       id: z.string(),
@@ -53,51 +53,51 @@ const findTopRatedHandymen = ai.defineTool(
     })),
   },
   async (input) => {
-    if (!input.skills || input.skills.length === 0) {
+    // Firestore's 'array-contains-any' is case-sensitive. We will create a query-friendly list.
+    // The AI is prompted to return capitalized skills, but we can add lowercase for safety.
+    const skillsToQuery = [...new Set(input.skills.flatMap(skill => [skill, skill.toLowerCase(), skill.charAt(0).toUpperCase() + skill.slice(1).toLowerCase()]))];
+    
+    if (!skillsToQuery || skillsToQuery.length === 0) {
       return [];
     }
-    
-    const requiredSkillsLower = new Set(input.skills.map(skill => skill.toLowerCase()));
     
     try {
       const usersRef = collection(firestore, 'users');
       
-      // Simplified query to avoid composite index issues.
-      // We now fetch all handymen and filter for approval in the code.
+      // This is a robust query that requires a composite index in Firestore.
+      // If the index is missing, Firestore will provide an error with a link to create it in the development console.
       const q = query(
         usersRef,
-        where('role', '==', 'handyman')
+        where('role', '==', 'handyman'),
+        where('isApproved', '==', true),
+        where('skills', 'array-contains-any', skillsToQuery),
+        orderBy('rating', 'desc'),
+        limit(3)
       );
 
       const querySnapshot = await getDocs(q);
-      const allHandymen: any[] = [];
-      querySnapshot.forEach((doc) => {
-        allHandymen.push({ id: doc.id, ...doc.data() });
-      });
       
-      const matchingHandymen = allHandymen.filter(handyman => {
-        // Filter for approved status and skills in the code.
-        if (handyman.isApproved !== true) {
-          return false;
-        }
-        if (!handyman.skills || !Array.isArray(handyman.skills)) {
-          return false;
-        }
-        return handyman.skills.some((userSkill: string) => requiredSkillsLower.has(userSkill.toLowerCase()));
-      }).map(data => ({
-        id: data.id,
-        name: data.displayName || 'Nombre no disponible',
-        rating: data.rating || 0,
-        reviewsCount: data.reviewsCount || 0,
-      }));
+      const handymen = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.displayName || 'Nombre no disponible',
+            rating: data.rating || 0,
+            reviewsCount: data.reviewsCount || 0,
+          };
+      });
 
-      matchingHandymen.sort((a, b) => b.rating - a.rating);
-
-      return matchingHandymen.slice(0, 3);
+      return handymen;
 
     } catch (e: any) {
-      console.error("Error executing findTopRatedHandymen tool:", e);
-      throw new Error(`Error al buscar operarios. Detalle: ${e.message}`);
+        let errorMessage = `Error al buscar operarios. Detalle: ${e.message}`;
+        // Detect the specific Firestore error for missing index
+        if (e.code === 'failed-precondition') {
+            errorMessage = "Firestore necesita un índice para esta búsqueda. Por favor, revisa la consola de desarrollo (terminal) donde se ejecuta la aplicación. Deberías ver un error con un enlace para crear el índice automáticamente. Haz clic en ese enlace, espera unos minutos a que el índice se construya y vuelve a intentarlo.";
+        }
+        console.error("Error executing findTopRatedHandymen tool:", errorMessage, e);
+        // We throw the error so the AI and the user know something went wrong.
+        throw new Error(errorMessage);
     }
   }
 );
@@ -116,7 +116,7 @@ Basándote en la descripción del problema proporcionada por el cliente, sigue e
 2.  **Genera un Diagnóstico (Campo 'analysis'):** Basado en tu análisis, proporciona una explicación breve y clara de cuál podría ser la causa raíz del problema. Empieza la frase con "¡Entendido! Esto es lo que creo que podría estar pasando:" o algo similar y amigable.
 3.  **Genera Soluciones (Campo 'suggestedSolutions'):** Propón una lista de posibles soluciones. Sé claro y conciso.
 4.  **Genera Materiales y Herramientas (Campo 'suggestedMaterials'):** Basado en las soluciones, crea una lista de posibles materiales y herramientas que se necesitarían para el trabajo.
-5.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Utiliza términos comunes y bien definidos, como "Plomería", "Electricidad", "Carpintería", "Albañilería", "Pintura", "Soldadura". La herramienta buscará coincidencias con los perfiles de los operarios.
+5.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Utiliza términos comunes y bien definidos, como "Plomería", "Electricidad", "Carpintería", "Albañilería", "Pintura", "Soldadura". Es MUY IMPORTANTE que la habilidad tenga la primera letra en mayúscula (ej: "Soldadura", no "soldadura").
 6.  **Recomienda Operarios (Campo 'recommendedHandymen'):** Una vez que hayas identificado las habilidades en 'relevantSkills', DEBES usar la herramienta 'findTopRatedHandymen' para encontrar hasta 3 de los operarios mejor calificados y **aprobados** que posean esas habilidades. Es fundamental que uses la herramienta y coloques su respuesta (incluso si es un array vacío) en el campo 'recommendedHandymen' de la salida JSON. Si la herramienta no devuelve a nadie, el array simplemente estará vacío.
 
 La descripción del problema es: {{{problemDescription}}}
@@ -140,9 +140,10 @@ const suggestSolutionsFlow = ai.defineFlow(
         throw new Error('La IA no pudo generar una respuesta.');
       }
       return output;
-    } catch (flowError) {
+    } catch (flowError: any) {
       console.error('Error within suggestSolutionsFlow:', flowError);
-      throw new Error('Ocurrió un error al procesar la solicitud con la IA.'); 
+      // Propagate the specific error message from the tool if available
+      throw new Error(flowError.message || 'Ocurrió un error al procesar la solicitud con la IA.'); 
     }
   }
 );
