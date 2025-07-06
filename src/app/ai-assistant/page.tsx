@@ -203,9 +203,18 @@ export default function AiAssistantPage() {
                   </CardContent>
                 </Card>
               </div>
-              <CardFooter className="flex-col items-center gap-2 text-center p-4 border-t">
+              <CardFooter className="flex-col items-center gap-3 text-center p-4 border-t">
                   <p className="text-sm text-muted-foreground">¿Listo para dar el siguiente paso?</p>
-                  <Button asChild>
+                  
+                  {aiResponse.relevantSkills && aiResponse.relevantSkills.length > 0 && (
+                    <Button asChild variant="outline" className="w-full max-w-sm">
+                      <Link href={`/handymen?category=${encodeURIComponent(aiResponse.relevantSkills[0])}`}>
+                        <Search className="mr-2 h-4 w-4" /> Buscar Operarios de {aiResponse.relevantSkills[0]}
+                      </Link>
+                    </Button>
+                  )}
+                  
+                  <Button asChild className="w-full max-w-sm">
                     <Link href={`/request-quotation?problem=${encodeURIComponent(currentProblemDescription)}`}>
                       <MessageSquare className="mr-2 h-4 w-4"/> Pedir una Cotización con esta Descripción
                     </Link>
