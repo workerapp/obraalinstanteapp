@@ -96,7 +96,7 @@ export default function AiAssistantPage() {
                     </li>
                      <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 mt-1 shrink-0 text-green-600" />
-                        <span><strong>Sugiere un profesional:</strong> Si tienes una idea, ¡menciónala! "Creo que es un trabajo para un soldador" ayuda a Obrita a confirmar y encontrar al experto adecuado.</span>
+                        <span><strong>Sugiere un profesional:</strong> Si tienes una idea, ¡menciónala! "La puerta del clóset está descolgada, creo que es un trabajo para un carpintero" ayuda a Obrita a confirmar y encontrar al experto adecuado.</span>
                     </li>
                 </ul>
             </AlertDescription>
