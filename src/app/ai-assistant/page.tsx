@@ -130,10 +130,15 @@ export default function AiAssistantPage() {
                 <p className="text-foreground/90 bg-muted p-4 rounded-md border">{aiResponse.analysis}</p>
               </div>
               
-              {aiResponse.recommendedHandymen && aiResponse.recommendedHandymen.length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Award className="mr-3 h-6 w-6" />Operarios Recomendados para ti</h3>
-                  <Card>
+              {/* Recommended Handymen or Search CTA */}
+              <div className="space-y-4">
+                <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Award className="mr-3 h-6 w-6" />¡Encontremos al Profesional Adecuado!</h3>
+                {aiResponse.recommendedHandymen && aiResponse.recommendedHandymen.length > 0 ? (
+                  <Card className="border-green-200 bg-green-50/50">
+                    <CardHeader>
+                      <CardTitle className="text-xl text-green-800">Operarios Recomendados para ti</CardTitle>
+                      <CardDescription>Basado en tu problema, estos son los operarios mejor calificados que pueden ayudarte.</CardDescription>
+                    </CardHeader>
                     <CardContent className="p-4 space-y-3">
                       {aiResponse.recommendedHandymen.map((handyman) => (
                         <div key={handyman.id} className="flex justify-between items-center bg-background p-3 rounded-lg border">
@@ -153,8 +158,25 @@ export default function AiAssistantPage() {
                       ))}
                     </CardContent>
                   </Card>
-                </div>
-              )}
+                ) : aiResponse.relevantSkills && aiResponse.relevantSkills.length > 0 ? (
+                  <Card className="bg-primary/5 border-primary/20 text-center">
+                    <CardContent className="p-6">
+                      <p className="mb-4 text-foreground/90">No encontramos una recomendación automática específica, ¡pero no te preocupes! Hemos identificado las habilidades que necesitas. Explora el directorio para encontrar al profesional perfecto.</p>
+                      <Button asChild size="lg">
+                        <Link href={`/handymen?category=${encodeURIComponent(aiResponse.relevantSkills[0])}`}>
+                          <Search className="mr-2 h-4 w-4" /> Buscar Operarios de {aiResponse.relevantSkills[0]}
+                        </Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="bg-muted">
+                    <CardContent className="p-6 text-center">
+                      <p className="text-muted-foreground">La IA no pudo determinar una habilidad específica para tu solicitud. Intenta describiendo tu problema con más detalle o busca en nuestro directorio general.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
 
               {aiResponse.suggestedMaterials && aiResponse.suggestedMaterials.length > 0 && (
                 <div className="space-y-4">
@@ -204,15 +226,7 @@ export default function AiAssistantPage() {
                 </Card>
               </div>
               <CardFooter className="flex-col items-center gap-3 text-center p-4 border-t">
-                  <p className="text-sm text-muted-foreground">¿Listo para dar el siguiente paso?</p>
-                  
-                  {aiResponse.relevantSkills && aiResponse.relevantSkills.length > 0 && (
-                    <Button asChild variant="outline" className="w-full max-w-sm">
-                      <Link href={`/handymen?category=${encodeURIComponent(aiResponse.relevantSkills[0])}`}>
-                        <Search className="mr-2 h-4 w-4" /> Buscar Operarios de {aiResponse.relevantSkills[0]}
-                      </Link>
-                    </Button>
-                  )}
+                  <p className="text-sm text-muted-foreground">O si prefieres, puedes enviar una solicitud general con esta descripción.</p>
                   
                   <Button asChild className="w-full max-w-sm">
                     <Link href={`/request-quotation?problem=${encodeURIComponent(currentProblemDescription)}`}>
