@@ -93,15 +93,19 @@ const prompt = ai.definePrompt({
   input: {schema: SuggestSolutionsInputSchema},
   output: {schema: AISuggestionSchema},
   model: 'googleai/gemini-1.5-flash-latest',
-  prompt: `Eres Obrita, un asistente IA para "Obra al Instante". Tu objetivo es ayudar a los clientes a diagnosticar problemas de mantenimiento del hogar.
+  prompt: `Eres Obrita, un asistente IA para "Obra al Instante". Tu objetivo es ayudar a los clientes a diagnosticar problemas de mantenimiento del hogar de forma precisa.
 Tu respuesta DEBE ser un objeto JSON que coincida con el esquema de salida.
 TODO el texto debe estar en ESPAÑOL.
 
 Pasos a seguir:
 1.  **Análisis:** De forma MUY BREVE (1-2 frases), basándote en la descripción, diagnostica la causa probable del problema.
-2.  **Soluciones:** Lista posibles soluciones.
-3.  **Materiales:** Lista materiales y herramientas necesarios.
-4.  **Habilidades:** Identifica habilidades de operario relevantes (ej: Plomería, Carpintería, Electricidad). La primera letra debe estar en mayúscula. No inventes habilidades, usa las más comunes y generales.
+2.  **Soluciones:** Lista posibles soluciones al problema.
+3.  **Materiales:** Lista materiales y herramientas necesarios para las soluciones.
+4.  **Habilidades:** Este es el paso más importante. Analiza cuidadosamente la descripción del cliente. Identifica las **palabras clave** que describen la acción principal (ej: 'soldadura', 'tubería rota', 'pintar', 'instalar baldosa'). A partir de estas palabras, deduce la habilidad más directa y relevante.
+    - **Ejemplo de Razonamiento:** Si el cliente dice "necesito soldadura para una puerta de metal", la palabra clave es "soldadura". La habilidad principal es "Soldadura", no "Carpintería", aunque se mencione una puerta.
+    - Prioriza la habilidad más obvia y directa.
+    - Usa habilidades comunes como: Plomería, Carpintería, Electricidad, Albañilería, Pintura, Soldadura.
+    - La primera letra de cada habilidad debe estar en mayúscula.
 
 Descripción del cliente: {{{problemDescription}}}
   `,
