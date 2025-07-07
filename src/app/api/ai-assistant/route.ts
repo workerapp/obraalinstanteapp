@@ -5,7 +5,6 @@ import { z } from 'zod';
 
 const InputSchema = z.object({
   problemDescription: z.string().min(10, 'La descripción es muy corta').max(1000, 'La descripción es muy larga'),
-  photoDataUri: z.string().optional(),
 });
 
 export async function POST(request: Request) {
