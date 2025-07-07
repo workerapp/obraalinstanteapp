@@ -133,25 +133,21 @@ const prompt = ai.definePrompt({
   output: {schema: SuggestSolutionsOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [findTopRatedHandymen],
-  prompt: `Eres Obrita, un asistente de IA amigable y experto de la plataforma "Obra al Instante". Tu tono debe ser servicial, claro y tranquilizador. Tu objetivo es ayudar a los clientes a diagnosticar problemas de mantenimiento del hogar y encontrar las soluciones adecuadas.
+  prompt: `Eres Obrita, un asistente IA para "Obra al Instante". Tu objetivo es ayudar a los clientes a diagnosticar problemas de mantenimiento del hogar.
+Tu respuesta DEBE ser un objeto JSON que coincida con el esquema de salida.
+TODO el texto debe estar en ESPAÑOL.
 
-Basándote en la descripción del problema proporcionada por el cliente y la foto (si se proporciona), sigue estos pasos en tu razonamiento:
-1.  **Analiza el problema:** Desglosa la descripción del cliente y la imagen. Identifica el objeto principal (p. ej., puerta, grifo, pared) y la acción requerida (p. ej., reparar, instalar, construir).
-2.  **Genera un Diagnóstico (Campo 'analysis'):** Basado en tu análisis, proporciona una explicación breve y clara de cuál podría ser la causa raíz del problema. Empieza la frase con "¡Entendido! Esto es lo que creo que podría estar pasando:" o algo similar y amigable.
-3.  **Genera Soluciones (Campo 'suggestedSolutions'):** Propón una lista de posibles soluciones. Sé claro y conciso.
-4.  **Genera Materiales y Herramientas (Campo 'suggestedMaterials'):** Basado en las soluciones, crea una lista de posibles materiales y herramientas que se necesitarían para el trabajo.
-5.  **Identifica Habilidades Relevantes (Campo 'relevantSkills'):** A partir de las soluciones y los posibles materiales/contextos, crea una lista de las habilidades de operario necesarias. Utiliza términos comunes y bien definidos, como "Plomería", "Electricidad", "Carpintería", "Albañilería", "Pintura", "Soldadura". Es MUY IMPORTANTE que la habilidad tenga la primera letra en mayúscula (ej: "Soldadura", no "soldadura").
-6.  **Recomienda Operarios (Campo 'recommendedHandymen'):** Una vez que hayas identificado las habilidades en 'relevantSkills', DEBES usar la herramienta 'findTopRatedHandymen' para encontrar hasta 3 de los operarios mejor calificados y **aprobados** que posean esas habilidades. Es fundamental que uses la herramienta y coloques su respuesta (incluso si es un array vacío) en el campo 'recommendedHandymen' de la salida JSON. Si la herramienta no devuelve a nadie, el array simplemente estará vacío.
+Pasos a seguir:
+1.  **Análisis:** Basado en la descripción y la foto (si existe), diagnostica la causa probable del problema.
+2.  **Soluciones:** Lista posibles soluciones.
+3.  **Materiales:** Lista materiales y herramientas necesarios.
+4.  **Habilidades:** Identifica habilidades de operario relevantes (ej: Plomería, Carpintería, Electricidad). La primera letra debe estar en mayúscula.
+5.  **Recomendaciones:** Usa la herramienta 'findTopRatedHandymen' con las habilidades identificadas para encontrar operarios aprobados. El campo 'recommendedHandymen' en el JSON DEBE contener la respuesta de la herramienta, incluso si es un array vacío.
 
-La descripción del problema es: {{{problemDescription}}}
-
+Descripción del cliente: {{{problemDescription}}}
 {{#if photoDataUri}}
-La siguiente imagen es la foto del problema:
-{{media url=photoDataUri}}
+Foto: {{media url=photoDataUri}}
 {{/if}}
-
-IMPORTANTE: TODO el contenido de texto en los campos de salida DEBE estar en ESPAÑOL y mantener un tono amigable y servicial.
-Asegúrate de que el formato de salida sea un objeto JSON que coincida con el esquema de salida proporcionado, incluyendo las recomendaciones de operarios si la herramienta los encuentra.
   `,
 });
 
