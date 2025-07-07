@@ -138,7 +138,7 @@ Tu respuesta DEBE ser un objeto JSON que coincida con el esquema de salida.
 TODO el texto debe estar en ESPAÑOL.
 
 Pasos a seguir:
-1.  **Análisis:** Basado en la descripción y la foto (si existe), diagnostica la causa probable del problema.
+1.  **Análisis:** De forma MUY BREVE (1-2 frases), basándote en la descripción y la foto (si existe), diagnostica la causa probable del problema.
 2.  **Soluciones:** Lista posibles soluciones.
 3.  **Materiales:** Lista materiales y herramientas necesarios.
 4.  **Habilidades:** Identifica habilidades de operario relevantes (ej: Plomería, Carpintería, Electricidad). La primera letra debe estar en mayúscula.
