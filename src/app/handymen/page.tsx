@@ -87,20 +87,61 @@ export default function HandymenPage() {
 
   const filteredHandymen = useMemo(() => {
     if (!data?.handymen) return [];
+
+    // Keyword expansion logic, same as in the AI flow.
+    const skillNormalizationMap: { [key: string]: string } = {
+        'plomero': 'plomeria',
+        'fontanero': 'plomeria',
+        'carpintero': 'carpinteria',
+        'electricista': 'electricidad',
+        'albañil': 'albanileria',
+        'pintor': 'pintura',
+        'soldador': 'soldadura'
+    };
     
-    const lowercasedTerm = searchTerm.toLowerCase().trim();
+    const tradeToProfessions: { [key: string]: string[] } = {};
+    for (const [profession, trade] of Object.entries(skillNormalizationMap)) {
+        if (!tradeToProfessions[trade]) tradeToProfessions[trade] = [];
+        tradeToProfessions[trade].push(profession);
+    }
+    
+    let categorySearchKeywords = new Set<string>();
+    if (selectedCategory) {
+        const lowerCategory = selectedCategory.toLowerCase().trim();
+        categorySearchKeywords.add(lowerCategory);
+
+        const relatedTrade = skillNormalizationMap[lowerCategory];
+        if (relatedTrade) {
+            categorySearchKeywords.add(relatedTrade);
+            tradeToProfessions[relatedTrade]?.forEach(prof => categorySearchKeywords.add(prof));
+        }
+
+        const relatedProfessions = tradeToProfessions[lowerCategory];
+        if (relatedProfessions) {
+            relatedProfessions.forEach(prof => categorySearchKeywords.add(prof));
+        }
+    }
 
     return data.handymen
       .filter(handyman => {
-        // Case-insensitive category filter with partial matching
+        // Category filter using the expanded keyword set
         if (selectedCategory) {
-          const lowercasedCategory = selectedCategory.toLowerCase();
-          return handyman.skills?.some(skill => skill.toLowerCase().includes(lowercasedCategory));
+            if (categorySearchKeywords.size === 0) return true;
+            return handyman.skills?.some(skill => {
+                const lowerSkill = skill.toLowerCase().trim();
+                for (const keyword of categorySearchKeywords) {
+                    if (lowerSkill.includes(keyword)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
         }
         return true;
       })
       .filter(handyman => {
-        // Case-insensitive search term filter
+        // General text search filter
+        const lowercasedTerm = searchTerm.toLowerCase().trim();
         if (lowercasedTerm === '') return true;
         
         return (
@@ -110,6 +151,7 @@ export default function HandymenPage() {
         );
       });
   }, [data?.handymen, searchTerm, selectedCategory]);
+
 
   const fetchError = data?.error || (isError ? (queryError as Error).message : null);
 
