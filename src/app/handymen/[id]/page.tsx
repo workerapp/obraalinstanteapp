@@ -1,3 +1,4 @@
+
 // src/app/handymen/[id]/page.tsx
 "use client";
 
@@ -180,7 +181,7 @@ export default function HandymanDetailPage() {
           </div>
 
           <div className="md:col-span-2">
-            <h1 className="text-4xl font-headline font-bold text-primary mb-1">{handyman.name}</h1>
+            <h1 className="text-3xl sm:text-4xl font-headline font-bold text-primary mb-1">{handyman.name}</h1>
             <p className="text-lg text-muted-foreground mb-4">{handyman.tagline}</p>
 
             <div className="flex items-center gap-2 mb-4">

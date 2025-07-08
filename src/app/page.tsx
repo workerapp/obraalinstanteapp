@@ -19,7 +19,7 @@ export default function HomePage() {
               data-ai-hint="logo abstract"
             />
           </div>
-          <h1 className="text-5xl font-headline font-bold text-primary mb-4">
+          <h1 className="text-4xl sm:text-5xl font-headline font-bold text-primary mb-4">
             ¡Bienvenido a Obra al Instante!
           </h1>
           <p className="text-xl text-foreground/80 mb-8 max-w-2xl mx-auto">

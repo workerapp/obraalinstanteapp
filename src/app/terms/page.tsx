@@ -1,3 +1,4 @@
+
 // src/app/terms/page.tsx
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, ArrowLeft } from 'lucide-react';
@@ -10,7 +11,7 @@ export default function TermsOfServicePage() {
   return (
     <div className="max-w-3xl mx-auto py-8 space-y-6">
        <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-headline font-bold text-primary">Términos y Condiciones</h1>
+        <h1 className="text-3xl sm:text-4xl font-headline font-bold text-primary">Términos y Condiciones</h1>
         <Button variant="outline" asChild>
           <Link href="/"><ArrowLeft size={16} className="mr-2" />Volver al Inicio</Link>
         </Button>

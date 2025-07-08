@@ -179,7 +179,7 @@ export default function CustomerDashboardPage() {
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-accent/10 via-background to-background rounded-lg shadow-md">
         <UserCircle className="mx-auto h-16 w-16 text-accent mb-4" />
-        <h1 className="text-4xl font-headline font-bold text-accent mb-2">Panel de Cliente</h1>
+        <h1 className="text-3xl sm:text-4xl font-headline font-bold text-accent mb-2">Panel de Cliente</h1>
         <p className="text-lg text-foreground/80 max-w-xl mx-auto">
           Realiza seguimiento de tus solicitudes de servicio, gestiona citas y consulta tu historial.
         </p>

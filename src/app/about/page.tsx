@@ -10,7 +10,7 @@ export default function AboutPage() {
   return (
     <div className="max-w-4xl mx-auto py-8 space-y-12">
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-headline font-bold text-primary">Sobre Obra al Instante</h1>
+        <h1 className="text-3xl sm:text-4xl font-headline font-bold text-primary">Sobre Obra al Instante</h1>
         <Button variant="outline" asChild>
           <Link href="/"><ArrowLeft size={16} className="mr-2" />Volver al Inicio</Link>
         </Button>

@@ -1,3 +1,4 @@
+
 // src/app/suppliers/[id]/page.tsx
 "use client";
 
@@ -151,7 +152,7 @@ export default function SupplierDetailPage() {
             </div>
           </div>
           <div className="md:col-span-2">
-            <h1 className="text-4xl font-headline font-bold text-primary mb-1">{supplier.companyName}</h1>
+            <h1 className="text-3xl sm:text-4xl font-headline font-bold text-primary mb-1">{supplier.companyName}</h1>
             <p className="text-lg text-muted-foreground mb-4">{supplier.tagline}</p>
             <div className="flex items-center gap-2 mb-4">
               <Star className="h-6 w-6 text-yellow-400 fill-yellow-400" />

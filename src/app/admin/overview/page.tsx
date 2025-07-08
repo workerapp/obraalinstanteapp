@@ -281,7 +281,7 @@ export default function AdminOverviewPage() {
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-accent/10 via-background to-background rounded-lg shadow-md">
         <Activity className="mx-auto h-16 w-16 text-accent mb-4" />
-        <h1 className="text-4xl font-headline font-bold text-accent mb-2">Panel de Administración</h1>
+        <h1 className="text-3xl sm:text-4xl font-headline font-bold text-accent mb-2">Panel de Administración</h1>
         <p className="text-lg text-foreground/80 max-w-xl mx-auto">Resumen de actividad, finanzas y gestión de usuarios de la plataforma.</p>
       </section>
 

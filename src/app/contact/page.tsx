@@ -1,3 +1,4 @@
+
 // src/app/contact/page.tsx
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,7 +23,7 @@ export default function ContactPage() {
   return (
     <div className="max-w-3xl mx-auto py-8 space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-4xl font-headline font-bold text-primary">Contáctanos</h1>
+        <h1 className="text-3xl sm:text-4xl font-headline font-bold text-primary">Contáctanos</h1>
         <Button variant="outline" asChild>
           <Link href="/"><ArrowLeft size={16} className="mr-2" />Volver al Inicio</Link>
         </Button>

@@ -1,3 +1,4 @@
+
 // src/app/suppliers/page.tsx
 "use client";
 
@@ -108,7 +109,7 @@ export default function SuppliersPage() {
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-primary/10 via-background to-background rounded-lg shadow-md">
         <Package className="mx-auto h-16 w-16 text-primary mb-4" />
-        <h1 className="text-4xl font-headline font-bold text-primary mb-2">{pageTitle}</h1>
+        <h1 className="text-3xl sm:text-4xl font-headline font-bold text-primary mb-2">{pageTitle}</h1>
         <p className="text-lg text-foreground/80 max-w-2xl mx-auto">{pageDescription}</p>
       </section>
 
