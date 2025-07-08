@@ -52,7 +52,7 @@ async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof Ha
     return [];
   }
 
-  // Map to normalize and expand skill keywords. e.g., "plomero" (profession) maps to "plomeria" (trade).
+  // profession: trade
   const skillNormalizationMap: { [key: string]: string } = {
       'plomero': 'plomeria',
       'fontanero': 'plomeria',
@@ -63,24 +63,36 @@ async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof Ha
       'soldador': 'soldadura'
   };
 
+  // trade: [profession1, profession2]
+  const tradeToProfessions: { [key: string]: string[] } = {};
+  for (const [profession, trade] of Object.entries(skillNormalizationMap)) {
+      if (!tradeToProfessions[trade]) {
+          tradeToProfessions[trade] = [];
+      }
+      tradeToProfessions[trade].push(profession);
+  }
+
   const searchKeywords = new Set<string>();
   skills.forEach(s => {
       const lowerSkill = s.toLowerCase().trim();
       searchKeywords.add(lowerSkill);
-      
-      // Add the normalized trade if the skill is a profession (e.g., add "plomeria" for "plomero")
-      const normalizedTrade = skillNormalizationMap[lowerSkill];
-      if (normalizedTrade) {
-          searchKeywords.add(normalizedTrade);
+
+      // Check if it's a profession (e.g., "plomero")
+      const relatedTrade = skillNormalizationMap[lowerSkill];
+      if (relatedTrade) {
+          searchKeywords.add(relatedTrade); // Add the trade ("plomeria")
+          // Add all related professions ("plomero", "fontanero")
+          tradeToProfessions[relatedTrade]?.forEach(prof => searchKeywords.add(prof));
       }
-      
-      // Also add the professions if the skill is a trade (e.g., add "plomero" for "plomeria")
-      for (const [profession, trade] of Object.entries(skillNormalizationMap)) {
-          if (trade === lowerSkill) {
-              searchKeywords.add(profession);
-          }
+
+      // Check if it's a trade (e.g., "plomeria")
+      const relatedProfessions = tradeToProfessions[lowerSkill];
+      if (relatedProfessions) {
+          // Add all professions for this trade
+          relatedProfessions.forEach(prof => searchKeywords.add(prof));
       }
   });
+
 
   console.log(`[Local Function] Expanded search keywords: ${Array.from(searchKeywords).join(', ')}`);
   
