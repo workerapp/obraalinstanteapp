@@ -279,9 +279,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return finalUser;
 
     } catch (error: any) {
-      console.error("Error al iniciar sesión con Google:", error);
-      toast({ title: "Error con Google", description: error.message || "No se pudo iniciar sesión con Google.", variant: "destructive" });
-      setUser(null);
+      if (error.code === 'auth/popup-closed-by-user') {
+        console.log('Google sign-in popup closed by user.');
+      } else {
+        console.error("Error al iniciar sesión con Google:", error);
+        toast({ title: "Error con Google", description: error.message || "No se pudo iniciar sesión con Google.", variant: "destructive" });
+      }
       return null;
     } finally {
       setLoading(false);
