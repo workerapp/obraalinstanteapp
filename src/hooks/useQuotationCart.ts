@@ -3,7 +3,7 @@
 
 import { create } from 'zustand';
 import type { Product } from '@/types/product';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 interface CartState {
   items: Product[];
@@ -15,13 +15,6 @@ interface CartState {
   getCartItems: () => Product[];
   getCartCount: () => number;
 }
-
-// We use a separate function to get the toast hook's state
-// to avoid issues with using a hook inside a non-component function.
-const showToast = (toastConfig: { title: string; description: string; variant?: "default" | "destructive" }) => {
-    const { toast } = useToast.getState();
-    toast(toastConfig);
-};
 
 export const useQuotationCart = create<CartState>((set, get) => ({
   items: [],
@@ -35,7 +28,7 @@ export const useQuotationCart = create<CartState>((set, get) => ({
       // If adding from a different supplier, clear the cart first.
       // A confirmation dialog is a good future improvement.
       clearCart();
-      showToast({
+      toast({
         title: "Lista de cotización reiniciada",
         description: `Tu lista anterior ha sido vaciada. Ahora estás añadiendo productos de ${newSupplierName}.`,
       });
@@ -50,7 +43,7 @@ export const useQuotationCart = create<CartState>((set, get) => ({
     
     const productExists = items.find((item) => item.id === product.id);
     if (productExists) {
-      showToast({
+      toast({
         title: "Producto ya en la lista",
         description: `"${product.name}" ya ha sido añadido a tu lista de cotización.`,
         variant: "default",
@@ -66,9 +59,14 @@ export const useQuotationCart = create<CartState>((set, get) => ({
   },
 
   removeItem: (productId) =>
-    set((state) => ({
-      items: state.items.filter((item) => item.id !== productId),
-    })),
+    set((state) => {
+      const newItems = state.items.filter((item) => item.id !== productId);
+      // If the cart is empty after removing the item, also clear supplier info
+      if (newItems.length === 0) {
+        return { items: [], supplierId: null, supplierName: null };
+      }
+      return { items: newItems };
+    }),
 
   clearCart: () => set({ items: [], supplierId: null, supplierName: null }),
   
