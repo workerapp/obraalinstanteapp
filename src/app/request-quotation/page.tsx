@@ -86,42 +86,47 @@ export default function RequestQuotationPage() {
   });
 
   useEffect(() => {
-    const serviceNameFromQuery = searchParams.get('serviceName') ? decodeURIComponent(searchParams.get('serviceName')!) : null;
-    const handymanNameFromQuery = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')!) : null;
-
+    // This effect is responsible for setting the form's default state
+    // based on context (URL params, cart, logged-in user).
+    // It runs when its dependencies change, ensuring the form is always up-to-date.
+    
     const defaultValues: Partial<FormData> = {};
+
+    // 1. Populate with authenticated user's data first.
     if (typedUser) {
         defaultValues.contactFullName = typedUser.displayName || '';
         defaultValues.contactEmail = typedUser.email || '';
     }
 
     if (isCartMode && cartSupplierId && cartSupplierName) {
-        // CART MODE
+        // 2. Handle Cart Mode. This has priority for description content.
         defaultValues.handymanId = cartSupplierId;
         defaultValues.handymanName = cartSupplierName;
         const problemDesc = `Solicitud de cotización para los siguientes ${cartItems.length} productos:\n` +
             cartItems.map(item => `- ${item.name} (Unidad: ${item.unit})`).join('\n');
         defaultValues.problemDescription = problemDesc;
-        defaultValues.serviceId = 'product-quotation';
+        defaultValues.serviceId = 'product-quotation'; // A special ID for cart requests
         defaultValues.serviceName = `Cotización de productos de ${cartSupplierName}`;
     } else {
-        // URL PARAMS MODE
+        // 3. Handle standard URL Parameter Mode.
         const serviceIdFromQuery = searchParams.get('serviceId');
+        const serviceNameFromQuery = searchParams.get('serviceName') ? decodeURIComponent(searchParams.get('serviceName')) : null;
         const handymanIdFromQuery = searchParams.get('handymanId');
+        const handymanNameFromQuery = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')) : null;
         const problemFromQuery = searchParams.get('problem');
 
-        // Set IDs and names from query
+        // Set basic IDs and names from URL
         if (serviceIdFromQuery) defaultValues.serviceId = serviceIdFromQuery;
         if (serviceNameFromQuery) defaultValues.serviceName = serviceNameFromQuery;
         if (handymanIdFromQuery) defaultValues.handymanId = handymanIdFromQuery;
         if (handymanNameFromQuery) defaultValues.handymanName = handymanNameFromQuery;
 
-        // Set description
+        // Set the description with specific logic that depends on other data
         if (problemFromQuery) {
-          // If coming from AI assistant, use that description.
+          // Case A: Description from AI Assistant (highest priority)
           defaultValues.problemDescription = decodeURIComponent(problemFromQuery);
         } else if (serviceIdFromQuery && availableServices && availableServices.length > 0) {
-          // If coming from a service card, pre-fill description.
+          // Case B: Description from a selected service (requires services to be loaded)
           const selectedService = availableServices.find(s => s.id === serviceIdFromQuery);
           if (selectedService) {
             defaultValues.problemDescription = 
@@ -134,7 +139,10 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
         }
     }
     
+    // Reset the entire form with the collected default values.
+    // This is the single source of truth for initializing the form state.
     form.reset(defaultValues);
+
   }, [
     typedUser, 
     searchParams, 
@@ -143,12 +151,13 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
     cartItems, 
     cartSupplierId, 
     cartSupplierName,
-    availableServices
+    availableServices // CRUCIAL dependency: this effect re-runs when services are loaded.
   ]);
   
   const watchedServiceId = form.watch("serviceId");
 
   useEffect(() => {
+    // This separate effect syncs the service name if the serviceId is changed via the dropdown.
     if (watchedServiceId && availableServices && !isCartMode) {
       const selectedService = availableServices.find(s => s.id === watchedServiceId);
       if (selectedService) {
@@ -250,7 +259,6 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
             </Card>
           )}
 
-          {/* New context box */}
           {serviceNameFromQuery && !isCartMode && (
              <Card className="mb-6 bg-accent/10 border-accent/20">
                 <CardHeader>
@@ -270,7 +278,6 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Form fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField control={form.control} name="contactFullName" render={({ field }) => ( <FormItem> <FormLabel>Nombre Completo</FormLabel> <FormControl><Input placeholder="Tu nombre completo" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="contactEmail" render={({ field }) => ( <FormItem> <FormLabel>Correo Electrónico</FormLabel> <FormControl><Input type="email" placeholder="tu@ejemplo.com" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
