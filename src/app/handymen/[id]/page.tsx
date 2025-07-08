@@ -229,12 +229,17 @@ export default function HandymanDetailPage() {
           {isLoadingServices && <div className="flex items-center py-6"><Loader2 className="h-6 w-6 animate-spin text-primary mr-2" /><p>Cargando servicios...</p></div>}
           {servicesError && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>No se pudieron cargar los servicios.</AlertDescription></Alert>}
           {!isLoadingServices && !servicesError && (offeredServices && offeredServices.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {offeredServices.map((service) => (
                 <Card key={service.id} className="bg-background hover:shadow-md transition-shadow flex flex-col">
-                  <CardHeader><CardTitle className="text-xl text-accent">{service.name}</CardTitle><CardDescription>{service.category}</CardDescription></CardHeader>
-                  <CardContent className="flex-grow"><p className="text-sm text-foreground/80 mb-3">{service.description}</p></CardContent>
-                  <CardFooter className="flex justify-between items-center mt-auto">
+                  <CardHeader>
+                    <CardTitle className="text-xl text-accent">{service.name}</CardTitle>
+                    <CardDescription>{service.category}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-grow">
+                    <p className="text-sm text-foreground/80 mb-3">{service.description}</p>
+                  </CardContent>
+                  <CardFooter className="flex justify-between items-center mt-auto bg-muted/50 p-4">
                     <Badge variant="outline" className="border-primary text-primary">{priceTypeTranslations[service.priceType]}{service.priceType !== 'consultar' && service.priceValue && ` - $${Number(service.priceValue).toLocaleString('es-CO')}`}</Badge>
                     <Button asChild size="sm">
                       <Link href={`/request-quotation?serviceId=${service.id}&handymanId=${handyman.id}&handymanName=${encodeURIComponent(handyman.name)}&serviceName=${encodeURIComponent(service.name)}`}>
