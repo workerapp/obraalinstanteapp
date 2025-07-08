@@ -1,7 +1,7 @@
 // src/app/dashboard/supplier/earnings/page.tsx
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
@@ -56,6 +56,12 @@ export default function SupplierEarningsPage() {
   const queryClient = useQueryClient();
   const [isPaying, setIsPaying] = useState(false);
 
+  useEffect(() => {
+    if (!authLoading && !typedUser) {
+      router.push('/sign-in');
+    }
+  }, [authLoading, typedUser, router]);
+
   const { data: completedRequests, isLoading, error } = useQuery<QuotationRequest[], Error>({
     queryKey: ['completedSupplierRequests', typedUser?.uid],
     queryFn: () => fetchCompletedRequests(typedUser?.uid),
@@ -103,13 +109,8 @@ export default function SupplierEarningsPage() {
     return "border-gray-400 text-gray-600";
   };
   
-  if (isLoading || authLoading) {
+  if (isLoading || authLoading || !typedUser) {
      return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
-  }
-
-  if (!typedUser) {
-    router.push('/sign-in');
-    return null;
   }
   
   if (error) {
