@@ -17,6 +17,9 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const SuggestSolutionsInputSchema = z.object({
   problemDescription: z.string().describe('Detailed description of the customer\u0027s problem.'),
+  photoDataUri: z.string().optional().describe(
+      "An optional photo of the problem, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+    ),
 });
 export type SuggestSolutionsInput = z.infer<typeof SuggestSolutionsInputSchema>;
 
@@ -49,7 +52,37 @@ async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof Ha
     return [];
   }
 
-  const searchKeywords = new Set(skills.map(s => s.toLowerCase()));
+  // Map to normalize and expand skill keywords. e.g., "plomero" (profession) maps to "plomeria" (trade).
+  const skillNormalizationMap: { [key: string]: string } = {
+      'plomero': 'plomeria',
+      'fontanero': 'plomeria',
+      'carpintero': 'carpinteria',
+      'electricista': 'electricidad',
+      'albanil': 'albanileria',
+      'pintor': 'pintura',
+      'soldador': 'soldadura'
+  };
+
+  const searchKeywords = new Set<string>();
+  skills.forEach(s => {
+      const lowerSkill = s.toLowerCase().trim();
+      searchKeywords.add(lowerSkill);
+      
+      // Add the normalized trade if the skill is a profession (e.g., add "plomeria" for "plomero")
+      const normalizedTrade = skillNormalizationMap[lowerSkill];
+      if (normalizedTrade) {
+          searchKeywords.add(normalizedTrade);
+      }
+      
+      // Also add the professions if the skill is a trade (e.g., add "plomero" for "plomeria")
+      for (const [profession, trade] of Object.entries(skillNormalizationMap)) {
+          if (trade === lowerSkill) {
+              searchKeywords.add(profession);
+          }
+      }
+  });
+
+  console.log(`[Local Function] Expanded search keywords: ${Array.from(searchKeywords).join(', ')}`);
   
   try {
     // 1. Fetch all approved handymen and all active services in parallel for efficiency
@@ -84,10 +117,9 @@ async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof Ha
         const offeredServices = servicesByHandyman.get(handyman.id) || [];
         const serviceTextLower = offeredServices.map(s => `${s.name} ${s.description}`).join(' ').toLowerCase();
 
-        // Check if any AI-identified keyword is found in the handyman's data
+        // Check if any of the expanded search keywords are found in the handyman's data
         for (const keyword of searchKeywords) {
-            // Match 1 (Improved): Check if any handyman skill *includes* the keyword.
-            // This is more flexible, e.g., "plomeria" keyword matches "servicios de plomeria" skill.
+            // Match 1: Check if any handyman skill *includes* the keyword.
             if (handymanSkillsLower.some(skill => skill.includes(keyword))) {
                 return true;
             }
@@ -111,7 +143,7 @@ async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof Ha
       reviewsCount: data.reviewsCount || 0,
     }));
 
-    console.log(`[Local Function] Returning ${topHandymen.length} top-rated handymen after extended search.`);
+    console.log(`[Local Function] Returning ${topHandymen.length} top-rated handymen after expanded search.`);
     return topHandymen;
 
   } catch (e: any) {
@@ -148,6 +180,9 @@ Pasos a seguir:
     - La primera letra de cada habilidad debe estar en mayúscula.
 
 Descripción del cliente: {{{problemDescription}}}
+{{#if photoDataUri}}
+Foto del problema: {{media url=photoDataUri}}
+{{/if}}
   `,
 });
 
