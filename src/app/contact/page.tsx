@@ -52,7 +52,7 @@ export default function ContactPage() {
                   <a href="mailto:obraalinstante@gmail.com" className="text-primary hover:underline">obraalinstante@gmail.com</a>
                 </div>
                  <a href="https://wa.me/573017412292" target="_blank" rel="noopener noreferrer" className="w-full">
-                    <Button variant="outline" className="w-full">
+                    <Button variant="secondary" className="w-full">
                        <WhatsAppIcon className="h-4 w-4 mr-2"/>
                        Chatear por WhatsApp
                     </Button>
@@ -74,7 +74,7 @@ export default function ContactPage() {
                   <a href="mailto:obraalinstante@gmail.com" className="text-primary hover:underline">obraalinstante@gmail.com</a>
                 </div>
                  <a href="https://wa.me/573017412292" target="_blank" rel="noopener noreferrer" className="w-full">
-                    <Button variant="outline" className="w-full">
+                    <Button variant="secondary" className="w-full">
                        <WhatsAppIcon className="h-4 w-4 mr-2"/>
                        Chatear por WhatsApp
                     </Button>
