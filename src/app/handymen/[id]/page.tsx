@@ -232,7 +232,19 @@ export default function HandymanDetailPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {offeredServices.map((service) => (
                 <Card key={service.id} className="bg-background hover:shadow-md transition-shadow flex flex-col">
-                  <CardHeader>
+                   <CardHeader>
+                    {service.imageUrl && (
+                      <div className="relative w-full h-40 mb-4 rounded-md overflow-hidden bg-muted border">
+                          <Image
+                              src={service.imageUrl}
+                              alt={`Imagen para ${service.name}`}
+                              layout="fill"
+                              objectFit="contain"
+                              className="p-2"
+                              data-ai-hint={service.dataAiHint || "servicio ejemplo"}
+                          />
+                      </div>
+                    )}
                     <CardTitle className="text-xl text-accent">{service.name}</CardTitle>
                     <CardDescription>{service.category}</CardDescription>
                   </CardHeader>
