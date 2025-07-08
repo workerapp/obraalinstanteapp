@@ -39,7 +39,7 @@ export default function ContactPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone size={16} />
-                  <span>+57 324 352 9658</span>
+                  <span>+57 301 741 2292</span>
                 </div>
               </CardContent>
             </Card>
@@ -59,7 +59,7 @@ export default function ContactPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone size={16} />
-                  <span>+57 324 352 9658</span>
+                  <span>+57 301 741 2292</span>
                 </div>
               </CardContent>
             </Card>

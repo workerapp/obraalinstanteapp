@@ -132,7 +132,7 @@ export default function SupplierEarningsPage() {
           {totalCommissionPending > 0 ? (
             <Button asChild>
               <Link 
-                href={`https://wa.me/573243529658?text=${encodeURIComponent(`Hola, soy ${typedUser?.displayName || 'un proveedor'} (ID: ${typedUser?.uid}). Quiero coordinar el pago de mis comisiones pendientes por $${totalCommissionPending.toLocaleString('es-CO')}.`)}`}
+                href={`https://wa.me/573017412292?text=${encodeURIComponent(`Hola, soy ${typedUser?.displayName || 'un proveedor'} (ID: ${typedUser?.uid}). Quiero coordinar el pago de mis comisiones pendientes por $${totalCommissionPending.toLocaleString('es-CO')}.`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >
