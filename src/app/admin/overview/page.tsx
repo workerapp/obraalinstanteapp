@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { 
     DollarSign, Users, ListChecks, Loader2, AlertTriangle, ArrowLeft, 
-    CheckCircle, XCircle, CreditCard, UserCog, UserCheck2, UserX2, Briefcase, Eye, Activity, Package, Layers
+    CheckCircle, XCircle, CreditCard, UserCog, UserCheck2, UserX2, Briefcase, Eye, Activity, Package, Layers, Award
 } from 'lucide-react';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -73,6 +73,7 @@ interface UserAdminView {
   isApproved: boolean;
   createdAt: Timestamp;
   phone?: string;
+  subscriptionStatus?: 'free' | 'premium';
 }
 
 const fetchAllHandymen = async (): Promise<UserAdminView[]> => {
@@ -110,6 +111,7 @@ const fetchAllSuppliers = async (): Promise<UserAdminView[]> => {
       displayName: data.displayName || 'Sin Nombre',
       email: data.email || 'Sin Email',
       isApproved: data.isApproved || false,
+      subscriptionStatus: data.subscriptionStatus || 'free',
       createdAt: data.createdAt instanceof Timestamp ? data.createdAt : Timestamp.now(),
       phone: data.phone || 'No registrado',
     });
@@ -138,6 +140,7 @@ export default function AdminOverviewPage() {
   const [isUpdatingCommissionStatusId, setIsUpdatingCommissionStatusId] = useState<string | null>(null);
   const [isUpdatingApprovalId, setIsUpdatingApprovalId] = useState<string | null>(null);
   const [isUpdatingSupplierApprovalId, setIsUpdatingSupplierApprovalId] = useState<string | null>(null);
+  const [isUpdatingSubscriptionId, setIsUpdatingSubscriptionId] = useState<string | null>(null);
 
 
   useEffect(() => { setIsClient(true); }, []);
@@ -213,6 +216,21 @@ export default function AdminOverviewPage() {
       toast({ title: "Error", description: `No se pudo actualizar: ${e.message}`, variant: "destructive" });
     } finally {
       aId(null);
+    }
+  };
+  
+  const handleToggleSubscriptionStatus = async (uid: string, currentStatus: 'free' | 'premium') => {
+    setIsUpdatingSubscriptionId(uid);
+    const newStatus = currentStatus === 'premium' ? 'free' : 'premium';
+    try {
+        await updateDoc(doc(firestore, "users", uid), { subscriptionStatus: newStatus, updatedAt: serverTimestamp() });
+        toast({ title: "Suscripción Actualizada", description: `El proveedor ahora está en el plan ${newStatus === 'premium' ? 'Premium' : 'Gratuito'}.` });
+        queryClient.invalidateQueries({ queryKey: ['allSuppliersForAdmin'] });
+    } catch (e: any) {
+        console.error("Error al actualizar estado de suscripción:", e);
+        toast({ title: "Error", description: `No se pudo actualizar: ${e.message}`, variant: "destructive" });
+    } finally {
+        setIsUpdatingSubscriptionId(null);
     }
   };
   
@@ -310,7 +328,7 @@ export default function AdminOverviewPage() {
       
       <Card className="shadow-xl"><CardHeader><CardTitle className="flex items-center gap-2"><UserCog className="text-primary"/>Gestión de Operarios</CardTitle><CardDescription>Activa o desactiva operarios en la plataforma y visualiza su información de contacto.</CardDescription></CardHeader><CardContent>{allHandymen && allHandymen.length > 0 ? (<Table><TableHeader><TableRow><TableHead>Operario</TableHead><TableHead>Email</TableHead><TableHead>Teléfono</TableHead><TableHead>Fecha de Registro</TableHead><TableHead>Estado</TableHead><TableHead className="text-center">Acción (Activar/Desactivar)</TableHead></TableRow></TableHeader><TableBody>{allHandymen.map((handyman) => (<TableRow key={handyman.uid}><TableCell className="font-medium">{handyman.displayName}</TableCell><TableCell>{handyman.email}</TableCell><TableCell>{handyman.phone}</TableCell><TableCell>{handyman.createdAt?.toDate ? format(handyman.createdAt.toDate(), 'PP', { locale: es }) : 'N/A'}</TableCell><TableCell><Badge variant={handyman.isApproved ? "default" : "destructive"} className={handyman.isApproved ? "bg-green-600 text-white" : ""}>{handyman.isApproved ? <><UserCheck2 className="mr-1.5 h-3 w-3"/>Aprobado</> : <><UserX2 className="mr-1.5 h-3 w-3"/>Pendiente/Inactivo</>}</Badge></TableCell><TableCell className="flex justify-center items-center">{isUpdatingApprovalId === handyman.uid ? (<Loader2 className="h-5 w-5 animate-spin" />) : (<Switch checked={handyman.isApproved} onCheckedChange={() => handleToggleApprovalStatus(handyman.uid, handyman.isApproved, 'operario')} aria-label={`Aprobar a ${handyman.displayName}`}/>)}</TableCell></TableRow>))}</TableBody></Table>) : (<p className="text-muted-foreground text-center py-6">No hay operarios registrados en la plataforma.</p>)}</CardContent></Card>
 
-      <Card className="shadow-xl"><CardHeader><CardTitle className="flex items-center gap-2"><Package className="text-primary"/>Gestión de Proveedores</CardTitle><CardDescription>Activa o desactiva proveedores de productos en la plataforma.</CardDescription></CardHeader><CardContent>{allSuppliers && allSuppliers.length > 0 ? (<Table><TableHeader><TableRow><TableHead>Proveedor</TableHead><TableHead>Email</TableHead><TableHead>Teléfono</TableHead><TableHead>Fecha de Registro</TableHead><TableHead>Estado</TableHead><TableHead className="text-center">Acción (Activar/Desactivar)</TableHead></TableRow></TableHeader><TableBody>{allSuppliers.map((supplier) => (<TableRow key={supplier.uid}><TableCell className="font-medium">{supplier.displayName}</TableCell><TableCell>{supplier.email}</TableCell><TableCell>{supplier.phone}</TableCell><TableCell>{supplier.createdAt?.toDate ? format(supplier.createdAt.toDate(), 'PP', { locale: es }) : 'N/A'}</TableCell><TableCell><Badge variant={supplier.isApproved ? "default" : "destructive"} className={supplier.isApproved ? "bg-green-600 text-white" : ""}>{supplier.isApproved ? <><UserCheck2 className="mr-1.5 h-3 w-3"/>Aprobado</> : <><UserX2 className="mr-1.5 h-3 w-3"/>Pendiente/Inactivo</>}</Badge></TableCell><TableCell className="flex justify-center items-center">{isUpdatingSupplierApprovalId === supplier.uid ? (<Loader2 className="h-5 w-5 animate-spin" />) : (<Switch checked={supplier.isApproved} onCheckedChange={() => handleToggleApprovalStatus(supplier.uid, supplier.isApproved, 'proveedor')} aria-label={`Aprobar a ${supplier.displayName}`}/>)}</TableCell></TableRow>))}</TableBody></Table>) : (<p className="text-muted-foreground text-center py-6">No hay proveedores registrados en la plataforma.</p>)}</CardContent></Card>
+      <Card className="shadow-xl"><CardHeader><CardTitle className="flex items-center gap-2"><Package className="text-primary"/>Gestión de Proveedores</CardTitle><CardDescription>Activa o desactiva proveedores y gestiona su nivel de suscripción.</CardDescription></CardHeader><CardContent>{allSuppliers && allSuppliers.length > 0 ? (<Table><TableHeader><TableRow><TableHead>Proveedor</TableHead><TableHead>Email</TableHead><TableHead>Teléfono</TableHead><TableHead>Fecha de Registro</TableHead><TableHead>Estado</TableHead><TableHead className="text-center">Suscripción</TableHead><TableHead className="text-center">Acción (Activar/Desactivar)</TableHead></TableRow></TableHeader><TableBody>{allSuppliers.map((supplier) => (<TableRow key={supplier.uid}><TableCell className="font-medium">{supplier.displayName}</TableCell><TableCell>{supplier.email}</TableCell><TableCell>{supplier.phone}</TableCell><TableCell>{supplier.createdAt?.toDate ? format(supplier.createdAt.toDate(), 'PP', { locale: es }) : 'N/A'}</TableCell><TableCell><Badge variant={supplier.isApproved ? "default" : "destructive"} className={supplier.isApproved ? "bg-green-600 text-white" : ""}>{supplier.isApproved ? <><UserCheck2 className="mr-1.5 h-3 w-3"/>Aprobado</> : <><UserX2 className="mr-1.5 h-3 w-3"/>Pendiente/Inactivo</>}</Badge></TableCell><TableCell className="text-center">{isUpdatingSubscriptionId === supplier.uid ? (<Loader2 className="h-5 w-5 animate-spin mx-auto" />) : (<div className="flex flex-col items-center gap-1"><Switch id={`sub-${supplier.uid}`} checked={supplier.subscriptionStatus === 'premium'} onCheckedChange={() => handleToggleSubscriptionStatus(supplier.uid, supplier.subscriptionStatus || 'free')} aria-label={`Cambiar suscripción para ${supplier.displayName}`} /><label htmlFor={`sub-${supplier.uid}`} className="text-xs text-muted-foreground flex items-center gap-1">{supplier.subscriptionStatus === 'premium' ? <><Award className="h-3 w-3 text-yellow-500" />Premium</> : 'Gratuito'}</label></div>)}</TableCell><TableCell className="flex justify-center items-center">{isUpdatingSupplierApprovalId === supplier.uid ? (<Loader2 className="h-5 w-5 animate-spin" />) : (<Switch checked={supplier.isApproved} onCheckedChange={() => handleToggleApprovalStatus(supplier.uid, supplier.isApproved, 'proveedor')} aria-label={`Aprobar a ${supplier.displayName}`}/>)}</TableCell></TableRow>))}</TableBody></Table>) : (<p className="text-muted-foreground text-center py-6">No hay proveedores registrados en la plataforma.</p>)}</CardContent></Card>
 
 
       <Card className="shadow-xl"><CardHeader><CardTitle>Detalle de Ventas Completadas y Comisiones</CardTitle><CardDescription>Lista de todos los servicios y ventas de productos completados que generaron comisión (comisión > 0).</CardDescription></CardHeader><CardContent>{validCompletedRequests && validCompletedRequests.length > 0 ? (<Table><TableHeader><TableRow><TableHead>Servicio/Producto</TableHead><TableHead>Usuario</TableHead><TableHead>Cliente</TableHead><TableHead className="text-right">Monto Cotizado</TableHead><TableHead className="text-right">Tasa Aplicada</TableHead><TableHead className="text-right">Com. Plataforma</TableHead><TableHead className="text-right">G. Usuario</TableHead><TableHead>Estado Comisión</TableHead><TableHead className="text-center">Acción</TableHead><TableHead>Fecha Completado</TableHead></TableRow></TableHeader><TableBody>{validCompletedRequests.map((req) => (<TableRow key={req.id}><TableCell className="font-medium"><Button variant="link" asChild className="p-0 h-auto font-medium"><Link href={`/dashboard/requests/${req.id}`}>{req.serviceName}</Link></Button></TableCell><TableCell>{req.handymanName || 'N/A'}</TableCell><TableCell>{req.contactFullName}</TableCell><TableCell className="text-right">${(req.quotedAmount || 0).toLocaleString('es-CO')}</TableCell><TableCell className="text-right">{((req.platformCommissionRate || 0) * 100).toFixed(0)}%</TableCell><TableCell className="text-right text-red-600">${(req.platformFeeCalculated || 0).toLocaleString('es-CO')}</TableCell><TableCell className="text-right text-green-700">${(req.handymanEarnings || 0).toLocaleString('es-CO')}</TableCell><TableCell><Badge variant={req.commissionPaymentStatus === "Pagada" ? "default" : (req.commissionPaymentStatus === "Pendiente" ? "secondary" : "outline")} className={req.commissionPaymentStatus === "Pagada" ? "bg-green-600 text-white" : (req.commissionPaymentStatus === "Pendiente" ? "bg-orange-500 text-white" : "border-gray-400 text-gray-600")}>{req.commissionPaymentStatus || 'N/A'}</Badge></TableCell><TableCell className="text-center">{req.platformFeeCalculated && req.platformFeeCalculated > 0 && (<Button variant="outline" size="sm" onClick={() => handleToggleCommissionStatus(req.id, req.commissionPaymentStatus)} disabled={isUpdatingCommissionStatusId === req.id} className="w-full max-w-[160px]">{isUpdatingCommissionStatusId === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : req.commissionPaymentStatus === "Pagada" ? <XCircle className="mr-1.5 h-4 w-4"/> : <CheckCircle className="mr-1.5 h-4 w-4"/>}{req.commissionPaymentStatus === "Pagada" ? "Marcar Pendiente" : "Marcar Pagada"}</Button>)}</TableCell><TableCell>{req.updatedAt?.toDate ? format(req.updatedAt.toDate(), 'PP', { locale: es }) : 'N/A'}</TableCell></TableRow>))}</TableBody></Table>) : (<p className="text-muted-foreground text-center py-6">No hay servicios completados que hayan generado comisión todavía.</p>)}</CardContent><CardFooter><p className="text-xs text-muted-foreground">Cálculos basados en tasa vigente y monto cotizado al momento de completar el servicio. El estado de pago de la comisión se actualiza manualmente.</p></CardFooter></Card>

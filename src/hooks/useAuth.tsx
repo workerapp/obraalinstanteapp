@@ -1,3 +1,4 @@
+
 // src/hooks/useAuth.tsx
 "use client";
 
@@ -12,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 export interface AppUser extends FirebaseUser {
   role?: string;
   isApproved?: boolean; // Estado de aprobación para operarios
+  subscriptionStatus?: 'free' | 'premium';
 }
 
 interface AuthContextType {
@@ -64,6 +66,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
               // La verificación del UID de admin tiene prioridad absoluta.
               role: isUserAdminByUid ? 'admin' : userData.role || 'customer',
               isApproved: isUserAdminByUid ? true : userData.isApproved,
+              subscriptionStatus: userData.subscriptionStatus,
             };
           } else {
             // El documento no existe, creamos un estado temporal. Se creará en BD si es necesario.
@@ -133,6 +136,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       if (finalRole === 'handyman' || finalRole === 'supplier') {
         userDocData.isApproved = false;
+        if (finalRole === 'supplier') {
+          userDocData.subscriptionStatus = 'free';
+        }
       }
 
       const userDocRef = doc(firestore, "users", userCredential.user.uid);

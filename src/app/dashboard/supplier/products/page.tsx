@@ -1,3 +1,4 @@
+
 // src/app/dashboard/supplier/products/page.tsx
 "use client";
 
@@ -24,11 +25,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { PlusCircle, Package, ArrowLeft, Loader2, Trash2, Upload, ImageIcon } from 'lucide-react';
+import { PlusCircle, Package, ArrowLeft, Loader2, Trash2, Upload, ImageIcon, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
@@ -59,6 +61,8 @@ const productFormSchema = z.object({
 });
 
 type ProductFormData = z.infer<typeof productFormSchema>;
+
+const FREE_PLAN_PRODUCT_LIMIT = 25;
 
 async function fetchSupplierProducts(supplierUid: string): Promise<Product[]> {
   if (!supplierUid) return [];
@@ -114,6 +118,8 @@ export default function SupplierProductsPage() {
       name: "", category: "", description: "", price: undefined, unit: "", isActive: true, dataAiHint: "",
     },
   });
+
+  const hasReachedLimit = typedUser?.subscriptionStatus !== 'premium' && products.length >= FREE_PLAN_PRODUCT_LIMIT;
 
   useEffect(() => {
     if (authLoading) return;
@@ -175,6 +181,10 @@ export default function SupplierProductsPage() {
 
   const onSubmit: SubmitHandler<ProductFormData> = async (data) => {
     if (!typedUser?.uid) return;
+    if (hasReachedLimit) {
+      toast({ title: "Límite Alcanzado", description: "No puedes añadir más productos con el plan gratuito.", variant: "destructive"});
+      return;
+    }
     setIsSubmitting(true);
     try {
       const existingProduct = editingProductId ? products.find(p => p.id === editingProductId) : null;
@@ -264,51 +274,76 @@ export default function SupplierProductsPage() {
         <Button variant="outline" asChild><Link href="/dashboard/supplier"><ArrowLeft size={16} className="mr-2" />Volver al Panel</Link></Button>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogTrigger asChild><Button onClick={handleNewProductClick}><PlusCircle size={18} className="mr-2" /> Añadir Nuevo Producto</Button></DialogTrigger>
-        <DialogContent className="sm:max-w-[525px]">
-          <DialogHeader><DialogTitle>{editingProductId ? "Editar Producto" : "Añadir Nuevo Producto"}</DialogTitle><DialogDescription>Completa los detalles del producto.</DialogDescription></DialogHeader>
-          <ScrollArea className="max-h-[calc(80vh-160px)] pr-5">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 pr-1">
-                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre del Producto</FormLabel><FormControl><Input placeholder="Ej: Cemento Gris Argos 50kg" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría del Producto</FormLabel> <FormControl><Select onValueChange={field.onChange} value={field.value} disabled={isLoadingCategories}> <SelectTrigger> <SelectValue placeholder={isLoadingCategories ? "Cargando..." : "Selecciona una categoría"} /> </SelectTrigger> <SelectContent> {platformCategories?.map((cat) => ( <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem> ))} </SelectContent> </Select></FormControl> <FormDescription>Selecciona la categoría que mejor describa este producto.</FormDescription> <FormMessage /> </FormItem> )}/>
-                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Describe el producto, sus usos, marca, etc." rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Precio (COP)</FormLabel><FormControl><Input type="number" placeholder="Ej: 28000" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="unit" render={({ field }) => (<FormItem><FormLabel>Unidad</FormLabel><FormControl><Input placeholder="Ej: bulto, galón, unidad" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                </div>
-                <FormItem>
-                  <FormLabel>Imagen del Producto</FormLabel>
-                  <div className="flex items-center gap-4">
-                      <div className="relative h-24 w-24 rounded-md overflow-hidden bg-muted border">
-                      {previewUrl ? (
-                          <Image src={previewUrl} alt="Vista previa" layout="fill" objectFit="contain" />
-                      ) : (
-                          <div className="flex items-center justify-center h-full w-full">
-                            <ImageIcon className="h-10 w-10 text-muted-foreground" />
+      <div>
+        {hasReachedLimit ? (
+          <Alert variant="default" className="border-accent">
+            <AlertTitle className="flex items-center gap-2 font-headline">Límite de Productos Alcanzado</AlertTitle>
+            <AlertDescription className="mt-2">
+              <p>Has alcanzado el límite de {FREE_PLAN_PRODUCT_LIMIT} productos del plan gratuito. Para añadir más artículos a tu catálogo y aumentar tu visibilidad, necesitas una suscripción Premium.</p>
+              <p className="mt-3">Por favor, contacta al administrador para activar tu plan Premium.</p>
+            </AlertDescription>
+            <div className="mt-4">
+              <Button asChild>
+                <Link 
+                  href={`https://wa.me/573017412292?text=${encodeURIComponent(`Hola, soy ${typedUser?.displayName || 'un proveedor'} (ID: ${typedUser?.uid}). Quiero activar mi suscripción Premium para añadir más productos.`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Phone className="mr-2 h-4 w-4" /> Activar Plan Premium
+                </Link>
+              </Button>
+            </div>
+          </Alert>
+        ) : (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={handleNewProductClick}><PlusCircle size={18} className="mr-2" /> Añadir Nuevo Producto ({products.length}/{FREE_PLAN_PRODUCT_LIMIT} en plan gratuito)</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[525px]">
+              <DialogHeader><DialogTitle>{editingProductId ? "Editar Producto" : "Añadir Nuevo Producto"}</DialogTitle><DialogDescription>Completa los detalles del producto.</DialogDescription></DialogHeader>
+              <ScrollArea className="max-h-[calc(80vh-160px)] pr-5">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 pr-1">
+                    <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre del Producto</FormLabel><FormControl><Input placeholder="Ej: Cemento Gris Argos 50kg" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría del Producto</FormLabel> <FormControl><Select onValueChange={field.onChange} value={field.value} disabled={isLoadingCategories}> <SelectTrigger> <SelectValue placeholder={isLoadingCategories ? "Cargando..." : "Selecciona una categoría"} /> </SelectTrigger> <SelectContent> {platformCategories?.map((cat) => ( <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem> ))} </SelectContent> </Select></FormControl> <FormDescription>Selecciona la categoría que mejor describa este producto.</FormDescription> <FormMessage /> </FormItem> )}/>
+                    <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Describe el producto, sus usos, marca, etc." rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Precio (COP)</FormLabel><FormControl><Input type="number" placeholder="Ej: 28000" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="unit" render={({ field }) => (<FormItem><FormLabel>Unidad</FormLabel><FormControl><Input placeholder="Ej: bulto, galón, unidad" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    </div>
+                    <FormItem>
+                      <FormLabel>Imagen del Producto</FormLabel>
+                      <div className="flex items-center gap-4">
+                          <div className="relative h-24 w-24 rounded-md overflow-hidden bg-muted border">
+                          {previewUrl ? (
+                              <Image src={previewUrl} alt="Vista previa" layout="fill" objectFit="contain" />
+                          ) : (
+                              <div className="flex items-center justify-center h-full w-full">
+                                <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                              </div>
+                          )}
                           </div>
-                      )}
+                          <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            {previewUrl ? 'Cambiar' : 'Subir'} Imagen
+                          </Button>
                       </div>
-                      <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
-                      <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting}>
-                        <Upload className="mr-2 h-4 w-4" />
-                        {previewUrl ? 'Cambiar' : 'Subir'} Imagen
-                      </Button>
-                  </div>
-                </FormItem>
-                <FormField control={form.control} name="dataAiHint" render={({ field }) => (<FormItem><FormLabel>Pista para IA (placeholders)</FormLabel><FormControl><Input placeholder="Ej: 'bulto cemento'" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="isActive" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Producto Activo</FormLabel><FormDescription>Visible para los clientes.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
-              </form>
-            </Form>
-          </ScrollArea>
-          <DialogFooter className="pt-4">
-            <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
-            <Button onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting}>{isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</> : "Guardar Producto"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
+                    </FormItem>
+                    <FormField control={form.control} name="dataAiHint" render={({ field }) => (<FormItem><FormLabel>Pista para IA (placeholders)</FormLabel><FormControl><Input placeholder="Ej: 'bulto cemento'" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="isActive" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Producto Activo</FormLabel><FormDescription>Visible para los clientes.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
+                  </form>
+                </Form>
+              </ScrollArea>
+              <DialogFooter className="pt-4">
+                <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
+                <Button onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting}>{isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Guardando...</> : "Guardar Producto"}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer. Esto eliminará permanentemente el producto.</AlertDialogDescription></AlertDialogHeader>
