@@ -82,9 +82,11 @@ export default function Navbar() {
         ? '/dashboard/supplier'
         : '/dashboard/customer';
         
-      if (isSheetContext) { // Mobile logged in
+      if (isSheetContext) { // Mobile logged in - REORGANIZED
         return (
           <>
+            <div className="px-2 py-1 text-sm text-muted-foreground font-medium">{typedUser.displayName || typedUser.email}</div>
+            <Separator className="my-2" />
             <SheetClose asChild>
               <Button asChild variant="ghost" className="w-full justify-start p-2 text-base">
                 <Link href={dashboardLink} className="flex items-center gap-2">
@@ -92,8 +94,6 @@ export default function Navbar() {
                 </Link>
               </Button>
             </SheetClose>
-            <Separator className="my-2" />
-            <div className="px-2 py-1 text-sm text-muted-foreground font-medium">{typedUser.displayName || typedUser.email}</div>
             <SheetClose asChild>
               <Button asChild variant="ghost" className="w-full justify-start p-2 text-base">
                 <Link href="/dashboard/profile" className="flex items-center gap-2">
