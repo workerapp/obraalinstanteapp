@@ -13,7 +13,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Loader2, Send, FileText, Package, Trash2, List } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import { firestore } from '@/firebase/clientApp';
@@ -60,6 +60,7 @@ export default function RequestQuotationPage() {
   const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const {
     items: cartItems,
@@ -85,83 +86,85 @@ export default function RequestQuotationPage() {
     },
   });
 
+  // This is the combined and hopefully final attempt at the useEffect logic.
+  // It handles initialization from multiple async sources.
   useEffect(() => {
-    // This effect is responsible for setting the form's default state
-    // based on context (URL params, cart, logged-in user).
-    // It runs when its dependencies change, ensuring the form is always up-to-date.
+    const serviceId = searchParams.get('serviceId');
+    const serviceName = searchParams.get('serviceName') ? decodeURIComponent(searchParams.get('serviceName')!) : '';
+    const handymanId = searchParams.get('handymanId');
+    const handymanName = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')!) : '';
+    const problem = searchParams.get('problem') ? decodeURIComponent(searchParams.get('problem')!) : '';
     
-    const defaultValues: Partial<FormData> = {};
+    // Create an object with all the potential default values
+    const newValues: Partial<FormData> = {};
 
-    // 1. Populate with authenticated user's data first.
+    // From user (if available)
     if (typedUser) {
-        defaultValues.contactFullName = typedUser.displayName || '';
-        defaultValues.contactEmail = typedUser.email || '';
+        newValues.contactFullName = typedUser.displayName || '';
+        newValues.contactEmail = typedUser.email || '';
     }
 
-    if (isCartMode && cartSupplierId && cartSupplierName) {
-        // 2. Handle Cart Mode. This has priority for description content.
-        defaultValues.handymanId = cartSupplierId;
-        defaultValues.handymanName = cartSupplierName;
-        const problemDesc = `Solicitud de cotización para los siguientes ${cartItems.length} productos:\n` +
+    // From cart (overrides URL params for service/supplier info)
+    if (isCartMode) {
+        newValues.handymanId = cartSupplierId || '';
+        newValues.handymanName = cartSupplierName || '';
+        newValues.serviceId = 'product-quotation';
+        newValues.serviceName = `Cotización de productos de ${cartSupplierName}`;
+        newValues.problemDescription = `Solicitud de cotización para los siguientes ${cartItems.length} productos:\n` +
             cartItems.map(item => `- ${item.name} (Unidad: ${item.unit})`).join('\n');
-        defaultValues.problemDescription = problemDesc;
-        defaultValues.serviceId = 'product-quotation'; // A special ID for cart requests
-        defaultValues.serviceName = `Cotización de productos de ${cartSupplierName}`;
     } else {
-        // 3. Handle standard URL Parameter Mode.
-        const serviceIdFromQuery = searchParams.get('serviceId');
-        const serviceNameFromQuery = searchParams.get('serviceName') ? decodeURIComponent(searchParams.get('serviceName')) : null;
-        const handymanIdFromQuery = searchParams.get('handymanId');
-        const handymanNameFromQuery = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')) : null;
-        const problemFromQuery = searchParams.get('problem');
+        // From URL params
+        if (serviceId) newValues.serviceId = serviceId;
+        if (serviceName) newValues.serviceName = serviceName;
+        if (handymanId) newValues.handymanId = handymanId;
+        if (handymanName) newValues.handymanName = handymanName;
 
-        // Set basic IDs and names from URL
-        if (serviceIdFromQuery) defaultValues.serviceId = serviceIdFromQuery;
-        if (serviceNameFromQuery) defaultValues.serviceName = serviceNameFromQuery;
-        if (handymanIdFromQuery) defaultValues.handymanId = handymanIdFromQuery;
-        if (handymanNameFromQuery) defaultValues.handymanName = handymanNameFromQuery;
-
-        // Set the description with specific logic that depends on other data
-        if (problemFromQuery) {
-          // Case A: Description from AI Assistant (highest priority)
-          defaultValues.problemDescription = decodeURIComponent(problemFromQuery);
-        } else if (serviceIdFromQuery && availableServices && availableServices.length > 0) {
-          // Case B: Description from a selected service (requires services to be loaded)
-          const selectedService = availableServices.find(s => s.id === serviceIdFromQuery);
-          if (selectedService) {
-            defaultValues.problemDescription = 
+        if (problem) {
+            // From AI assistant
+            newValues.problemDescription = problem;
+        } else if (serviceId && availableServices) {
+            // From service template
+            const selectedService = availableServices.find(s => s.id === serviceId);
+            if (selectedService) {
+                newValues.problemDescription = 
 `Solicito una cotización para el servicio de "${selectedService.name}".
 
 ---
 Por favor, describe a continuación los detalles específicos de tu problema o necesidad:
 `;
-          }
+            }
         }
     }
     
-    // Reset the entire form with the collected default values.
-    // This is the single source of truth for initializing the form state.
-    form.reset(defaultValues);
+    // form.reset will update the form with the new values.
+    // This is the recommended way to handle async default values.
+    form.reset(newValues);
 
   }, [
     typedUser, 
     searchParams, 
-    form, 
     isCartMode, 
-    cartItems, 
+    cartItems,
     cartSupplierId, 
-    cartSupplierName,
-    availableServices // CRUCIAL dependency: this effect re-runs when services are loaded.
+    cartSupplierName, 
+    availableServices,
+    form // form is a stable dependency
   ]);
-  
+
   const watchedServiceId = form.watch("serviceId");
 
+  // This effect handles the case where the user changes the service from the dropdown
   useEffect(() => {
-    // This separate effect syncs the service name if the serviceId is changed via the dropdown.
     if (watchedServiceId && availableServices && !isCartMode) {
       const selectedService = availableServices.find(s => s.id === watchedServiceId);
       if (selectedService) {
         form.setValue('serviceName', selectedService.name, { shouldValidate: true });
+        // Also update the description if the user changes the select
+        form.setValue('problemDescription', `Solicito una cotización para el servicio de "${selectedService.name}".
+
+---
+Por favor, describe a continuación los detalles específicos de tu problema o necesidad:
+`);
       }
     }
   }, [watchedServiceId, availableServices, form, isCartMode]);
@@ -196,14 +199,10 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
       toast({
         title: "¡Solicitud Enviada!",
         description: "Hemos recibido tu solicitud y nos pondremos en contacto pronto.",
-        action: <Button variant="outline" size="sm" asChild><Link href="/dashboard/customer">Ver Mis Solicitudes</Link></Button>,
       });
-      form.reset({
-        contactFullName: typedUser?.displayName || "", contactEmail: typedUser?.email || "",
-        contactPhone: "", address: "", problemDescription: "", preferredDate: "",
-        serviceId: "", serviceName: "", handymanId: "", handymanName: "",
-      });
-      if (isCartMode) clearCart(); // Clear the cart after successful submission
+      if (isCartMode) clearCart();
+      // Redirect to the customer dashboard after successful submission
+      router.push('/dashboard/customer');
     } catch (e) {
       console.error("Error al añadir documento: ", e);
       toast({ title: "Error al Enviar Solicitud", description: "Hubo un problema al guardar tu solicitud.", variant: "destructive" });
@@ -309,7 +308,7 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
                   <FormItem> 
                     <FormLabel>{isCartMode ? 'Comentarios Adicionales (Opcional)' : 'Descripción del Problema o Productos'}</FormLabel> 
                     <FormControl> 
-                      <Textarea placeholder='Describe el problema en detalle...' rows={8} className={isCartMode ? "bg-muted" : ""} {...field} readOnly={isCartMode} /> 
+                      <Textarea placeholder='Describe el problema en detalle...' rows={8} className={isCartMode ? "bg-muted" : ""} {...field} readOnly={isCartMode && field.value.startsWith('Solicitud de cotización para')} /> 
                     </FormControl>
                     <FormDescription>{isCartMode ? 'La lista de productos ya se ha generado. Usa este campo para cualquier nota adicional para el proveedor.' : 'Si no seleccionaste un servicio específico, describe tu problema o los productos que necesitas.'}</FormDescription>
                     <FormMessage /> 
