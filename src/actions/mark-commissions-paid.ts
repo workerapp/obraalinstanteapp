@@ -7,13 +7,22 @@ import { revalidatePath } from 'next/cache';
 
 /**
  * Marks all pending commissions for a specific user as "Pagada".
- * This is a server action that simulates a payment process.
+ * THIS IS AN ADMIN-ONLY ACTION. It should be triggered by a trusted
+ * server process or an admin interface after real payment confirmation.
+ * Exposing this directly to end-users (handymen/suppliers) is a security risk.
  * @param userId - The UID of the handyman or supplier whose commissions are to be paid.
  */
 export async function markCommissionsAsPaid(userId: string): Promise<{ success: boolean; error?: string; count?: number }> {
   if (!userId) {
     return { success: false, error: 'User ID is required.' };
   }
+
+  // In a real application, you would add a check here to ensure
+  // the caller of this action is an administrator.
+  // For example:
+  // const { uid } = await getAuth().verifyIdToken(authToken);
+  // if (uid !== 'admin-uid') { return { success: false, error: 'Unauthorized' }; }
+
 
   const requestsRef = collection(firestore, 'quotationRequests');
   // Query for all completed requests by this user that have a pending commission.

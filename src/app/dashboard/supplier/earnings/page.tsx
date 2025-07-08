@@ -14,7 +14,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, AlertTriangle, ArrowLeft, DollarSign, CreditCard, CheckCircle, Wallet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { markCommissionsAsPaid } from '@/actions/mark-commissions-paid';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -79,28 +78,18 @@ export default function SupplierEarningsPage() {
   const handlePayCommissions = async () => {
     if (!typedUser?.uid) return;
     setIsPaying(true);
-    toast({ title: "Procesando Pago...", description: "Estamos actualizando el estado de tus comisiones." });
 
-    const result = await markCommissionsAsPaid(typedUser.uid);
-
-    if (result.success) {
-      toast({ 
-        title: "¡Pago Simulado Exitoso!", 
-        description: `Se marcaron ${result.count || 0} comisiones como pagadas.`,
-        variant: 'default',
-        duration: 5000,
-      });
-      queryClient.invalidateQueries({ queryKey: ['completedSupplierRequests', typedUser.uid] });
-      queryClient.invalidateQueries({ queryKey: ['allCompletedRequestsForAdmin'] });
-    } else {
-      toast({ 
-        title: "Error en el Pago", 
-        description: result.error || "No se pudo completar el pago simulado.", 
-        variant: "destructive" 
-      });
-    }
-
-    setIsPaying(false);
+    // This is now just a simulation. It does NOT change the database.
+    toast({ 
+      title: "Simulación de Pago", 
+      description: "En una versión futura, esto te conectará a una pasarela de pagos. Por ahora, el administrador debe confirmar el pago manualmente.",
+      duration: 7000,
+    });
+    
+    // Simulate a network delay for better UX
+    setTimeout(() => {
+      setIsPaying(false);
+    }, 2000);
   };
   
   const getCommissionStatusColor = (status?: "Pendiente" | "Pagada"): string => {
@@ -109,7 +98,7 @@ export default function SupplierEarningsPage() {
     return "border-gray-400 text-gray-600";
   };
   
-  if (isLoading || authLoading || !typedUser) {
+  if (isLoading || authLoading) {
      return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
   }
   
