@@ -51,9 +51,6 @@ export default function HandymanEarningsPage() {
   const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
   const router = useRouter();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isPaying, setIsPaying] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !typedUser) {
@@ -74,23 +71,6 @@ export default function HandymanEarningsPage() {
   const totalCommissionPending = completedRequests
     ?.filter(req => req.commissionPaymentStatus === 'Pendiente')
     .reduce((sum, req) => sum + (req.platformFeeCalculated || 0), 0) || 0;
-
-  const handlePayCommissions = async () => {
-    if (!typedUser?.uid) return;
-    setIsPaying(true);
-
-    // This is now just a simulation. It does NOT change the database.
-    toast({ 
-      title: "Simulación de Pago", 
-      description: "En una versión futura, esto te conectará a una pasarela de pagos. Por ahora, el administrador debe confirmar el pago manualmente.",
-      duration: 7000,
-    });
-    
-    // Simulate a network delay for better UX
-    setTimeout(() => {
-      setIsPaying(false);
-    }, 2000);
-  };
   
   const getCommissionStatusColor = (status?: "Pendiente" | "Pagada"): string => {
     if (status === "Pagada") return "bg-green-600 text-white";
@@ -142,33 +122,8 @@ export default function HandymanEarningsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Liquidación de Comisiones</CardTitle>
-          <CardDescription>
-            Aquí puedes liquidar todas tus comisiones pendientes. En el futuro, podrás conectar una pasarela de pagos.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {totalCommissionPending > 0 ? (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
-              <div className="text-center sm:text-left">
-                  <p className="font-semibold">Monto total a pagar:</p>
-                  <p className="text-2xl font-bold text-primary">${totalCommissionPending.toLocaleString('es-CO')}</p>
-              </div>
-              <Button size="lg" onClick={handlePayCommissions} disabled={isPaying}>
-                {isPaying ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Wallet className="mr-2 h-5 w-5" />}
-                {isPaying ? 'Procesando...' : 'Pagar Comisiones Pendientes (Simulación)'}
-              </Button>
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-center py-4">¡No tienes comisiones pendientes por pagar!</p>
-          )}
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
           <CardTitle>Historial de Servicios Completados</CardTitle>
-          <CardDescription>Detalle de todos tus servicios finalizados que han generado ingresos.</CardDescription>
+          <CardDescription>Detalle de todos tus servicios finalizados que han generado ingresos. Para pagar comisiones pendientes, contacta al administrador.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
