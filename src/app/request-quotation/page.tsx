@@ -71,6 +71,11 @@ export default function RequestQuotationPage() {
   } = useQuotationCart();
 
   const isCartMode = getCartCount() > 0;
+  
+  // Get context from URL params to control the UI
+  const serviceNameFromQuery = searchParams.get('serviceName') ? decodeURIComponent(searchParams.get('serviceName')!) : null;
+  const handymanNameFromQuery = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')!) : null;
+
 
   const { data: availableServices, isLoading: servicesLoading } = useQuery<Service[], Error>({
     queryKey: ['platformServices'],
@@ -104,20 +109,18 @@ export default function RequestQuotationPage() {
     } else {
         // URL PARAMS MODE
         const serviceIdFromQuery = searchParams.get('serviceId');
-        const serviceNameFromQuery = searchParams.get('serviceName');
         const handymanIdFromQuery = searchParams.get('handymanId');
-        const handymanNameFromQuery = searchParams.get('handymanName');
         const problemFromQuery = searchParams.get('problem');
 
         if (problemFromQuery) defaultValues.problemDescription = decodeURIComponent(problemFromQuery);
         if (serviceIdFromQuery) defaultValues.serviceId = serviceIdFromQuery;
-        if (serviceNameFromQuery) defaultValues.serviceName = decodeURIComponent(serviceNameFromQuery);
+        if (serviceNameFromQuery) defaultValues.serviceName = serviceNameFromQuery;
         if (handymanIdFromQuery) defaultValues.handymanId = handymanIdFromQuery;
-        if (handymanNameFromQuery) defaultValues.handymanName = decodeURIComponent(handymanNameFromQuery);
+        if (handymanNameFromQuery) defaultValues.handymanName = handymanNameFromQuery;
     }
     
     form.reset(defaultValues);
-  }, [typedUser, searchParams, form, isCartMode, cartItems, cartSupplierId, cartSupplierName]);
+  }, [typedUser, searchParams, form, isCartMode, cartItems, cartSupplierId, cartSupplierName, serviceNameFromQuery, handymanNameFromQuery]);
   
   const watchedServiceId = form.watch("serviceId");
 
@@ -170,22 +173,29 @@ export default function RequestQuotationPage() {
     }
   };
   
+  const hasContext = isCartMode || !!serviceNameFromQuery;
+
   return (
     <div className="max-w-2xl mx-auto py-8">
       <Card className="shadow-xl">
         <CardHeader className="text-center">
           <FileText className="mx-auto h-16 w-16 text-accent mb-4" />
-          <CardTitle className="text-3xl font-headline">Solicitar una Cotización</CardTitle>
+          <CardTitle className="text-3xl font-headline">
+             {hasContext ? 'Completa tu Solicitud' : 'Solicitar una Cotización'}
+          </CardTitle>
           <CardDescription>
-            {isCartMode ? `Estás a punto de solicitar una cotización para ${cartItems.length} productos de ${cartSupplierName}.` 
-            : `Completa el formulario para obtener una cotización de servicio.`}
+            {isCartMode 
+              ? `Estás a punto de solicitar una cotización para ${cartItems.length} productos.` 
+              : serviceNameFromQuery 
+              ? `Estás solicitando el servicio de "${serviceNameFromQuery}".`
+              : `Completa el formulario para obtener una cotización de servicio.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isCartMode && (
             <Card className="mb-6 bg-muted">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><List className="h-5 w-5"/> Tu Lista de Cotización</CardTitle>
+                    <CardTitle className="flex items-center gap-2"><List className="h-5 w-5"/> Tu Lista de Cotización para {cartSupplierName}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <ul className="space-y-2">
@@ -208,6 +218,24 @@ export default function RequestQuotationPage() {
             </Card>
           )}
 
+          {/* New context box */}
+          {serviceNameFromQuery && !isCartMode && (
+             <Card className="mb-6 bg-accent/10 border-accent/20">
+                <CardHeader>
+                    <CardTitle className="text-xl text-accent">Detalles de tu Solicitud</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-1 text-sm">
+                        <p><strong>Servicio:</strong> {serviceNameFromQuery}</p>
+                        {handymanNameFromQuery && (
+                            <p><strong>Operario seleccionado:</strong> {handymanNameFromQuery}</p>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+          )}
+
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Form fields */}
@@ -218,7 +246,7 @@ export default function RequestQuotationPage() {
               <FormField control={form.control} name="contactPhone" render={({ field }) => ( <FormItem> <FormLabel>Número de Teléfono (Opcional)</FormLabel> <FormControl><Input type="tel" placeholder="Tu número de teléfono" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección (para entrega o servicio)</FormLabel> <FormControl><Input placeholder="Calle 123, Ciudad, Provincia" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               
-              {!isCartMode && (
+              {!hasContext && (
                  <FormField control={form.control} name="serviceId" render={({ field }) => ( 
                       <FormItem> 
                         <FormLabel>Servicio Requerido</FormLabel> 
@@ -240,11 +268,11 @@ export default function RequestQuotationPage() {
               
               <FormField control={form.control} name="problemDescription" render={({ field }) => ( 
                   <FormItem> 
-                    <FormLabel>{isCartMode ? 'Lista de Productos (auto-generada)' : 'Descripción del Problema o Productos'}</FormLabel> 
+                    <FormLabel>{isCartMode ? 'Comentarios Adicionales (Opcional)' : 'Descripción del Problema o Productos'}</FormLabel> 
                     <FormControl> 
-                      <Textarea placeholder='Describe el problema en detalle...' rows={5} className="resize-none" {...field} readOnly={isCartMode} /> 
+                      <Textarea placeholder='Describe el problema en detalle...' rows={5} className={isCartMode ? "bg-muted" : ""} {...field} readOnly={isCartMode} /> 
                     </FormControl>
-                    <FormDescription>{isCartMode ? 'Esta lista se genera a partir de los productos que seleccionaste. Si quieres cambiarla, usa los botones de arriba.' : 'Si no seleccionaste un servicio específico, describe tu problema o los productos que necesitas.'}</FormDescription>
+                    <FormDescription>{isCartMode ? 'La lista de productos ya se ha generado. Usa este campo para cualquier nota adicional para el proveedor.' : 'Si no seleccionaste un servicio específico, describe tu problema o los productos que necesitas.'}</FormDescription>
                     <FormMessage /> 
                   </FormItem> 
               )}/>
