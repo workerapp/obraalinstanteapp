@@ -72,7 +72,6 @@ export default function RequestQuotationPage() {
 
   const isCartMode = getCartCount() > 0;
   
-  // Get context from URL params to control the UI
   const serviceNameFromQuery = searchParams.get('serviceName') ? decodeURIComponent(searchParams.get('serviceName')!) : null;
   const handymanNameFromQuery = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')!) : null;
 
@@ -112,15 +111,43 @@ export default function RequestQuotationPage() {
         const handymanIdFromQuery = searchParams.get('handymanId');
         const problemFromQuery = searchParams.get('problem');
 
-        if (problemFromQuery) defaultValues.problemDescription = decodeURIComponent(problemFromQuery);
+        // Set IDs and names from query
         if (serviceIdFromQuery) defaultValues.serviceId = serviceIdFromQuery;
         if (serviceNameFromQuery) defaultValues.serviceName = serviceNameFromQuery;
         if (handymanIdFromQuery) defaultValues.handymanId = handymanIdFromQuery;
         if (handymanNameFromQuery) defaultValues.handymanName = handymanNameFromQuery;
+
+        // Set description
+        if (problemFromQuery) {
+          // If coming from AI assistant, use that description.
+          defaultValues.problemDescription = decodeURIComponent(problemFromQuery);
+        } else if (serviceIdFromQuery && availableServices && availableServices.length > 0) {
+          // If coming from a service card, pre-fill description.
+          const selectedService = availableServices.find(s => s.id === serviceIdFromQuery);
+          if (selectedService) {
+            defaultValues.problemDescription = 
+`Solicito una cotización para el servicio de "${selectedService.name}".
+
+---
+Por favor, describe a continuación los detalles específicos de tu problema o necesidad:
+`;
+          }
+        }
     }
     
     form.reset(defaultValues);
-  }, [typedUser, searchParams, form, isCartMode, cartItems, cartSupplierId, cartSupplierName, serviceNameFromQuery, handymanNameFromQuery]);
+  }, [
+    typedUser, 
+    searchParams, 
+    form, 
+    isCartMode, 
+    cartItems, 
+    cartSupplierId, 
+    cartSupplierName, 
+    serviceNameFromQuery, 
+    handymanNameFromQuery,
+    availableServices
+  ]);
   
   const watchedServiceId = form.watch("serviceId");
 
@@ -270,7 +297,7 @@ export default function RequestQuotationPage() {
                   <FormItem> 
                     <FormLabel>{isCartMode ? 'Comentarios Adicionales (Opcional)' : 'Descripción del Problema o Productos'}</FormLabel> 
                     <FormControl> 
-                      <Textarea placeholder='Describe el problema en detalle...' rows={5} className={isCartMode ? "bg-muted" : ""} {...field} readOnly={isCartMode} /> 
+                      <Textarea placeholder='Describe el problema en detalle...' rows={8} className={isCartMode ? "bg-muted" : ""} {...field} readOnly={isCartMode} /> 
                     </FormControl>
                     <FormDescription>{isCartMode ? 'La lista de productos ya se ha generado. Usa este campo para cualquier nota adicional para el proveedor.' : 'Si no seleccionaste un servicio específico, describe tu problema o los productos que necesitas.'}</FormDescription>
                     <FormMessage /> 
