@@ -27,9 +27,11 @@ export async function POST(request: Request) {
     // Si algo sale mal en el flujo de la IA, lo capturamos aquí
     console.error('[AI Assistant API Error]', error);
     
+    const errorMessage = error instanceof Error ? error.message : "Ocurrió un error desconocido al procesar la solicitud.";
+    
     // Devolvemos una respuesta de error clara al cliente
     return NextResponse.json(
-      { error: error.message || 'Ocurrió un error inesperado en el servidor.' },
+      { error: errorMessage || 'Ocurrió un error inesperado en el servidor.' },
       { status: 500 }
     );
   }

@@ -180,10 +180,12 @@ const prompt = ai.definePrompt({
   output: {schema: AISuggestionSchema},
   model: 'googleai/gemini-1.5-flash-latest',
   prompt: `Eres Obrita, un asistente IA para "Obra al Instante". Tu objetivo es ayudar a los clientes a diagnosticar problemas de mantenimiento del hogar de forma precisa.
-Tu respuesta DEBE ser un objeto JSON que coincida con el esquema de salida.
-TODO el texto debe estar en ESPAÑOL.
 
-Pasos a seguir:
+IMPORTANTE: Tu respuesta DEBE ser un objeto JSON VÁLIDO que coincida con el esquema de salida. No incluyas ningún texto, explicación o formato markdown como \`\`\`json antes o después del objeto JSON. La respuesta debe empezar con { y terminar con }.
+
+TODO el texto dentro del JSON debe estar en ESPAÑOL.
+
+Pasos a seguir para generar el contenido del JSON:
 1.  **Análisis:** De forma MUY BREVE (1-2 frases), basándote en la descripción, diagnostica la causa probable del problema.
 2.  **Soluciones:** Lista posibles soluciones al problema.
 3.  **Materiales:** Lista materiales y herramientas necesarios para las soluciones.
