@@ -8,6 +8,7 @@ import Navbar from '@/components/layout/navbar';
 import Footer from '@/components/layout/footer';
 import Providers from '@/components/layout/providers';
 import { AuthProvider } from '@/hooks/useAuth'; // Import AuthProvider
+import { QuotationCartBar } from '@/components/cart/quotation-cart-bar';
 
 // Configure PT Sans font for body text
 const ptSans = PT_Sans({
@@ -45,9 +46,10 @@ export default function RootLayout({
         <Providers> {/* QueryClientProvider is here */}
           <AuthProvider> {/* AuthProvider wraps Navbar and children */}
             <Navbar />
-            <main className="flex-grow container mx-auto px-4 py-8">
+            <main className="flex-grow container mx-auto px-4 py-8 mb-24">
               {children}
             </main>
+            <QuotationCartBar />
             <Footer />
             <Toaster />
           </AuthProvider>

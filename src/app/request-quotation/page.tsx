@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Send, FileText, Package } from 'lucide-react';
+import { Loader2, Send, FileText, Package, Trash2, List } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
@@ -20,6 +20,7 @@ import { firestore } from '@/firebase/clientApp';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useQuery } from '@tanstack/react-query';
 import type { Service } from '@/types/service';
+import { useQuotationCart } from '@/hooks/useQuotationCart';
 
 const formSchema = z.object({
   contactFullName: z.string().min(2, "El nombre completo es requerido."),
@@ -49,7 +50,6 @@ const fetchActiveServices = async (): Promise<Service[]> => {
   querySnapshot.forEach((doc) => {
     services.push({ id: doc.id, ...doc.data() } as Service);
   });
-  // Sort client-side to avoid needing a composite index
   services.sort((a, b) => a.name.localeCompare(b.name));
   return services;
 };
@@ -61,30 +61,27 @@ export default function RequestQuotationPage() {
   const typedUser = user as AppUser | null;
   const searchParams = useSearchParams();
 
+  const {
+    items: cartItems,
+    supplierId: cartSupplierId,
+    supplierName: cartSupplierName,
+    removeItem,
+    clearCart,
+    getCartCount
+  } = useQuotationCart();
+
+  const isCartMode = getCartCount() > 0;
+
   const { data: availableServices, isLoading: servicesLoading } = useQuery<Service[], Error>({
     queryKey: ['platformServices'],
     queryFn: fetchActiveServices,
   });
-
-  const serviceIdFromQuery = searchParams.get('serviceId');
-  const serviceNameFromQuery = searchParams.get('serviceName');
-  const handymanIdFromQuery = searchParams.get('handymanId');
-  const handymanNameFromQuery = searchParams.get('handymanName');
-  const problemFromQuery = searchParams.get('problem');
-
+  
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      contactFullName: "",
-      contactEmail: "",
-      contactPhone: "",
-      address: "",
-      serviceId: "",
-      serviceName: "",
-      problemDescription: "",
-      preferredDate: "",
-      handymanId: "",
-      handymanName: "",
+      contactFullName: "", contactEmail: "", contactPhone: "", address: "", serviceId: "",
+      serviceName: "", problemDescription: "", preferredDate: "", handymanId: "", handymanName: "",
     },
   });
 
@@ -94,68 +91,62 @@ export default function RequestQuotationPage() {
         defaultValues.contactFullName = typedUser.displayName || '';
         defaultValues.contactEmail = typedUser.email || '';
     }
-    if (problemFromQuery) defaultValues.problemDescription = decodeURIComponent(problemFromQuery);
-    if (serviceIdFromQuery) defaultValues.serviceId = serviceIdFromQuery;
-    if (serviceNameFromQuery) defaultValues.serviceName = decodeURIComponent(serviceNameFromQuery);
-    if (handymanIdFromQuery) defaultValues.handymanId = handymanIdFromQuery;
-    if (handymanNameFromQuery) defaultValues.handymanName = decodeURIComponent(handymanNameFromQuery);
+
+    if (isCartMode && cartSupplierId && cartSupplierName) {
+        // CART MODE
+        defaultValues.handymanId = cartSupplierId;
+        defaultValues.handymanName = cartSupplierName;
+        const problemDesc = `Solicitud de cotización para los siguientes ${cartItems.length} productos:\n` +
+            cartItems.map(item => `- ${item.name} (Unidad: ${item.unit})`).join('\n');
+        defaultValues.problemDescription = problemDesc;
+        defaultValues.serviceId = 'product-quotation';
+        defaultValues.serviceName = `Cotización de productos de ${cartSupplierName}`;
+    } else {
+        // URL PARAMS MODE
+        const serviceIdFromQuery = searchParams.get('serviceId');
+        const serviceNameFromQuery = searchParams.get('serviceName');
+        const handymanIdFromQuery = searchParams.get('handymanId');
+        const handymanNameFromQuery = searchParams.get('handymanName');
+        const problemFromQuery = searchParams.get('problem');
+
+        if (problemFromQuery) defaultValues.problemDescription = decodeURIComponent(problemFromQuery);
+        if (serviceIdFromQuery) defaultValues.serviceId = serviceIdFromQuery;
+        if (serviceNameFromQuery) defaultValues.serviceName = decodeURIComponent(serviceNameFromQuery);
+        if (handymanIdFromQuery) defaultValues.handymanId = handymanIdFromQuery;
+        if (handymanNameFromQuery) defaultValues.handymanName = decodeURIComponent(handymanNameFromQuery);
+    }
     
     form.reset(defaultValues);
-  }, [typedUser, searchParams, form, problemFromQuery, serviceIdFromQuery, serviceNameFromQuery, handymanIdFromQuery, handymanNameFromQuery]);
+  }, [typedUser, searchParams, form, isCartMode, cartItems, cartSupplierId, cartSupplierName]);
   
   const watchedServiceId = form.watch("serviceId");
 
   useEffect(() => {
-    if (watchedServiceId && availableServices) {
+    if (watchedServiceId && availableServices && !isCartMode) {
       const selectedService = availableServices.find(s => s.id === watchedServiceId);
       if (selectedService) {
         form.setValue('serviceName', selectedService.name, { shouldValidate: true });
       }
     }
-  }, [watchedServiceId, availableServices, form]);
+  }, [watchedServiceId, availableServices, form, isCartMode]);
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     setIsSubmitting(true);
-
     if (!typedUser?.uid) {
       toast({ title: "Usuario no Autenticado", description: "Debes iniciar sesión para enviar una solicitud.", variant: "destructive" });
       setIsSubmitting(false);
       return;
     }
-    
-    let finalServiceName = data.serviceName;
-    if (data.serviceId && availableServices) {
-        finalServiceName = availableServices.find(s => s.id === data.serviceId)?.name || 'Servicio personalizado';
-    } else if (data.handymanId) {
-        finalServiceName = 'Cotización de Productos';
-    } else if (!data.serviceId && data.problemDescription) {
-        finalServiceName = 'Consulta General (Problema Detallado)';
-    }
-
-    if (!finalServiceName) {
-        toast({ title: "Error de Servicio", description: "Por favor, selecciona un servicio o describe tu problema.", variant: "destructive" });
-        setIsSubmitting(false);
-        return;
-    }
 
     const quotationData = {
       userId: typedUser.uid,
-      userFullName: typedUser.displayName || null,
-      userEmail: typedUser.email || null,
-      contactFullName: data.contactFullName,
-      contactEmail: data.contactEmail,
-      contactPhone: data.contactPhone || null,
-      address: data.address,
-      serviceId: data.serviceId || (data.handymanId ? 'product-quotation' : 'general-consultation'),
-      serviceName: finalServiceName,
-      problemDescription: data.problemDescription,
-      preferredDate: data.preferredDate || null,
-      imageUrl: null, // Images disabled for now
-      handymanId: data.handymanId || null,
-      handymanName: data.handymanName || null,
-      status: "Enviada" as const,
-      requestedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      userFullName: typedUser.displayName || null, userEmail: typedUser.email || null,
+      contactFullName: data.contactFullName, contactEmail: data.contactEmail,
+      contactPhone: data.contactPhone || null, address: data.address,
+      serviceId: data.serviceId, serviceName: data.serviceName,
+      problemDescription: data.problemDescription, preferredDate: data.preferredDate || null,
+      imageUrl: null, handymanId: data.handymanId || null, handymanName: data.handymanName || null,
+      status: "Enviada" as const, requestedAt: serverTimestamp(), updatedAt: serverTimestamp(),
     };
 
     try {
@@ -166,11 +157,11 @@ export default function RequestQuotationPage() {
         action: <Button variant="outline" size="sm" asChild><Link href="/dashboard/customer">Ver Mis Solicitudes</Link></Button>,
       });
       form.reset({
-        contactFullName: typedUser?.displayName || "",
-        contactEmail: typedUser?.email || "",
-        contactPhone: "", address: "", problemDescription: "",
-        preferredDate: "", serviceId: "", serviceName: "", handymanId: "", handymanName: "",
+        contactFullName: typedUser?.displayName || "", contactEmail: typedUser?.email || "",
+        contactPhone: "", address: "", problemDescription: "", preferredDate: "",
+        serviceId: "", serviceName: "", handymanId: "", handymanName: "",
       });
+      if (isCartMode) clearCart(); // Clear the cart after successful submission
     } catch (e) {
       console.error("Error al añadir documento: ", e);
       toast({ title: "Error al Enviar Solicitud", description: "Hubo un problema al guardar tu solicitud.", variant: "destructive" });
@@ -178,14 +169,7 @@ export default function RequestQuotationPage() {
       setIsSubmitting(false);
     }
   };
-
-  const displayServiceNameFromState = form.watch("serviceName");
-  const displayServiceName = serviceNameFromQuery ? decodeURIComponent(serviceNameFromQuery) : (displayServiceNameFromState || null);
-  const displayHandymanName = handymanNameFromQuery ? decodeURIComponent(handymanNameFromQuery) : (form.watch("handymanName") || null);
-  const isSupplierQuote = searchParams.has('handymanId') && !searchParams.has('serviceId');
-  const hasSpecificProvider = !!handymanIdFromQuery;
-
-
+  
   return (
     <div className="max-w-2xl mx-auto py-8">
       <Card className="shadow-xl">
@@ -193,107 +177,86 @@ export default function RequestQuotationPage() {
           <FileText className="mx-auto h-16 w-16 text-accent mb-4" />
           <CardTitle className="text-3xl font-headline">Solicitar una Cotización</CardTitle>
           <CardDescription>
-            {isSupplierQuote ? `Completa el formulario para solicitar una cotización de productos a ${displayHandymanName}.` 
+            {isCartMode ? `Estás a punto de solicitar una cotización para ${cartItems.length} productos de ${cartSupplierName}.` 
             : `Completa el formulario para obtener una cotización de servicio.`}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {isCartMode && (
+            <Card className="mb-6 bg-muted">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><List className="h-5 w-5"/> Tu Lista de Cotización</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <ul className="space-y-2">
+                        {cartItems.map(item => (
+                            <li key={item.id} className="flex items-center justify-between p-2 bg-background rounded-md border">
+                                <div>
+                                <p className="font-medium">{item.name}</p>
+                                <p className="text-sm text-muted-foreground">${(item.price || 0).toLocaleString('es-CO')} / {item.unit}</p>
+                                </div>
+                                <Button variant="ghost" size="icon" onClick={() => removeItem(item.id!)} aria-label={`Quitar ${item.name} de la lista`}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                            </li>
+                        ))}
+                    </ul>
+                </CardContent>
+                <CardFooter>
+                    <Button variant="outline" onClick={clearCart}>Vaciar Lista</Button>
+                </CardFooter>
+            </Card>
+          )}
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Form fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField control={form.control} name="contactFullName" render={({ field }) => ( <FormItem> <FormLabel>Nombre Completo</FormLabel> <FormControl><Input placeholder="Tu nombre completo" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="contactEmail" render={({ field }) => ( <FormItem> <FormLabel>Correo Electrónico</FormLabel> <FormControl><Input type="email" placeholder="tu@ejemplo.com" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               </div>
               <FormField control={form.control} name="contactPhone" render={({ field }) => ( <FormItem> <FormLabel>Número de Teléfono (Opcional)</FormLabel> <FormControl><Input type="tel" placeholder="Tu número de teléfono" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
               <FormField control={form.control} name="address" render={({ field }) => ( <FormItem> <FormLabel>Dirección (para entrega o servicio)</FormLabel> <FormControl><Input placeholder="Calle 123, Ciudad, Provincia" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-
-              {hasSpecificProvider ? (
-                <FormItem>
-                  <FormLabel>Solicitando a</FormLabel>
-                  <div className="flex items-center gap-2 p-3 rounded-md border bg-muted">
-                    <Package className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-sm text-foreground">{displayHandymanName || 'Destinatario Específico'}</span>
-                  </div>
-                  <FormDescription>
-                    {isSupplierQuote
-                      ? `Solicitando cotización de productos a ${displayHandymanName}.`
-                      : `Solicitando cotización para "${displayServiceName}" de ${displayHandymanName}.`
-                    }
-                  </FormDescription>
-                </FormItem>
-              ) : serviceIdFromQuery ? (
-                 <FormItem>
-                    <FormLabel>Servicio Seleccionado</FormLabel>
-                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        <span className="text-sm text-foreground">{displayServiceName || 'Servicio General'}</span>
-                    </div>
-                    <FormDescription>
-                        Tu solicitud será enviada como una consulta pública para el servicio de "{displayServiceName}". Los operarios y proveedores disponibles podrán responder.
-                    </FormDescription>
-                </FormItem>
-              ) : problemFromQuery ? (
-                 <FormItem>
-                    <FormLabel>Servicio Requerido</FormLabel>
-                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        <span className="text-sm text-foreground">Consulta General (basada en tu descripción)</span>
-                    </div>
-                    <FormDescription>Tu problema descrito a la IA se usará como base para la cotización.</FormDescription>
-                 </FormItem>
-              ) : (
-                  <FormField 
-                    control={form.control} 
-                    name="serviceId" 
-                    render={({ field }) => ( 
+              
+              {!isCartMode && (
+                 <FormField control={form.control} name="serviceId" render={({ field }) => ( 
                       <FormItem> 
                         <FormLabel>Servicio Requerido</FormLabel> 
                         <Select onValueChange={field.onChange} value={field.value || ""} disabled={servicesLoading}> 
                           <FormControl> 
                             <SelectTrigger> 
-                              <SelectValue placeholder={servicesLoading ? "Cargando servicios..." : "Selecciona un servicio"} /> 
+                              <SelectValue placeholder={servicesLoading ? "Cargando servicios..." : "Selecciona un servicio o describe tu problema abajo"} /> 
                             </SelectTrigger> 
                           </FormControl> 
                           <SelectContent> 
-                            {availableServices?.map(service => ( 
-                              <SelectItem key={service.id} value={service.id!}> 
-                                {service.name} 
-                              </SelectItem> 
-                            ))} 
+                            {availableServices?.map(service => ( <SelectItem key={service.id} value={service.id!}> {service.name} </SelectItem> ))} 
                           </SelectContent> 
                         </Select> 
                         <FormMessage /> 
                       </FormItem> 
-                    )}
-                  />
+                  )}
+                />
               )}
-
-              <FormField 
-                control={form.control} 
-                name="problemDescription" 
-                render={({ field }) => ( 
+              
+              <FormField control={form.control} name="problemDescription" render={({ field }) => ( 
                   <FormItem> 
-                    <FormLabel>{isSupplierQuote ? 'Productos Requeridos' : 'Descripción del Problema'}</FormLabel> 
+                    <FormLabel>{isCartMode ? 'Lista de Productos (auto-generada)' : 'Descripción del Problema o Productos'}</FormLabel> 
                     <FormControl> 
-                      <Textarea placeholder={isSupplierQuote ? 'Ej: 10 bultos de cemento, 5 galones de pintura blanca...' : 'Describe el problema en detalle...'} rows={5} className="resize-none" {...field}/> 
-                    </FormControl> 
+                      <Textarea placeholder='Describe el problema en detalle...' rows={5} className="resize-none" {...field} readOnly={isCartMode} /> 
+                    </FormControl>
+                    <FormDescription>{isCartMode ? 'Esta lista se genera a partir de los productos que seleccionaste. Si quieres cambiarla, usa los botones de arriba.' : 'Si no seleccionaste un servicio específico, describe tu problema o los productos que necesitas.'}</FormDescription>
                     <FormMessage /> 
                   </FormItem> 
-                )}
-              />
-
-              <FormField 
-                control={form.control} 
-                name="preferredDate" 
-                render={({ field }) => ( 
+              )}/>
+              
+              <FormField control={form.control} name="preferredDate" render={({ field }) => ( 
                   <FormItem> 
                     <FormLabel>Fecha Preferida (Opcional)</FormLabel> 
                     <FormControl><Input type="date" {...field} min={new Date().toISOString().split("T")[0]}/></FormControl> 
                     <FormDescription>Indícanos si tienes una fecha preferida para el servicio o entrega.</FormDescription> 
                     <FormMessage /> 
                   </FormItem> 
-                )}
-              />
+              )}/>
 
               <Button type="submit" disabled={isSubmitting || authLoading} className="w-full">
                 {isSubmitting ? ( <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando Solicitud...</> ) : ( <><Send className="mr-2 h-4 w-4" /> Enviar Solicitud</> )}

@@ -4,10 +4,11 @@
 import type { Product } from '@/types/product';
 import type { Supplier } from '@/types/supplier';
 import Image from 'next/image';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageSquare } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
+import { useQuotationCart } from '@/hooks/useQuotationCart';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProductCardProps {
   product: Product;
@@ -15,8 +16,17 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, supplier }: ProductCardProps) {
-  // Pre-formats a descriptive message for the quotation request
-  const problemDescription = `Estoy interesado/a en cotizar el siguiente producto: ${product.name} (ID: ${product.id}). Por favor, proporcionar detalles y precio.`;
+  const { addItem } = useQuotationCart();
+  const { toast } = useToast();
+
+  const handleAddToCart = () => {
+    if (!product.id) return;
+    addItem(product, supplier.id, supplier.companyName);
+    toast({
+        title: "Producto Añadido",
+        description: `"${product.name}" fue añadido a tu lista.`,
+    });
+  };
   
   return (
     <Card className="flex flex-col h-full bg-background hover:shadow-md transition-shadow">
@@ -46,10 +56,8 @@ export default function ProductCard({ product, supplier }: ProductCardProps) {
         </p>
       </CardContent>
       <CardFooter>
-        <Button asChild size="sm" className="w-full">
-          <Link href={`/request-quotation?handymanId=${supplier.id}&handymanName=${encodeURIComponent(supplier.companyName)}&problem=${encodeURIComponent(problemDescription)}`}>
-            <MessageSquare size={16} className="mr-2"/> Solicitar Cotización
-          </Link>
+        <Button size="sm" className="w-full" onClick={handleAddToCart}>
+            <PlusCircle size={16} className="mr-2"/> Añadir a la Lista
         </Button>
       </CardFooter>
     </Card>
