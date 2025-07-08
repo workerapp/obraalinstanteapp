@@ -104,7 +104,7 @@ async function fetchActivePlatformServices(): Promise<Service[]> {
 
 export default function HandymanServicesPage() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -290,7 +290,11 @@ export default function HandymanServicesPage() {
     }
   };
   
-  if (!typedUser && !isLoading) {
+  if (authLoading) {
+    return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+  }
+  
+  if (!typedUser || typedUser.role !== 'handyman') {
      return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
