@@ -1,4 +1,3 @@
-
 // src/app/about/page.tsx
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { Target, Lightbulb, Users, HeartHandshake, ArrowLeft } from 'lucide-reac
 export default function AboutPage() {
   return (
     <div className="max-w-4xl mx-auto py-8 space-y-12">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl sm:text-4xl font-headline font-bold text-primary">Sobre Obra al Instante</h1>
         <Button variant="outline" asChild>
           <Link href="/"><ArrowLeft size={16} className="mr-2" />Volver al Inicio</Link>
@@ -102,11 +101,11 @@ export default function AboutPage() {
       
       <div className="text-center pt-8">
         <h2 className="text-2xl font-semibold mb-4">¿Listo para unirte?</h2>
-        <div className="flex justify-center gap-4">
-          <Button size="lg" asChild>
+        <div className="flex flex-col sm:flex-row items-stretch justify-center gap-4">
+          <Button size="lg" asChild className="w-full sm:w-auto">
             <Link href="/sign-up?role=customer">Soy Cliente</Link>
           </Button>
-          <Button size="lg" variant="secondary" asChild>
+          <Button size="lg" variant="secondary" asChild className="w-full sm:w-auto">
             <Link href="/sign-up?role=handyman">Soy Operario o Proveedor</Link>
           </Button>
         </div>

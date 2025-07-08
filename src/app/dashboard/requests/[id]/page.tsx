@@ -264,9 +264,9 @@ export default function RequestDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto py-8 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-3xl font-headline font-bold text-primary">Detalles de la Solicitud</h2>
-        <Button variant="outline" onClick={() => router.back()} className="mb-4">
+        <Button variant="outline" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Volver al Panel
         </Button>
       </div>
@@ -468,13 +468,13 @@ export default function RequestDetailPage() {
                   </FormItem>
                 )}
               />
-              <div className="flex justify-between items-center">
-                 <Button type="submit" disabled={isSendingMessage || isSendingImage}>
+              <div className="flex flex-col sm:flex-row gap-2 sm:justify-between items-stretch sm:items-center">
+                 <Button type="submit" disabled={isSendingMessage || isSendingImage} className="w-full sm:w-auto">
                   {isSendingMessage ? <Loader2 className="animate-spin mr-2"/> : <Send className="mr-2 h-4 w-4"/>}
                   Enviar Mensaje
                 </Button>
                 <input type="file" accept="image/*" ref={imageInputRef} onChange={handleImageFileChange} className="hidden" />
-                <Button type="button" variant="outline" onClick={() => imageInputRef.current?.click()} disabled={isSendingImage}>
+                <Button type="button" variant="outline" onClick={() => imageInputRef.current?.click()} disabled={isSendingImage} className="w-full sm:w-auto">
                     <Paperclip className="mr-2 h-4 w-4"/> Adjuntar Imagen
                 </Button>
               </div>
