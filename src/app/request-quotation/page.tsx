@@ -86,25 +86,25 @@ export default function RequestQuotationPage() {
     },
   });
 
-  // This is the combined and hopefully final attempt at the useEffect logic.
-  // It handles initialization from multiple async sources.
+  // --- START: REFACTORED LOGIC ---
+
+  // Effect 1: Handles the INITIAL population of the form.
+  // It uses data from the user session, cart, and URL parameters.
+  // It runs once when these dependencies are resolved and does not depend on `availableServices`.
   useEffect(() => {
     const serviceId = searchParams.get('serviceId');
     const serviceName = searchParams.get('serviceName') ? decodeURIComponent(searchParams.get('serviceName')!) : '';
     const handymanId = searchParams.get('handymanId');
     const handymanName = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')!) : '';
     const problem = searchParams.get('problem') ? decodeURIComponent(searchParams.get('problem')!) : '';
-    
-    // Create an object with all the potential default values
+
     const newValues: Partial<FormData> = {};
 
-    // From user (if available)
     if (typedUser) {
         newValues.contactFullName = typedUser.displayName || '';
         newValues.contactEmail = typedUser.email || '';
     }
 
-    // From cart (overrides URL params for service/supplier info)
     if (isCartMode) {
         newValues.handymanId = cartSupplierId || '';
         newValues.handymanName = cartSupplierName || '';
@@ -113,61 +113,59 @@ export default function RequestQuotationPage() {
         newValues.problemDescription = `Solicitud de cotización para los siguientes ${cartItems.length} productos:\n` +
             cartItems.map(item => `- ${item.name} (Unidad: ${item.unit})`).join('\n');
     } else {
-        // From URL params
         if (serviceId) newValues.serviceId = serviceId;
         if (serviceName) newValues.serviceName = serviceName;
         if (handymanId) newValues.handymanId = handymanId;
         if (handymanName) newValues.handymanName = handymanName;
 
         if (problem) {
-            // From AI assistant
             newValues.problemDescription = problem;
-        } else if (serviceId && availableServices) {
-            // From service template
-            const selectedService = availableServices.find(s => s.id === serviceId);
-            if (selectedService) {
-                newValues.problemDescription = 
-`Solicito una cotización para el servicio de "${selectedService.name}".
+        } else if (serviceName) {
+            newValues.problemDescription = 
+`Solicito una cotización para el servicio de "${serviceName}".
 
 ---
 Por favor, describe a continuación los detalles específicos de tu problema o necesidad:
 `;
-            }
         }
     }
     
-    // form.reset will update the form with the new values.
-    // This is the recommended way to handle async default values.
+    // `reset` will update the form state with the new values.
     form.reset(newValues);
 
   }, [
     typedUser, 
     searchParams, 
     isCartMode, 
-    cartItems,
+    cartItems, 
     cartSupplierId, 
     cartSupplierName, 
-    availableServices,
-    form // form is a stable dependency
+    form
   ]);
 
   const watchedServiceId = form.watch("serviceId");
 
-  // This effect handles the case where the user changes the service from the dropdown
+  // Effect 2: Handles USER INTERACTION with the service dropdown.
+  // This updates the form ONLY if the user selects a new service.
   useEffect(() => {
-    if (watchedServiceId && availableServices && !isCartMode) {
-      const selectedService = availableServices.find(s => s.id === watchedServiceId);
-      if (selectedService) {
-        form.setValue('serviceName', selectedService.name, { shouldValidate: true });
-        // Also update the description if the user changes the select
-        form.setValue('problemDescription', `Solicito una cotización para el servicio de "${selectedService.name}".
+    if (!watchedServiceId || !availableServices || isCartMode) return;
+
+    const selectedService = availableServices.find(s => s.id === watchedServiceId);
+    
+    // Only update if the selected service is different from the one already in the form.
+    // This prevents this effect from overriding the initial state set by the first effect.
+    if (selectedService && selectedService.name !== form.getValues('serviceName')) {
+      form.setValue('serviceName', selectedService.name, { shouldValidate: true });
+      form.setValue('problemDescription', 
+`Solicito una cotización para el servicio de "${selectedService.name}".
 
 ---
 Por favor, describe a continuación los detalles específicos de tu problema o necesidad:
 `);
-      }
     }
-  }, [watchedServiceId, availableServices, form, isCartMode]);
+  }, [watchedServiceId, availableServices, isCartMode, form]);
+
+  // --- END: REFACTORED LOGIC ---
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     setIsSubmitting(true);
@@ -201,7 +199,6 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
         description: "Hemos recibido tu solicitud y nos pondremos en contacto pronto.",
       });
       if (isCartMode) clearCart();
-      // Redirect to the customer dashboard after successful submission
       router.push('/dashboard/customer');
     } catch (e) {
       console.error("Error al añadir documento: ", e);
