@@ -42,44 +42,82 @@ export type SuggestSolutionsOutput = z.infer<typeof SuggestSolutionsOutputSchema
 
 // This function is no longer a Genkit tool, but a regular async function exported for local use.
 async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof HandymanSchema>[]> {
-  console.log(`[Local Function] findTopRatedHandymen received skills: ${JSON.stringify(skills)}`);
+  console.log(`[Local Function] findTopRatedHandymen received skills for matching: ${JSON.stringify(skills)}`);
 
   if (!skills || skills.length === 0) {
     console.log('[Local Function] No skills provided, returning empty array.');
     return [];
   }
 
-  const requiredSkillsLower = new Set(skills.map(s => s.toLowerCase()));
+  const searchKeywords = new Set(skills.map(s => s.toLowerCase()));
   
   try {
+    // 1. Fetch all approved handymen and all active services in parallel for efficiency
     const usersRef = collection(firestore, 'users');
-    const q = query(usersRef, where('role', '==', 'handyman'));
+    const handymenQuery = query(usersRef, where('role', '==', 'handyman'), where('isApproved', '==', true));
     
-    const querySnapshot = await getDocs(q);
-    const allHandymenDocs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const servicesRef = collection(firestore, 'handymanServices');
+    const servicesQuery = query(servicesRef, where('isActive', '==', true));
 
-    const approvedAndSkilledHandymen = allHandymenDocs.filter(handyman => {
-      if (handyman.isApproved !== true) return false;
-      if (!handyman.skills || !Array.isArray(handyman.skills)) return false;
-      
-      const handymanSkillsLower = handyman.skills.map((s: string) => s.toLowerCase());
-      return handymanSkillsLower.some((skill: string) => requiredSkillsLower.has(skill));
+    const [handymenSnapshot, servicesSnapshot] = await Promise.all([
+      getDocs(handymenQuery),
+      getDocs(servicesQuery)
+    ]);
+
+    const allHandymenDocs = handymenSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // 2. Create a map of services grouped by handyman UID for efficient lookup
+    const servicesByHandyman = new Map<string, any[]>();
+    servicesSnapshot.forEach(doc => {
+      const service = doc.data();
+      if (service.handymanUid) {
+        if (!servicesByHandyman.has(service.handymanUid)) {
+          servicesByHandyman.set(service.handymanUid, []);
+        }
+        servicesByHandyman.get(service.handymanUid)!.push(service);
+      }
     });
 
-    approvedAndSkilledHandymen.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    // 3. Filter handymen based on a richer matching logic
+    const matchedHandymen = allHandymenDocs.filter(handyman => {
+      // Match 1: Check high-level skills in the user profile
+      const handymanSkillsLower = (handyman.skills || []).map((s: string) => s.toLowerCase());
+      if (handymanSkillsLower.some((skill: string) => searchKeywords.has(skill))) {
+        return true;
+      }
+      
+      // Match 2: Check specific offered services (name and description)
+      const offeredServices = servicesByHandyman.get(handyman.id) || [];
+      const serviceText = offeredServices.map(s => `${s.name} ${s.description}`).join(' ').toLowerCase();
+      
+      for (const keyword of searchKeywords) {
+        if (serviceText.includes(keyword)) {
+          return true; // Found a match in offered services
+        }
+      }
 
-    const topHandymen = approvedAndSkilledHandymen.slice(0, 3).map(data => ({
+      return false; // No match found
+    });
+
+    // 4. Sort by rating and get the top 3
+    matchedHandymen.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+    const topHandymen = matchedHandymen.slice(0, 3).map(data => ({
       id: data.id,
       name: data.displayName || 'Nombre no disponible',
       rating: data.rating || 0,
       reviewsCount: data.reviewsCount || 0,
     }));
 
-    console.log(`[Local Function] Returning ${topHandymen.length} top-rated handymen.`);
+    console.log(`[Local Function] Returning ${topHandymen.length} top-rated handymen after extended search.`);
     return topHandymen;
 
   } catch (e: any) {
     console.error("[Local Function findTopRatedHandymen] Error:", e.message);
+    if (e.code === 'failed-precondition' && e.message.includes('index')) {
+        console.error("Firestore index missing. Check the console for a creation link.");
+        throw new Error(`Error al buscar operarios: Firestore requiere un índice. Revisa la consola para crearlo.`);
+    }
     throw new Error(`Error al buscar operarios: ${e.message}`);
   }
 }
