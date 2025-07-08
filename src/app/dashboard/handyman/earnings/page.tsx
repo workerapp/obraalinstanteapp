@@ -1,8 +1,8 @@
 // src/app/dashboard/handyman/earnings/page.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { firestore } from '@/firebase/clientApp';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
@@ -12,8 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, AlertTriangle, ArrowLeft, DollarSign, CreditCard, CheckCircle, Wallet } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Loader2, AlertTriangle, ArrowLeft, DollarSign, CreditCard, CheckCircle, Phone } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
@@ -119,6 +118,33 @@ export default function HandymanEarningsPage() {
         <Card><CardHeader><CardTitle className="flex items-center gap-2"><CreditCard className="text-orange-500"/>Comisión Pendiente de Pago</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-orange-600">${totalCommissionPending.toLocaleString('es-CO')}</p><p className="text-xs text-muted-foreground">Comisiones por pagar a la plataforma.</p></CardContent></Card>
         <Card><CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle className="text-blue-500"/>Comisión ya Pagada</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-blue-600">${totalCommissionPaid.toLocaleString('es-CO')}</p><p className="text-xs text-muted-foreground">Comisiones que ya has liquidado.</p></CardContent></Card>
       </div>
+      
+      <Card className="shadow-lg bg-primary/5 border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Phone className="text-primary"/> ¿Listo para Pagar tus Comisiones?
+          </CardTitle>
+          <CardDescription>
+            Para liquidar el saldo de comisiones pendientes, por favor contacta directamente al administrador de la plataforma a través de WhatsApp para coordinar el pago.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter>
+          {totalCommissionPending > 0 ? (
+            <Button asChild>
+              <Link 
+                href={`https://wa.me/573243529658?text=${encodeURIComponent(`Hola, soy ${typedUser?.displayName || 'un operario'} (ID: ${typedUser?.uid}). Quiero coordinar el pago de mis comisiones pendientes por $${totalCommissionPending.toLocaleString('es-CO')}.`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Phone className="mr-2 h-4 w-4" /> Contactar para Pagar
+              </Link>
+            </Button>
+          ) : (
+            <p className="text-sm text-muted-foreground">¡Estás al día! No tienes comisiones pendientes por pagar.</p>
+          )}
+        </CardFooter>
+      </Card>
+
 
       <Card>
         <CardHeader>
