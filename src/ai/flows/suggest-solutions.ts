@@ -51,6 +51,8 @@ async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof Ha
     console.log('[Local Function] No skills provided, returning empty array.');
     return [];
   }
+  
+  const normalizeString = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
   // profession: trade
   const skillNormalizationMap: { [key: string]: string } = {
@@ -74,11 +76,11 @@ async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof Ha
 
   const searchKeywords = new Set<string>();
   skills.forEach(s => {
-      const lowerSkill = s.toLowerCase().trim();
-      searchKeywords.add(lowerSkill);
+      const normalizedSkill = normalizeString(s.trim());
+      searchKeywords.add(normalizedSkill);
 
       // Check if it's a profession (e.g., "plomero")
-      const relatedTrade = skillNormalizationMap[lowerSkill];
+      const relatedTrade = skillNormalizationMap[normalizedSkill];
       if (relatedTrade) {
           searchKeywords.add(relatedTrade); // Add the trade ("plomeria")
           // Add all related professions ("plomero", "fontanero")
@@ -86,7 +88,7 @@ async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof Ha
       }
 
       // Check if it's a trade (e.g., "plomeria")
-      const relatedProfessions = tradeToProfessions[lowerSkill];
+      const relatedProfessions = tradeToProfessions[normalizedSkill];
       if (relatedProfessions) {
           // Add all professions for this trade
           relatedProfessions.forEach(prof => searchKeywords.add(prof));
@@ -125,19 +127,19 @@ async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof Ha
 
     // 3. Filter handymen based on a richer, more flexible matching logic
     const matchedHandymen = allHandymenDocs.filter(handyman => {
-        const handymanSkillsLower = (handyman.skills || []).map((s: string) => s.toLowerCase().trim());
+        const handymanSkillsNormalized = (handyman.skills || []).map((s: string) => normalizeString(s.trim()));
         const offeredServices = servicesByHandyman.get(handyman.id) || [];
-        const serviceTextLower = offeredServices.map(s => `${s.name} ${s.description}`).join(' ').toLowerCase();
+        const serviceTextNormalized = normalizeString(offeredServices.map(s => `${s.name} ${s.description}`).join(' '));
 
         // Check if any of the expanded search keywords are found in the handyman's data
         for (const keyword of searchKeywords) {
             // Match 1: Check if any handyman skill *includes* the keyword.
-            if (handymanSkillsLower.some(skill => skill.includes(keyword))) {
+            if (handymanSkillsNormalized.some(skill => skill.includes(keyword))) {
                 return true;
             }
             
             // Match 2: Check if the combined text of offered services contains the keyword.
-            if (serviceTextLower.includes(keyword)) {
+            if (serviceTextNormalized.includes(keyword)) {
                 return true;
             }
         }

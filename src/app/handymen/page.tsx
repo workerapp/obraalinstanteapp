@@ -65,7 +65,9 @@ export default function HandymenPage() {
   // Set initial category from URL, but only once.
   useEffect(() => {
     const categoryFromUrl = searchParams.get('category') ? decodeURIComponent(searchParams.get('category')!) : null;
-    setSelectedCategory(categoryFromUrl);
+    if(categoryFromUrl) {
+        setSelectedCategory(categoryFromUrl);
+    }
   }, [searchParams]);
 
   const { data, isLoading, isError, error: queryError } = useQuery({
@@ -73,13 +75,18 @@ export default function HandymenPage() {
     queryFn: fetchHandymenFromApi, // Use the new API fetching function
   });
   
+  const normalizeString = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
   const allCategories = useMemo(() => {
     if (!data?.handymen) return [];
-    // Use a Map to store unique categories, ignoring case, but preserving original casing for display.
+    // Use a Map to store unique categories, ignoring case/accent, but preserving original casing for display.
     const categories = new Map<string, string>();
     data.handymen.forEach(h => h.skills?.forEach(s => {
-      if (s && !categories.has(s.toLowerCase())) {
-        categories.set(s.toLowerCase(), s);
+      if (s) {
+          const normalized = normalizeString(s);
+          if (!categories.has(normalized)) {
+            categories.set(normalized, s);
+          }
       }
     }));
     return Array.from(categories.values()).sort((a, b) => a.localeCompare(b));
@@ -88,13 +95,12 @@ export default function HandymenPage() {
   const filteredHandymen = useMemo(() => {
     if (!data?.handymen) return [];
 
-    // Keyword expansion logic, same as in the AI flow.
     const skillNormalizationMap: { [key: string]: string } = {
         'plomero': 'plomeria',
         'fontanero': 'plomeria',
         'carpintero': 'carpinteria',
         'electricista': 'electricidad',
-        'albañil': 'albanileria',
+        'albanil': 'albanileria',
         'pintor': 'pintura',
         'soldador': 'soldadura'
     };
@@ -107,16 +113,16 @@ export default function HandymenPage() {
     
     let categorySearchKeywords = new Set<string>();
     if (selectedCategory) {
-        const lowerCategory = selectedCategory.toLowerCase().trim();
-        categorySearchKeywords.add(lowerCategory);
+        const normalizedCategory = normalizeString(selectedCategory.trim());
+        categorySearchKeywords.add(normalizedCategory);
 
-        const relatedTrade = skillNormalizationMap[lowerCategory];
+        const relatedTrade = skillNormalizationMap[normalizedCategory];
         if (relatedTrade) {
             categorySearchKeywords.add(relatedTrade);
             tradeToProfessions[relatedTrade]?.forEach(prof => categorySearchKeywords.add(prof));
         }
 
-        const relatedProfessions = tradeToProfessions[lowerCategory];
+        const relatedProfessions = tradeToProfessions[normalizedCategory];
         if (relatedProfessions) {
             relatedProfessions.forEach(prof => categorySearchKeywords.add(prof));
         }
@@ -126,11 +132,11 @@ export default function HandymenPage() {
       .filter(handyman => {
         // Category filter using the expanded keyword set
         if (selectedCategory) {
-            if (categorySearchKeywords.size === 0) return true;
+            if (categorySearchKeywords.size === 0) return true; // Should not happen if category is selected but as a safeguard.
             return handyman.skills?.some(skill => {
-                const lowerSkill = skill.toLowerCase().trim();
+                const normalizedSkill = normalizeString(skill.trim());
                 for (const keyword of categorySearchKeywords) {
-                    if (lowerSkill.includes(keyword)) {
+                    if (normalizedSkill.includes(keyword)) {
                         return true;
                     }
                 }
@@ -141,13 +147,13 @@ export default function HandymenPage() {
       })
       .filter(handyman => {
         // General text search filter
-        const lowercasedTerm = searchTerm.toLowerCase().trim();
-        if (lowercasedTerm === '') return true;
+        const normalizedTerm = normalizeString(searchTerm.trim());
+        if (normalizedTerm === '') return true;
         
         return (
-          handyman.name.toLowerCase().includes(lowercasedTerm) ||
-          (handyman.tagline && handyman.tagline.toLowerCase().includes(lowercasedTerm)) ||
-          handyman.skills?.some(skill => skill.toLowerCase().includes(lowercasedTerm))
+          normalizeString(handyman.name).includes(normalizedTerm) ||
+          (handyman.tagline && normalizeString(handyman.tagline).includes(normalizedTerm)) ||
+          handyman.skills?.some(skill => normalizeString(skill).includes(normalizedTerm))
         );
       });
   }, [data?.handymen, searchTerm, selectedCategory]);
