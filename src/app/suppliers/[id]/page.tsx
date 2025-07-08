@@ -21,8 +21,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-const ADMIN_WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP_NUMBER || "+573017412292";
-
 const mapFirestoreUserToSupplier = (uid: string, userData: any): Supplier | null => {
   if (!userData || userData.role !== 'supplier' || userData.isApproved !== true) {
     return null;
@@ -138,11 +136,6 @@ export default function SupplierDetailPage() {
     notFound();
   }
 
-  const handleWhatsAppContact = () => {
-    const message = encodeURIComponent(`Hola, quisiera contactar al proveedor ${supplier.companyName} (ID: ${supplier.id}) que vi en Obra al Instante.`);
-    window.open(`https://wa.me/${ADMIN_WHATSAPP_NUMBER.replace(/\D/g, '')}?text=${message}`, '_blank');
-  };
-
   return (
     <div className="max-w-4xl mx-auto py-8 space-y-8">
       <Button variant="outline" asChild className="mb-6"><Link href="/suppliers" className="flex items-center gap-2"><ArrowLeft size={16} /> Volver al Directorio</Link></Button>
@@ -153,8 +146,8 @@ export default function SupplierDetailPage() {
               <Image src={supplier.logoUrl!} alt={supplier.companyName} layout="fill" objectFit="contain" className="p-2" data-ai-hint={supplier.dataAiHint} />
             </div>
             <div className="flex flex-col gap-2">
-              <Button asChild size="lg" className="w-full"><Link href={`/request-quotation?handymanId=${supplier.id}&handymanName=${encodeURIComponent(supplier.companyName)}`}><MessageSquare size={18} className="mr-2" /> Pedir Cotización General</Link></Button>
-              <Button variant="outline" size="lg" className="w-full" onClick={handleWhatsAppContact}><Phone size={18} className="mr-2" /> Contactar por WhatsApp</Button>
+              <Button asChild size="lg" className="w-full"><Link href={`/request-quotation?handymanId=${supplier.id}&handymanName=${encodeURIComponent(supplier.companyName)}`}><MessageSquare size={18} className="mr-2" /> Pedir Cotización de Productos</Link></Button>
+               <p className="text-xs text-muted-foreground text-center mt-2">Toda la comunicación y cotización se gestionan a través de la plataforma para tu seguridad.</p>
             </div>
           </div>
           <div className="md:col-span-2">

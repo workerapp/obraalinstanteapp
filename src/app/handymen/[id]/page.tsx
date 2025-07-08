@@ -20,8 +20,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-const ADMIN_WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP_NUMBER || "+573017412292";
-
 const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null => {
   if (!userData || userData.role !== 'handyman' || userData.isApproved !== true) {
     return null;
@@ -157,16 +155,6 @@ export default function HandymanDetailPage() {
     notFound();
   }
 
-  const handleWhatsAppContact = () => {
-    if (!ADMIN_WHATSAPP_NUMBER) {
-      toast({ title: "Configuración Requerida", description: "El número de WhatsApp del administrador no ha sido configurado.", variant: "destructive" });
-      return;
-    }
-    const adminPhoneNumber = ADMIN_WHATSAPP_NUMBER.replace(/\D/g, '');
-    const message = encodeURIComponent(`Hola, quisiera contactar al operario ${handyman.name} (ID: ${handyman.id}) sobre un servicio.`);
-    window.open(`https://wa.me/${adminPhoneNumber}?text=${message}`, '_blank');
-  };
-
   return (
     <div className="max-w-4xl mx-auto py-8 space-y-8">
       <div>
@@ -185,13 +173,10 @@ export default function HandymanDetailPage() {
             </div>
             <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 mb-2">
               <Link href={`/request-quotation?handymanId=${handyman.id}&handymanName=${encodeURIComponent(handyman.name)}`}>
-                <MessageSquare size={18} className="mr-2" /> Solicitar Cotización General
+                <MessageSquare size={18} className="mr-2" /> Solicitar Cotización
               </Link>
             </Button>
-            <Button variant="outline" size="lg" className="w-full" onClick={handleWhatsAppContact}>
-              <Phone size={18} className="mr-2" /> Contactar vía Administrador
-            </Button>
-            <p className="text-xs text-muted-foreground text-center mt-2">La comunicación inicial se gestiona a través del administrador.</p>
+             <p className="text-xs text-muted-foreground text-center mt-2">Toda la comunicación y cotización se gestionan a través de la plataforma para tu seguridad.</p>
           </div>
 
           <div className="md:col-span-2">
