@@ -1,3 +1,4 @@
+
 // src/app/admin/product-categories/page.tsx
 "use client";
 

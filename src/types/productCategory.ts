@@ -1,3 +1,4 @@
+
 // src/types/productCategory.ts
 import type { Timestamp } from 'firebase/firestore';
 
