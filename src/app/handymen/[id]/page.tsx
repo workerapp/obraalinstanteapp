@@ -1,4 +1,3 @@
-
 // src/app/handymen/[id]/page.tsx
 "use client";
 
@@ -20,6 +19,8 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useMemo } from 'react';
+import { Progress } from '@/components/ui/progress';
 
 const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null => {
   if (!userData || userData.role !== 'handyman' || userData.isApproved !== true) {
@@ -133,6 +134,20 @@ export default function HandymanDetailPage() {
     enabled: !!handymanId,
   });
 
+  const ratingsSummary = useMemo(() => {
+    if (!reviews || reviews.length === 0) {
+      return { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 };
+    }
+    return reviews.reduce((acc, review) => {
+      const rating = Math.round(review.rating);
+      if (rating >= 1 && rating <= 5) {
+        acc[rating as keyof typeof acc]++;
+      }
+      return acc;
+    }, { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 });
+  }, [reviews]);
+
+
   if (isLoadingHandyman) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
   }
@@ -214,13 +229,13 @@ export default function HandymanDetailPage() {
           {isLoadingServices && <div className="flex items-center py-6"><Loader2 className="h-6 w-6 animate-spin text-primary mr-2" /><p>Cargando servicios...</p></div>}
           {servicesError && <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>No se pudieron cargar los servicios.</AlertDescription></Alert>}
           {!isLoadingServices && !servicesError && (offeredServices && offeredServices.length > 0 ? (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {offeredServices.map((service) => (
-                <Card key={service.id} className="bg-background hover:shadow-md transition-shadow">
+                <Card key={service.id} className="bg-background hover:shadow-md transition-shadow flex flex-col">
                   <CardHeader><CardTitle className="text-xl text-accent">{service.name}</CardTitle><CardDescription>{service.category}</CardDescription></CardHeader>
-                  <CardContent><p className="text-sm text-foreground/80 mb-3">{service.description}</p></CardContent>
-                  <CardFooter className="flex justify-between items-center">
-                    <Badge variant="outline" className="border-primary text-primary">{priceTypeTranslations[service.priceType]}{service.priceType !== 'consultar' && ` - $${Number(service.priceValue).toLocaleString('es-CO')}`}</Badge>
+                  <CardContent className="flex-grow"><p className="text-sm text-foreground/80 mb-3">{service.description}</p></CardContent>
+                  <CardFooter className="flex justify-between items-center mt-auto">
+                    <Badge variant="outline" className="border-primary text-primary">{priceTypeTranslations[service.priceType]}{service.priceType !== 'consultar' && service.priceValue && ` - $${Number(service.priceValue).toLocaleString('es-CO')}`}</Badge>
                     <Button asChild size="sm">
                       <Link href={`/request-quotation?serviceId=${service.id}&handymanId=${handyman.id}&handymanName=${encodeURIComponent(handyman.name)}&serviceName=${encodeURIComponent(service.name)}`}>
                         <MessageSquare size={16} className="mr-2"/> Cotizar
@@ -240,6 +255,35 @@ export default function HandymanDetailPage() {
           <h2 className="text-2xl font-semibold font-headline mb-4 flex items-center">
             <StarIcon size={24} className="mr-3 text-primary" /> Reseñas y Calificaciones
           </h2>
+
+          {reviews && reviews.length > 0 && (
+            <Card className="mb-6 bg-muted/50">
+              <CardContent className="p-4 md:p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                      <div className="flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r pb-4 md:pb-0 md:pr-4">
+                          <p className="text-5xl font-bold text-primary">{handyman.rating?.toFixed(1) || 'N/A'}</p>
+                          <div className="flex items-center my-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star key={i} size={20} className={i < Math.round(handyman.rating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'} />
+                              ))}
+                          </div>
+                          <p className="text-sm text-muted-foreground">({handyman.reviewsCount || 0} reseñas totales)</p>
+                      </div>
+                      <div className="md:col-span-2 space-y-1">
+                          {Object.entries(ratingsSummary).reverse().map(([star, count]) => (
+                              <div key={star} className="flex items-center gap-2 text-sm">
+                                  <span className="w-2 font-medium">{star}</span>
+                                  <Star size={14} className="text-yellow-400 fill-yellow-400"/>
+                                  <Progress value={handyman.reviewsCount ? (count / handyman.reviewsCount) * 100 : 0} className="w-full h-2 bg-primary/20" />
+                                  <span className="w-8 text-right text-muted-foreground">{count}</span>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              </CardContent>
+            </Card>
+          )}
+
           {isLoadingReviews && <div className="flex items-center py-6"><Loader2 className="h-6 w-6 animate-spin text-primary mr-2" /><p>Cargando reseñas...</p></div>}
           {!isLoadingReviews && reviews && reviews.length > 0 ? (
             <div className="space-y-6">

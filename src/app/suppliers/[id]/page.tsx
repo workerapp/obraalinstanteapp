@@ -1,4 +1,3 @@
-
 // src/app/suppliers/[id]/page.tsx
 "use client";
 
@@ -21,6 +20,8 @@ import ProductCard from '@/components/products/product-card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useMemo } from 'react';
+import { Progress } from '@/components/ui/progress';
 
 const mapFirestoreUserToSupplier = (uid: string, userData: any): Supplier | null => {
   if (!userData || userData.role !== 'supplier' || userData.isApproved !== true) {
@@ -116,6 +117,19 @@ export default function SupplierDetailPage() {
     enabled: !!supplierId,
   });
 
+  const ratingsSummary = useMemo(() => {
+    if (!reviews || reviews.length === 0) {
+      return { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 };
+    }
+    return reviews.reduce((acc, review) => {
+      const rating = Math.round(review.rating);
+      if (rating >= 1 && rating <= 5) {
+        acc[rating as keyof typeof acc]++;
+      }
+      return acc;
+    }, { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 });
+  }, [reviews]);
+
   if (isLoadingSupplier) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
   }
@@ -191,6 +205,35 @@ export default function SupplierDetailPage() {
           <h2 className="text-2xl font-semibold font-headline mb-4 flex items-center">
             <StarIcon size={24} className="mr-3 text-primary" /> Reseñas y Calificaciones
           </h2>
+
+           {reviews && reviews.length > 0 && (
+            <Card className="mb-6 bg-muted/50">
+              <CardContent className="p-4 md:p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                      <div className="flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r pb-4 md:pb-0 md:pr-4">
+                          <p className="text-5xl font-bold text-primary">{supplier.rating?.toFixed(1) || 'N/A'}</p>
+                          <div className="flex items-center my-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star key={i} size={20} className={i < Math.round(supplier.rating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'} />
+                              ))}
+                          </div>
+                          <p className="text-sm text-muted-foreground">({supplier.reviewsCount || 0} reseñas totales)</p>
+                      </div>
+                      <div className="md:col-span-2 space-y-1">
+                          {Object.entries(ratingsSummary).reverse().map(([star, count]) => (
+                              <div key={star} className="flex items-center gap-2 text-sm">
+                                  <span className="w-2 font-medium">{star}</span>
+                                  <Star size={14} className="text-yellow-400 fill-yellow-400"/>
+                                  <Progress value={supplier.reviewsCount ? (count / supplier.reviewsCount) * 100 : 0} className="w-full h-2 bg-primary/20" />
+                                  <span className="w-8 text-right text-muted-foreground">{count}</span>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              </CardContent>
+            </Card>
+          )}
+
           {isLoadingReviews && <div className="flex items-center py-6"><Loader2 className="h-6 w-6 animate-spin text-primary mr-2" /><p>Cargando reseñas...</p></div>}
           {!isLoadingReviews && reviews && reviews.length > 0 ? (
             <div className="space-y-6">
