@@ -1,7 +1,8 @@
+
 // src/app/dashboard/handyman/services/page.tsx
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { 
@@ -29,7 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { PlusCircle, ListChecks, ArrowLeft, Loader2, Trash2, ImageIcon, Upload } from 'lucide-react';
+import { PlusCircle, List, ArrowLeft, Loader2, Trash2, ImageIcon, Upload, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
@@ -40,6 +41,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { HandymanService, PriceType } from '@/types/handymanService';
+import type { Service } from '@/types/service';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -82,20 +84,21 @@ async function fetchHandymanServices(handymanUid: string): Promise<HandymanServi
   return services;
 }
 
-// Fetches the unique categories from the global platform services
-async function fetchPlatformCategories(): Promise<string[]> {
-  const servicesRef = collection(firestore, "platformServices");
-  const q = query(servicesRef, where("isActive", "==", true));
-  
-  const querySnapshot = await getDocs(q);
-  const categories = new Set<string>();
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    if (data.category) {
-        categories.add(data.category);
-    }
-  });
-  return Array.from(categories).sort();
+async function fetchActivePlatformServices(): Promise<Service[]> {
+    const servicesRef = collection(firestore, "platformServices");
+    const q = query(servicesRef, where("isActive", "==", true));
+    const querySnapshot = await getDocs(q);
+    const services: Service[] = [];
+    querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        services.push({
+            id: doc.id,
+            ...data,
+            commonTasks: Array.isArray(data.commonTasks) ? data.commonTasks : [],
+        } as Service);
+    });
+    services.sort((a, b) => a.name.localeCompare(b.name));
+    return services;
 }
 
 
@@ -106,8 +109,7 @@ export default function HandymanServicesPage() {
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false); // For add/edit
-  const [offeredServices, setOfferedServices] = useState<HandymanService[]>([]);
-  const [isLoadingServices, setIsLoadingServices] = useState(true);
+  
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
 
   const [serviceToDeleteId, setServiceToDeleteId] = useState<string | null>(null);
@@ -117,11 +119,32 @@ export default function HandymanServicesPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [serviceTemplate, setServiceTemplate] = useState<Service | null>(null);
 
-  const { data: platformCategories, isLoading: isLoadingCategories } = useQuery<string[], Error>({
-    queryKey: ['platformCategories'],
-    queryFn: fetchPlatformCategories,
+  const { data: offeredServices, isLoading: isLoadingOfferedServices, refetch: refetchOfferedServices } = useQuery<HandymanService[], Error>({
+    queryKey: ['handymanServices', typedUser?.uid],
+    queryFn: () => fetchHandymanServices(typedUser!.uid),
+    enabled: !!typedUser?.uid,
   });
+  
+  const { data: platformServices, isLoading: isLoadingPlatformServices } = useQuery<Service[], Error>({
+    queryKey: ['platformServices'],
+    queryFn: fetchActivePlatformServices,
+  });
+  
+  const platformCategories = useMemo(() => {
+    if (!platformServices) return [];
+    const categories = new Set<string>();
+    platformServices.forEach(service => categories.add(service.category));
+    return Array.from(categories).sort();
+  }, [platformServices]);
+
+  const availablePlatformServices = useMemo(() => {
+    if (!platformServices || !offeredServices) return [];
+    const offeredServiceNames = new Set(offeredServices.map(s => s.name));
+    return platformServices.filter(ps => !offeredServiceNames.has(ps.name));
+  }, [platformServices, offeredServices]);
+
 
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceFormSchema),
@@ -131,36 +154,11 @@ export default function HandymanServicesPage() {
   });
 
   useEffect(() => {
-    if (typedUser?.uid) {
-      setIsLoadingServices(true);
-      fetchHandymanServices(typedUser.uid)
-        .then(setOfferedServices)
-        .catch(err => {
-          console.error("Detailed error fetching services:", err);
-          let description = "No se pudieron cargar tus servicios. Revisa la consola del navegador para más detalles.";
-          if (err.message) {
-            if (err.message.toLowerCase().includes('permission-denied') || err.message.toLowerCase().includes('missing or insufficient permissions')) {
-              description = "Error de permisos al cargar servicios. Asegúrate de que tus reglas de seguridad de Firestore permitan leer 'handymanServices' para tu usuario.";
-            } else if (err.message.toLowerCase().includes('failed-precondition') && err.message.toLowerCase().includes('index')) {
-              description = "Error al cargar servicios: Firestore necesita un índice. Revisa la consola del navegador, usualmente hay un enlace para crearlo directamente.";
-            } else {
-              description = `Error al cargar servicios: ${err.message}`;
-            }
-          }
-          toast({ title: "Error al Cargar Servicios", description, variant: "destructive", duration: 10000 });
-        })
-        .finally(() => setIsLoadingServices(false));
-    } else {
-      setIsLoadingServices(false);
-      setOfferedServices([]);
-    }
-  }, [typedUser, toast]);
-
-  useEffect(() => {
     if (!isDialogOpen && !isLoading) { 
       setEditingServiceId(null); 
       setSelectedFile(null);
       setPreviewUrl(null);
+      setServiceTemplate(null);
       form.reset({
         name: "", category: "", description: "", priceType: "consultar", priceValue: "", isActive: true, dataAiHint: "",
       });
@@ -182,10 +180,28 @@ export default function HandymanServicesPage() {
         toast({ title: "Error", description: "ID de servicio no encontrado para editar.", variant: "destructive"});
         return;
     }
+    setServiceTemplate(null);
     setEditingServiceId(service.id);
     form.reset({
         name: service.name, category: service.category, description: service.description, priceType: service.priceType,
         priceValue: service.priceValue || "", isActive: service.isActive, dataAiHint: service.dataAiHint || "",
+    });
+    setPreviewUrl(service.imageUrl || null);
+    setSelectedFile(null);
+    setIsDialogOpen(true);
+  };
+  
+  const handleOfferService = (service: Service) => {
+    setServiceTemplate(service);
+    setEditingServiceId(null);
+    form.reset({
+        name: service.name,
+        category: service.category,
+        description: service.description,
+        priceType: "consultar",
+        priceValue: "",
+        isActive: true,
+        dataAiHint: service.dataAiHint || "",
     });
     setPreviewUrl(service.imageUrl || null);
     setSelectedFile(null);
@@ -201,8 +217,13 @@ export default function HandymanServicesPage() {
     setIsLoading(true);
 
     try {
-      const existingService = editingServiceId ? offeredServices.find(s => s.id === editingServiceId) : null;
-      let finalImageUrl: string | null = existingService?.imageUrl || null;
+      let finalImageUrl: string | null = null;
+      if (editingServiceId) {
+        const existingService = offeredServices?.find(s => s.id === editingServiceId);
+        finalImageUrl = existingService?.imageUrl || null;
+      } else if (serviceTemplate) { // New service from template
+        finalImageUrl = serviceTemplate.imageUrl || null;
+      }
 
       if (selectedFile) {
         toast({ title: "Subiendo imagen..." });
@@ -229,35 +250,19 @@ export default function HandymanServicesPage() {
       if (editingServiceId) {
         const serviceDocRef = doc(firestore, "handymanServices", editingServiceId);
         await updateDoc(serviceDocRef, serviceDataForFirestore);
-        
         toast({ title: "Servicio Actualizado", description: `El servicio "${data.name}" ha sido actualizado.` });
-        setOfferedServices(prev => prev.map(s => s.id === editingServiceId ? { ...s, ...serviceDataForFirestore, id: editingServiceId, updatedAt: Timestamp.now() } as HandymanService : s));
-        
       } else {
         serviceDataForFirestore.createdAt = serverTimestamp() as Timestamp;
-        const docRef = await addDoc(collection(firestore, "handymanServices"), serviceDataForFirestore);
+        await addDoc(collection(firestore, "handymanServices"), serviceDataForFirestore);
         toast({ title: "Servicio Añadido", description: `El servicio "${data.name}" ha sido añadido.` });
-        const newService: HandymanService = {
-            id: docRef.id,
-            ...serviceDataForFirestore,
-            priceValue: serviceDataForFirestore.priceValue,
-            createdAt: Timestamp.now(), updatedAt: Timestamp.now(),
-        };
-        setOfferedServices(prev => [newService, ...prev]);
       }
       
+      refetchOfferedServices();
       setIsDialogOpen(false); 
     } catch (error: any) {
       console.error("onSubmit: Error saving service:", error);
-      let description = "Hubo un problema al guardar el servicio. Revisa la consola para más detalles.";
-       if (error.message) {
-            if (error.message.toLowerCase().includes('permission-denied') || error.message.toLowerCase().includes('missing or insufficient permissions')) {
-                description = "Error de permisos al guardar el servicio.";
-            } else {
-                 description = `Error al guardar servicio: ${error.message}`;
-            }
-       }
-      toast({ title: `Error al ${editingServiceId ? 'Actualizar' : 'Añadir'} Servicio`, description, variant: "destructive", duration: 10000 });
+      let description = "Hubo un problema al guardar el servicio.";
+      toast({ title: `Error al ${editingServiceId ? 'Actualizar' : 'Añadir'} Servicio`, description, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -270,12 +275,11 @@ export default function HandymanServicesPage() {
 
   const confirmDeleteService = async () => {
     if (!serviceToDeleteId || !typedUser?.uid) return;
-
     setIsDeletingService(true);
     try {
       await deleteDoc(doc(firestore, "handymanServices", serviceToDeleteId));
       toast({ title: "Servicio Eliminado" });
-      setOfferedServices(prev => prev.filter(s => s.id !== serviceToDeleteId));
+      refetchOfferedServices();
       setServiceToDeleteId(null);
       setIsDeleteAlertOpen(false);
     } catch (error: any) {
@@ -286,7 +290,7 @@ export default function HandymanServicesPage() {
     }
   };
   
-  if (!typedUser && !isLoading && !isLoadingServices) {
+  if (!typedUser && !isLoading) {
      return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
@@ -295,17 +299,6 @@ export default function HandymanServicesPage() {
       </div>
     );
   }
-
-  const handleOpenDialogForNewService = () => {
-    setEditingServiceId(null); 
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    form.reset({ 
-        name: "", category: "", description: "", priceType: "consultar", priceValue: "", isActive: true, dataAiHint: "",
-    });
-    setIsDialogOpen(true);
-  };
-
 
   return (
     <div className="space-y-8">
@@ -320,23 +313,18 @@ export default function HandymanServicesPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogTrigger asChild>
-          <Button onClick={handleOpenDialogForNewService} className="mb-6">
-            <PlusCircle size={18} className="mr-2" /> Añadir Nuevo Servicio
-          </Button>
-        </DialogTrigger>
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
             <DialogTitle>{editingServiceId ? "Editar Servicio" : "Añadir Nuevo Servicio"}</DialogTitle>
             <DialogDescription>
-              {editingServiceId ? "Modifica los detalles de tu servicio." : "Completa los detalles del servicio que ofreces, incluyendo una descripción detallada y una imagen si lo deseas."}
+              {editingServiceId ? "Modifica los detalles de tu servicio." : `Añade "${serviceTemplate?.name}" a tu perfil. Puedes ajustar el precio y otros detalles.`}
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[calc(80vh-160px)] pr-5">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 pr-1">
                 <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Nombre del Servicio</FormLabel> <FormControl><Input placeholder="Ej: Reparación de Grifos" {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
-                <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría</FormLabel> <FormControl><Select onValueChange={field.onChange} value={field.value} disabled={isLoadingCategories}> <SelectTrigger> <SelectValue placeholder={isLoadingCategories ? "Cargando categorías..." : "Selecciona una categoría"} /> </SelectTrigger> <SelectContent> {platformCategories?.map((cat) => ( <SelectItem key={cat} value={cat}>{cat}</SelectItem> ))} </SelectContent> </Select></FormControl> <FormDescription>Selecciona la categoría que mejor describa tu servicio.</FormDescription> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="category" render={({ field }) => ( <FormItem> <FormLabel>Categoría</FormLabel> <FormControl><Select onValueChange={field.onChange} value={field.value} disabled={isLoadingPlatformServices}> <SelectTrigger> <SelectValue placeholder={isLoadingPlatformServices ? "Cargando categorías..." : "Selecciona una categoría"} /> </SelectTrigger> <SelectContent> {platformCategories?.map((cat) => ( <SelectItem key={cat} value={cat}>{cat}</SelectItem> ))} </SelectContent> </Select></FormControl> <FormDescription>Selecciona la categoría que mejor describa tu servicio.</FormDescription> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Descripción Detallada</FormLabel> <FormControl><Textarea placeholder="Describe detalladamente el servicio..." rows={5} {...field} /></FormControl> <FormMessage /> </FormItem> )}/>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="priceType" render={({ field }) => ( <FormItem> <FormLabel>Tipo de Precio</FormLabel> <FormControl><Select onValueChange={field.onChange} value={field.value}> <SelectTrigger><SelectValue placeholder="Selecciona un tipo" /></SelectTrigger> <SelectContent> {Object.entries(priceTypeTranslations).map(([value, label]) => ( <SelectItem key={value} value={value}>{label}</SelectItem> ))} </SelectContent> </Select></FormControl> <FormMessage /> </FormItem> )}/>
@@ -380,7 +368,7 @@ export default function HandymanServicesPage() {
 
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer. Esto eliminará permanentemente el servicio "{offeredServices.find(s => s.id === serviceToDeleteId)?.name || 'seleccionado'}".</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer. Esto eliminará permanentemente el servicio "{offeredServices?.find(s => s.id === serviceToDeleteId)?.name || 'seleccionado'}".</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setIsDeleteAlertOpen(false)}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteService} disabled={isDeletingService} className="bg-destructive hover:bg-destructive/90">{isDeletingService ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Eliminando...</> : <><Trash2 className="mr-2 h-4 w-4"/> Confirmar</>}</AlertDialogAction>
@@ -389,10 +377,10 @@ export default function HandymanServicesPage() {
       </AlertDialog>
 
       <Card className="shadow-xl">
-        <CardHeader><CardTitle className="flex items-center gap-2"><ListChecks className="text-primary"/> Tus Servicios Actuales</CardTitle><CardDescription>Aquí puedes ver y gestionar los servicios que has añadido.</CardDescription></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Briefcase className="text-primary"/> Mis Servicios Activos</CardTitle><CardDescription>Aquí puedes ver y gestionar los servicios que has añadido a tu perfil.</CardDescription></CardHeader>
         <CardContent>
-          {isLoadingServices && <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
-          {!isLoadingServices && offeredServices.length > 0 ? (
+          {isLoadingOfferedServices && <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
+          {!isLoadingOfferedServices && offeredServices && offeredServices.length > 0 ? (
             <div className="space-y-4">
               {offeredServices.map((service) => (
                 <Card key={service.id} className={`bg-background ${!service.isActive ? 'opacity-60' : ''}`}>
@@ -411,7 +399,36 @@ export default function HandymanServicesPage() {
               ))}
             </div>
           ) : (
-            !isLoadingServices && <div className="text-center py-10"><ListChecks className="mx-auto h-12 w-12 text-muted-foreground mb-4"/><p className="text-muted-foreground text-lg">Aún no has añadido ningún servicio.</p><p className="text-sm text-muted-foreground">Haz clic en "Añadir Nuevo Servicio" para empezar.</p></div>
+            !isLoadingOfferedServices && <div className="text-center py-10"><Briefcase className="mx-auto h-12 w-12 text-muted-foreground mb-4"/><p className="text-muted-foreground text-lg">Aún no has añadido ningún servicio.</p><p className="text-sm text-muted-foreground">Añade servicios desde el catálogo de la plataforma para empezar.</p></div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><List className="text-primary"/> Servicios de la Plataforma para Añadir</CardTitle>
+          <CardDescription>Añade estos servicios a tu perfil con un solo clic. El nombre, la categoría y la descripción ya vienen pre-cargados.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingPlatformServices && <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
+          {!isLoadingPlatformServices && availablePlatformServices && availablePlatformServices.length > 0 ? (
+            <div className="space-y-2">
+              {availablePlatformServices.map((service) => (
+                <Card key={service.id} className="bg-background flex flex-col sm:flex-row justify-between items-center p-4">
+                  <div className="flex-grow mb-3 sm:mb-0">
+                    <p className="font-medium">{service.name}</p>
+                    <p className="text-xs text-muted-foreground">{service.category}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{service.description}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => handleOfferService(service)} className="w-full sm:w-auto shrink-0">
+                    <PlusCircle className="h-4 w-4 mr-2"/>
+                    Ofrecer este servicio
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            !isLoadingPlatformServices && <div className="text-center py-10"><List className="mx-auto h-12 w-12 text-muted-foreground mb-4" /><p className="text-muted-foreground text-lg">¡Estás al día!</p><p className="text-sm text-muted-foreground">Ya ofreces todos los servicios disponibles en la plataforma.</p></div>
           )}
         </CardContent>
       </Card>
