@@ -78,25 +78,27 @@ async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof Ha
       }
     });
 
-    // 3. Filter handymen based on a richer matching logic
+    // 3. Filter handymen based on a richer, more flexible matching logic
     const matchedHandymen = allHandymenDocs.filter(handyman => {
-      // Match 1: Check high-level skills in the user profile
-      const handymanSkillsLower = (handyman.skills || []).map((s: string) => s.toLowerCase());
-      if (handymanSkillsLower.some((skill: string) => searchKeywords.has(skill))) {
-        return true;
-      }
-      
-      // Match 2: Check specific offered services (name and description)
-      const offeredServices = servicesByHandyman.get(handyman.id) || [];
-      const serviceText = offeredServices.map(s => `${s.name} ${s.description}`).join(' ').toLowerCase();
-      
-      for (const keyword of searchKeywords) {
-        if (serviceText.includes(keyword)) {
-          return true; // Found a match in offered services
-        }
-      }
+        const handymanSkillsLower = (handyman.skills || []).map((s: string) => s.toLowerCase().trim());
+        const offeredServices = servicesByHandyman.get(handyman.id) || [];
+        const serviceTextLower = offeredServices.map(s => `${s.name} ${s.description}`).join(' ').toLowerCase();
 
-      return false; // No match found
+        // Check if any AI-identified keyword is found in the handyman's data
+        for (const keyword of searchKeywords) {
+            // Match 1 (Improved): Check if any handyman skill *includes* the keyword.
+            // This is more flexible, e.g., "plomeria" keyword matches "servicios de plomeria" skill.
+            if (handymanSkillsLower.some(skill => skill.includes(keyword))) {
+                return true;
+            }
+            
+            // Match 2: Check if the combined text of offered services contains the keyword.
+            if (serviceTextLower.includes(keyword)) {
+                return true;
+            }
+        }
+
+        return false; // No match found for this handyman
     });
 
     // 4. Sort by rating and get the top 3
