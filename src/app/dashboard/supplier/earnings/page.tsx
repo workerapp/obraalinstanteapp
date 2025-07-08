@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { firestore } from '@/firebase/clientApp';
-import { collection, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
 import type { QuotationRequest } from '@/types/quotationRequest';
 import { Button } from '@/components/ui/button';
@@ -24,11 +24,11 @@ const fetchCompletedRequests = async (userId: string | undefined): Promise<Quota
   if (!userId) return [];
   
   const requestsRef = collection(firestore, "quotationRequests");
+  // Query is simplified to avoid complex indexing issues. Sorting is done on the client.
   const q = query(
     requestsRef, 
     where("handymanId", "==", userId),
-    where("status", "==", "Completada"),
-    orderBy("updatedAt", "desc")
+    where("status", "==", "Completada")
   );
   
   const querySnapshot = await getDocs(q);
@@ -41,6 +41,9 @@ const fetchCompletedRequests = async (userId: string | undefined): Promise<Quota
       updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
     } as QuotationRequest);
   });
+  
+  // Sort data on the client to avoid complex Firestore indexes
+  requests.sort((a, b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
   
   return requests;
 };
@@ -110,7 +113,26 @@ export default function SupplierEarningsPage() {
   }
   
   if (error) {
-    return <div className="max-w-2xl mx-auto py-10"><Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>No se pudieron cargar tus ganancias.</AlertDescription></Alert></div>;
+    const isIndexError = error.message.toLowerCase().includes('index') || error.message.toLowerCase().includes('failed-precondition');
+    return (
+        <div className="max-w-2xl mx-auto py-10">
+            <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Error al Cargar Ganancias</AlertTitle>
+                <AlertDescription>
+                    {isIndexError
+                        ? "Error de base de datos: La consulta para obtener tus ganancias requiere un índice en Firestore que no existe. Revisa la consola de depuración del navegador (F12) y busca el mensaje de error de Firestore que contiene un enlace para crear el índice."
+                        : "No se pudieron cargar tus ganancias. Por favor, intenta de nuevo más tarde."
+                    }
+                    <br />
+                    <small className="text-xs opacity-70 mt-2 block">Detalle: {error.message}</small>
+                </AlertDescription>
+            </Alert>
+             <Button variant="outline" onClick={() => router.back()} className="mt-6">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Volver al Panel
+            </Button>
+        </div>
+    );
   }
 
   return (
