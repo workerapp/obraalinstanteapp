@@ -82,7 +82,7 @@ export default function Navbar() {
         ? '/dashboard/supplier'
         : '/dashboard/customer';
         
-      if (isSheetContext) { // Mobile logged in - REORGANIZED
+      if (isSheetContext) { // Mobile logged in
         return (
           <>
             <div className="px-2 py-1 text-sm text-muted-foreground font-medium">{typedUser.displayName || typedUser.email}</div>
@@ -223,10 +223,12 @@ export default function Navbar() {
               <nav className="flex flex-col gap-1">
                 {navLinksContent(true)}
               </nav>
-              <Separator className="my-4" />
-              <nav className="flex flex-col gap-1 mt-auto"> {/* Auth links at the bottom */}
-                {authLinksContent(true)}
-              </nav>
+              <div className="mt-auto">
+                 <Separator className="my-4" />
+                <nav className="flex flex-col gap-1">
+                    {authLinksContent(true)}
+                </nav>
+              </div>
             </SheetContent>
           </Sheet>
         ) : (
