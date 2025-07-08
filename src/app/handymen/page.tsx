@@ -92,9 +92,10 @@ export default function HandymenPage() {
 
     return data.handymen
       .filter(handyman => {
-        // Case-insensitive category filter
+        // Case-insensitive category filter with partial matching
         if (selectedCategory) {
-          return handyman.skills?.some(skill => skill.toLowerCase() === selectedCategory.toLowerCase());
+          const lowercasedCategory = selectedCategory.toLowerCase();
+          return handyman.skills?.some(skill => skill.toLowerCase().includes(lowercasedCategory));
         }
         return true;
       })

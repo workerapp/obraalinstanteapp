@@ -78,9 +78,10 @@ export default function SuppliersPage() {
     if (!data?.suppliers) return [];
     return data.suppliers
       .filter(supplier => {
-        // Category filter
+        // Category filter with partial matching
         if (selectedCategory) {
-          return supplier.categories?.some(cat => cat.toLowerCase() === selectedCategory.toLowerCase());
+          const lowercasedCategory = selectedCategory.toLowerCase();
+          return supplier.categories?.some(cat => cat.toLowerCase().includes(lowercasedCategory));
         }
         return true;
       })
