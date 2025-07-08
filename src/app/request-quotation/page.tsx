@@ -72,10 +72,6 @@ export default function RequestQuotationPage() {
 
   const isCartMode = getCartCount() > 0;
   
-  const serviceNameFromQuery = searchParams.get('serviceName') ? decodeURIComponent(searchParams.get('serviceName')!) : null;
-  const handymanNameFromQuery = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')!) : null;
-
-
   const { data: availableServices, isLoading: servicesLoading } = useQuery<Service[], Error>({
     queryKey: ['platformServices'],
     queryFn: fetchActiveServices,
@@ -90,6 +86,9 @@ export default function RequestQuotationPage() {
   });
 
   useEffect(() => {
+    const serviceNameFromQuery = searchParams.get('serviceName') ? decodeURIComponent(searchParams.get('serviceName')!) : null;
+    const handymanNameFromQuery = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')!) : null;
+
     const defaultValues: Partial<FormData> = {};
     if (typedUser) {
         defaultValues.contactFullName = typedUser.displayName || '';
@@ -143,9 +142,7 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
     isCartMode, 
     cartItems, 
     cartSupplierId, 
-    cartSupplierName, 
-    serviceNameFromQuery, 
-    handymanNameFromQuery,
+    cartSupplierName,
     availableServices
   ]);
   
@@ -173,10 +170,16 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
       userFullName: typedUser.displayName || null, userEmail: typedUser.email || null,
       contactFullName: data.contactFullName, contactEmail: data.contactEmail,
       contactPhone: data.contactPhone || null, address: data.address,
-      serviceId: data.serviceId, serviceName: data.serviceName,
-      problemDescription: data.problemDescription, preferredDate: data.preferredDate || null,
-      imageUrl: null, handymanId: data.handymanId || null, handymanName: data.handymanName || null,
-      status: "Enviada" as const, requestedAt: serverTimestamp(), updatedAt: serverTimestamp(),
+      serviceId: data.serviceId || null,
+      serviceName: data.serviceName || null,
+      problemDescription: data.problemDescription,
+      preferredDate: data.preferredDate || null,
+      imageUrl: null, 
+      handymanId: data.handymanId || null, 
+      handymanName: data.handymanName || null,
+      status: "Enviada" as const, 
+      requestedAt: serverTimestamp(), 
+      updatedAt: serverTimestamp(),
     };
 
     try {
@@ -200,6 +203,8 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
     }
   };
   
+  const serviceNameFromQuery = searchParams.get('serviceName') ? decodeURIComponent(searchParams.get('serviceName')!) : null;
+  const handymanNameFromQuery = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')!) : null;
   const hasContext = isCartMode || !!serviceNameFromQuery;
 
   return (
