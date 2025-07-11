@@ -192,13 +192,17 @@ export default function CustomerDashboardPage() {
   };
 
 
-  if (authLoading || (!authLoading && typedUser?.role !== 'customer')) {
+  if (authLoading || (!authLoading && !typedUser)) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-3 text-muted-foreground">Verificando...</p>
       </div>
     );
+  }
+  
+  if (typedUser && typedUser.role && typedUser.role !== 'customer') {
+    return null; // Render nothing while redirecting
   }
 
   if (!typedUser) { 
@@ -372,27 +376,25 @@ export default function CustomerDashboardPage() {
                   </Badge>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2 items-center">
-                    <Button variant="link" size="sm" asChild className="p-0 h-auto text-accent hover:text-accent/80">
-                        <Link href={`/dashboard/requests/${req.id}`}><Eye className="mr-1.5 h-4 w-4" />Ver Detalles</Link>
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href={`/dashboard/requests/${req.id}`}><Eye className="mr-1.5 h-4 w-4"/>Ver Detalles</Link>
                     </Button>
                     {(req.status === 'Enviada' || req.status === 'Revisando') && 
                         <Button 
-                          variant="link" 
+                          variant="destructive" 
                           size="sm" 
-                          className="p-0 h-auto text-destructive hover:text-destructive/70" 
                           onClick={() => openCancelConfirmDialog(req.id)}
                           disabled={isCancellingRequest && requestToCancelId === req.id}
                         >
                           {isCancellingRequest && requestToCancelId === req.id ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1.5 h-4 w-4" />}
-                          Cancelar Solicitud
+                          Cancelar
                         </Button>
                     }
                      {req.status === 'Cotizada' && 
                         <>
                           <Button 
-                            variant="link" 
-                            size="sm" 
-                            className="p-0 h-auto text-green-600 hover:text-green-700" 
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white"
                             onClick={() => openAcceptConfirmDialog(req.id)}
                             disabled={isAcceptingQuotation && requestToAcceptId === req.id}
                           >
@@ -400,22 +402,20 @@ export default function CustomerDashboardPage() {
                             Aceptar Cotización
                           </Button>
                            <Button 
-                            variant="link" 
+                            variant="destructive"
                             size="sm" 
-                            className="p-0 h-auto text-destructive hover:text-destructive/70" 
                             onClick={() => openCancelConfirmDialog(req.id)} // Client can still cancel/reject a quote
                             disabled={isCancellingRequest && requestToCancelId === req.id}
                           >
                             {isCancellingRequest && requestToCancelId === req.id ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1.5 h-4 w-4" />}
-                            Rechazar Cotización
+                            Rechazar
                           </Button>
                         </>
                     }
                      {req.status === 'Finalizada por Profesional' && (
                         <Button 
-                            variant="link" 
-                            size="sm" 
-                            className="p-0 h-auto text-green-600 hover:text-green-700"
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white"
                             onClick={() => openCompleteConfirmDialog(req.id)}
                             disabled={isCompletingRequest && requestToCompleteId === req.id}
                         >
