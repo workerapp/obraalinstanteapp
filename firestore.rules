@@ -1,0 +1,121 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Regla de seguridad por defecto: Nadie puede acceder a nada a menos que se permita explícitamente.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- COLECCIÓN DE USUARIOS ---
+    match /users/{userId} {
+      // PERMISOS DE LECTURA:
+      // 1. Un usuario autenticado puede leer su propio perfil.
+      // 2. Cualquiera puede leer perfiles de profesionales/proveedores aprobados.
+      allow read: if request.auth != null && request.auth.uid == userId
+                  || resource.data.isApproved == true;
+                  
+      // PERMISOS DE ESCRITURA:
+      // 1. CREAR: Un usuario puede crear su propio documento (al registrarse).
+      //    Se asegura que el `uid` del documento coincida con el del usuario autenticado.
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // 2. ACTUALIZAR:
+      //    a) Un usuario solo puede actualizar su propio documento.
+      //    b) Un administrador puede actualizar cualquier documento de usuario (para aprobaciones, etc.).
+      //    No se permite modificar el rol ni el uid una vez creado (excepto para el admin).
+      allow update: if (request.auth != null && request.auth.uid == userId && request.resource.data.role == resource.data.role && request.resource.data.uid == resource.data.uid)
+                    || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+                    
+      // 3. ELIMINAR: Un usuario puede eliminar su propia cuenta.
+      allow delete: if request.auth != null && request.auth.uid == userId;
+      
+      // --- SUBCOLECCIÓN DE RESEÑAS ---
+      match /reviews/{reviewId} {
+          // Cualquiera puede leer las reseñas.
+          allow read: if true;
+          // Solo un usuario autenticado puede crear una reseña.
+          // La lógica de negocio (que el servicio esté completo) se valida en el backend.
+          allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+          // Nadie puede actualizar o eliminar reseñas directamente.
+          allow update, delete: if false;
+      }
+    }
+    
+    // --- COLECCIÓN DE SERVICIOS GLOBALES (ADMIN) ---
+    match /platformServices/{serviceId} {
+        // Cualquiera puede leer los servicios activos.
+        allow read: if resource.data.isActive == true;
+        // Solo un admin puede crear, actualizar o eliminar servicios.
+        allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // --- COLECCIÓN DE CATEGORÍAS DE PRODUCTOS (ADMIN) ---
+    match /productCategories/{categoryId} {
+        // Cualquiera puede leer las categorías.
+        allow read: if true;
+        // Solo un admin puede escribir.
+        allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // --- COLECCIÓN DE SERVICIOS OFRECIDOS POR PROFESIONALES ---
+    match /handymanServices/{serviceId} {
+        // Cualquiera puede leer los servicios activos.
+        allow read: if resource.data.isActive == true;
+        // Un profesional solo puede escribir (crear, editar, borrar) sus propios servicios.
+        allow write: if request.auth != null && request.auth.uid == request.resource.data.handymanUid;
+    }
+
+    // --- COLECCIÓN DE PRODUCTOS OFRECIDOS POR PROVEEDORES ---
+    match /supplierProducts/{productId} {
+        // Cualquiera puede leer los productos activos.
+        allow read: if resource.data.isActive == true;
+        // Un proveedor solo puede escribir en sus propios productos.
+        allow write: if request.auth != null && request.auth.uid == request.resource.data.supplierUid;
+    }
+
+    // --- COLECCIÓN DE SOLICITUDES DE COTIZACIÓN ---
+    match /quotationRequests/{requestId} {
+        function isOwner() {
+          return request.auth != null && request.auth.uid == resource.data.userId;
+        }
+        function isAssignedProfessional() {
+          return request.auth != null && (request.auth.uid == resource.data.professionalId || request.auth.uid == resource.data.handymanId);
+        }
+        function isAdmin() {
+          return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        }
+        function isPublicAndProfessional() {
+          let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+          return resource.data.professionalId == null && (userRole == 'handyman' || userRole == 'supplier');
+        }
+
+        // LECTURA:
+        // Se permite si eres el dueño, el profesional asignado, un admin, o si es una solicitud pública y eres un profesional.
+        allow read: if isOwner() || isAssignedProfessional() || isAdmin() || isPublicAndProfessional();
+
+        // ESCRITURA:
+        // 1. CREAR: Un usuario autenticado puede crear una solicitud para sí mismo.
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+        // 2. ACTUALIZAR: Se permite si eres el dueño, el profesional asignado o un admin.
+        allow update: if isOwner() || isAssignedProfessional() || isAdmin();
+        
+        // --- SUBCOLECCIÓN DE MENSAJES ---
+        match /messages/{messageId} {
+            // Un mensaje puede ser leído por el dueño de la solicitud, el profesional asignado o un admin.
+            allow read: if get(/databases/$(database)/documents/quotationRequests/$(requestId)).data.userId == request.auth.uid
+                        || get(/databases/$(database)/documents/quotationRequests/$(requestId)).data.professionalId == request.auth.uid
+                        || get(/databases/$(database)/documents/quotationRequests/$(requestId)).data.handymanId == request.auth.uid
+                        || isAdmin();
+                        
+            // Un mensaje puede ser creado por el dueño de la solicitud o el profesional asignado.
+            allow create: if (get(/databases/$(database)/documents/quotationRequests/$(requestId)).data.userId == request.auth.uid
+                          || get(/databases/$(database)/documents/quotationRequests/$(requestId)).data.professionalId == request.auth.uid
+                          || get(/databases/$(database)/documents/quotationRequests/$(requestId)).data.handymanId == request.auth.uid)
+                          && request.resource.data.senderId == request.auth.uid;
+        }
+    }
+  }
+}

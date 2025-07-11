@@ -1,0 +1,83 @@
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Regla de seguridad por defecto: Nadie puede leer o escribir archivos.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+    
+    // --- IMÁGENES DE PERFIL ---
+    // La ruta es: /profile-pictures/{userId}/{fileName}
+    match /profile-pictures/{userId}/{fileName} {
+      // LECTURA: Cualquiera puede ver las imágenes de perfil (son públicas).
+      allow read: if true;
+      // ESCRITURA: Un usuario solo puede subir/modificar su propia imagen de perfil.
+      // Se valida que el tamaño del archivo sea menor a 5MB.
+      allow write: if request.auth != null 
+                    && request.auth.uid == userId
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+    }
+
+    // --- IMÁGENES DE SERVICIOS GLOBALES (ADMIN) ---
+    // La ruta es: /platform-services/{serviceIdentifier}/{fileName}
+    match /platform-services/{serviceIdentifier}/{fileName} {
+      // LECTURA: Cualquiera puede ver las imágenes de los servicios.
+      allow read: if true;
+      // ESCRITURA: Solo un administrador puede subir imágenes para los servicios de la plataforma.
+      allow write: if request.auth != null 
+                    && get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+    }
+
+    // --- IMÁGENES DE SERVICIOS DE PROFESIONALES ---
+    // La ruta es: /handyman-services/{handymanUid}/{serviceIdentifier}/{fileName}
+    match /handyman-services/{handymanUid}/{serviceIdentifier}/{fileName} {
+      // LECTURA: Cualquiera puede ver las imágenes de los servicios.
+      allow read: if true;
+      // ESCRITURA: Solo el profesional dueño puede subir imágenes para sus servicios.
+      allow write: if request.auth != null 
+                    && request.auth.uid == handymanUid
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+    }
+    
+    // --- IMÁGENES DE PRODUCTOS DE PROVEEDORES ---
+    // La ruta es: /supplier-products/{supplierUid}/{productIdentifier}/{fileName}
+    match /supplier-products/{supplierUid}/{productIdentifier}/{fileName} {
+      // LECTURA: Cualquiera puede ver las imágenes de los productos.
+      allow read: if true;
+      // ESCRITURA: Solo el proveedor dueño puede subir imágenes para sus productos.
+      allow write: if request.auth != null 
+                    && request.auth.uid == supplierUid
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+    }
+
+    // --- IMÁGENES ADJUNTAS A SOLICITUDES/MENSAJES ---
+    // La ruta es: /quotationRequests/{requestId}/messages/{fileName}
+    match /quotationRequests/{requestId}/messages/{fileName} {
+      // LECTURA: Solo el cliente dueño de la solicitud, el profesional asignado o un admin pueden ver las imágenes.
+      allow read: if request.auth != null 
+                   && (
+                        get(/databases/(default)/documents/quotationRequests/$(requestId)).data.userId == request.auth.uid
+                        || get(/databases/(default)/documents/quotationRequests/$(requestId)).data.professionalId == request.auth.uid
+                        || get(/databases/(default)/documents/quotationRequests/$(requestId)).data.handymanId == request.auth.uid
+                        || get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+                      );
+      // ESCRITURA: El cliente o el profesional asignado pueden subir imágenes a la solicitud.
+      allow write: if request.auth != null 
+                    && (
+                        get(/databases/(default)/documents/quotationRequests/$(requestId)).data.userId == request.auth.uid
+                        || get(/databases/(default)/documents/quotationRequests/$(requestId)).data.professionalId == request.auth.uid
+                        || get(/databases/(default)/documents/quotationRequests/$(requestId)).data.handymanId == request.auth.uid
+                       )
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
