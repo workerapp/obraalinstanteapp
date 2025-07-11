@@ -26,7 +26,7 @@ export default function DashboardRedirectPage() {
     let redirectPath = '/dashboard/customer'; // Ruta por defecto para clientes.
     if (user.role === 'admin') {
       redirectPath = '/admin/overview';
-    } else if (user.role === 'handyman') {
+    } else if (user.role === 'professional') {
       redirectPath = '/dashboard/professional';
     } else if (user.role === 'supplier') {
       redirectPath = '/dashboard/supplier';
