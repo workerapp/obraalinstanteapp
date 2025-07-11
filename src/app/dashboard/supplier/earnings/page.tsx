@@ -22,23 +22,34 @@ const fetchCompletedRequests = async (userId: string | undefined): Promise<Quota
   if (!userId) return [];
   
   const requestsRef = collection(firestore, "quotationRequests");
-  // Query is simplified to avoid complex indexing issues. Sorting is done on the client.
-  const q = query(
-    requestsRef, 
-    where("handymanId", "==", userId),
-    where("status", "==", "Completada")
-  );
-  
-  const querySnapshot = await getDocs(q);
-  const requests: QuotationRequest[] = [];
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    requests.push({ 
-      id: doc.id, 
-      ...data,
-      updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
-    } as QuotationRequest);
-  });
+  const requestsMap = new Map<string, QuotationRequest>();
+
+  const processSnapshot = (snapshot: any) => {
+    snapshot.forEach((doc: any) => {
+      if (!requestsMap.has(doc.id)) {
+        const data = doc.data();
+        requestsMap.set(doc.id, {
+          id: doc.id,
+          ...data,
+          updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
+        } as QuotationRequest);
+      }
+    });
+  };
+
+  const q1 = query(requestsRef, where("professionalId", "==", userId), where("status", "==", "Completada"));
+  const q2 = query(requestsRef, where("handymanId", "==", userId), where("status", "==", "Completada"));
+
+  try {
+    const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+    processSnapshot(snapshot1);
+    processSnapshot(snapshot2);
+  } catch (error) {
+    console.error("Error fetching completed requests for supplier:", error);
+    throw new Error("Error al obtener las ventas completadas. Es posible que se requiera un índice en la base de datos.");
+  }
+
+  const requests = Array.from(requestsMap.values());
   
   // Sort data on the client to avoid complex Firestore indexes
   requests.sort((a, b) => (b.updatedAt?.toMillis() || 0) - (a.updatedAt?.toMillis() || 0));
