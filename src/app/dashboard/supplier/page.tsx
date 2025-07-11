@@ -57,59 +57,51 @@ const SUPPLIER_PENDING_COMMISSION_LIMIT = 5;
 
 const fetchSupplierRequests = async (supplierUid: string | undefined): Promise<QuotationRequest[]> => {
   if (!supplierUid) return [];
-  
+
   const requestsRef = collection(firestore, "quotationRequests");
-
-  // Query 1: For older data structure using handymanId
-  const assignedQueryLegacy = query(
-    requestsRef, 
-    where("handymanId", "==", supplierUid)
-  );
-  
-  // Query 2: For newer data structure using professionalId
-  const assignedQueryCurrent = query(
-    requestsRef,
-    where("professionalId", "==", supplierUid)
-  );
-
-  // Query 3: Unclaimed public requests (status 'Enviada' and no professional/handyman assigned)
-  const unassignedQuery = query(
-    requestsRef,
-    where("professionalId", "==", null),
-    where("handymanId", "==", null),
-    where("status", "==", "Enviada")
-  );
-  
-  const [
-      assignedSnapshotLegacy,
-      assignedSnapshotCurrent,
-      unassignedSnapshot
-  ] = await Promise.all([
-      getDocs(assignedQueryLegacy),
-      getDocs(assignedQueryCurrent),
-      getDocs(unassignedQuery)
-  ]);
-
   const requestsMap = new Map<string, QuotationRequest>();
 
-  const processSnapshot = (snapshot: typeof assignedSnapshotLegacy) => {
-    snapshot.forEach((doc) => {
-       if (requestsMap.has(doc.id)) return; // Avoid duplicates
-      const data = doc.data();
-      requestsMap.set(doc.id, { 
-        id: doc.id, 
-        ...data,
-        requestedAt: data.requestedAt instanceof Timestamp ? data.requestedAt : Timestamp.now(),
-        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
-        commissionPaymentStatus: data.commissionPaymentStatus || undefined,
-      } as QuotationRequest);
+  // Helper to process snapshots and add to map
+  const processSnapshot = (snapshot: any) => {
+    snapshot.forEach((doc: any) => {
+      if (!requestsMap.has(doc.id)) {
+        const data = doc.data();
+        requestsMap.set(doc.id, {
+          id: doc.id,
+          ...data,
+          requestedAt: data.requestedAt instanceof Timestamp ? data.requestedAt : Timestamp.now(),
+          updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
+          commissionPaymentStatus: data.commissionPaymentStatus || undefined,
+        } as QuotationRequest);
+      }
     });
   };
 
-  processSnapshot(assignedSnapshotLegacy);
-  processSnapshot(assignedSnapshotCurrent);
-  processSnapshot(unassignedSnapshot);
+  // Query 1: Get requests assigned via the new 'professionalId' field
+  const professionalIdQuery = query(requestsRef, where("professionalId", "==", supplierUid));
+  
+  // Query 2: Get requests assigned via the legacy 'handymanId' field
+  const handymanIdQuery = query(requestsRef, where("handymanId", "==", supplierUid));
 
+  // Query 3: Get unassigned public requests
+  const publicRequestsQuery = query(requestsRef, where("status", "==", "Enviada"), where("professionalId", "==", null), where("handymanId", "==", null));
+
+  try {
+    const [professionalIdSnapshot, handymanIdSnapshot, publicRequestsSnapshot] = await Promise.all([
+      getDocs(professionalIdQuery),
+      getDocs(handymanIdQuery),
+      getDocs(publicRequestsQuery)
+    ]);
+    
+    processSnapshot(professionalIdSnapshot);
+    processSnapshot(handymanIdSnapshot);
+    processSnapshot(publicRequestsSnapshot);
+
+  } catch (error) {
+    console.error("Error fetching supplier requests:", error);
+    throw new Error("Error fetching data. A composite index might be required in Firestore. Check the browser console for a link.");
+  }
+  
   const requests = Array.from(requestsMap.values());
   
   requests.sort((a, b) => {
@@ -122,6 +114,7 @@ const fetchSupplierRequests = async (supplierUid: string | undefined): Promise<Q
   
   return requests;
 };
+
 
 const quoteFormSchema = z.object({
   quotedAmount: z.preprocess(

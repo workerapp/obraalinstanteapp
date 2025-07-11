@@ -55,60 +55,53 @@ const PLATFORM_COMMISSION_RATE = 0.10;
 
 const fetchProfessionalRequests = async (professionalUid: string | undefined): Promise<QuotationRequest[]> => {
   if (!professionalUid) return [];
-  
+
   const requestsRef = collection(firestore, "quotationRequests");
-
-  // Query 1: For older data structure using handymanId
-  const assignedQueryLegacy = query(
-    requestsRef, 
-    where("handymanId", "==", professionalUid)
-  );
-  
-  // Query 2: For newer data structure using professionalId
-  const assignedQueryCurrent = query(
-    requestsRef,
-    where("professionalId", "==", professionalUid)
-  );
-
-  // Query 3: Unclaimed public requests (status 'Enviada' and no professional/handyman assigned)
-  const unassignedQuery = query(
-    requestsRef,
-    where("professionalId", "==", null),
-    where("status", "==", "Enviada")
-  );
-  
-  const [
-      assignedSnapshotLegacy,
-      assignedSnapshotCurrent,
-      unassignedSnapshot
-  ] = await Promise.all([
-      getDocs(assignedQueryLegacy),
-      getDocs(assignedQueryCurrent),
-      getDocs(unassignedSnapshot)
-  ]);
-
   const requestsMap = new Map<string, QuotationRequest>();
 
-  const processSnapshot = (snapshot: typeof assignedSnapshotLegacy) => {
-    snapshot.forEach((doc) => {
-      if (requestsMap.has(doc.id)) return; // Avoid duplicates
-      const data = doc.data();
-      requestsMap.set(doc.id, { 
-        id: doc.id, 
-        ...data,
-        requestedAt: data.requestedAt instanceof Timestamp ? data.requestedAt : Timestamp.now(),
-        updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
-        commissionPaymentStatus: data.commissionPaymentStatus || undefined,
-      } as QuotationRequest);
+  // Helper to process snapshots and add to map
+  const processSnapshot = (snapshot: any) => {
+    snapshot.forEach((doc: any) => {
+      if (!requestsMap.has(doc.id)) {
+        const data = doc.data();
+        requestsMap.set(doc.id, {
+          id: doc.id,
+          ...data,
+          requestedAt: data.requestedAt instanceof Timestamp ? data.requestedAt : Timestamp.now(),
+          updatedAt: data.updatedAt instanceof Timestamp ? data.updatedAt : Timestamp.now(),
+          commissionPaymentStatus: data.commissionPaymentStatus || undefined,
+        } as QuotationRequest);
+      }
     });
   };
 
-  processSnapshot(assignedSnapshotLegacy);
-  processSnapshot(assignedSnapshotCurrent);
-  processSnapshot(unassignedSnapshot);
-
-  const requests = Array.from(requestsMap.values());
+  // Query 1: Get requests assigned via the new 'professionalId' field
+  const professionalIdQuery = query(requestsRef, where("professionalId", "==", professionalUid));
   
+  // Query 2: Get requests assigned via the legacy 'handymanId' field
+  const handymanIdQuery = query(requestsRef, where("handymanId", "==", professionalUid));
+
+  // Query 3: Get unassigned public requests
+  const publicRequestsQuery = query(requestsRef, where("status", "==", "Enviada"), where("professionalId", "==", null));
+
+  try {
+    const [professionalIdSnapshot, handymanIdSnapshot, publicRequestsSnapshot] = await Promise.all([
+      getDocs(professionalIdQuery),
+      getDocs(handymanIdQuery),
+      getDocs(publicRequestsQuery)
+    ]);
+    
+    processSnapshot(professionalIdSnapshot);
+    processSnapshot(handymanIdSnapshot);
+    processSnapshot(publicRequestsSnapshot);
+
+  } catch (error) {
+    console.error("Error fetching professional requests:", error);
+    throw new Error("Error fetching data. A composite index might be required in Firestore. Check the browser console for a link.");
+  }
+  
+  const requests = Array.from(requestsMap.values());
+
   // Client-side sorting
   requests.sort((a, b) => {
     const statusOrder: { [key: string]: number } = { 'Enviada': 1, 'Revisando': 2, 'Cotizada': 3, 'Programada': 4, 'Completada': 5, 'Cancelada': 6 };
@@ -120,6 +113,7 @@ const fetchProfessionalRequests = async (professionalUid: string | undefined): P
   
   return requests;
 };
+
 
 const quoteFormSchema = z.object({
   quotedAmount: z.preprocess(
