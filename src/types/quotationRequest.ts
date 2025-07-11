@@ -1,3 +1,4 @@
+
 // src/types/quotationRequest.ts
 import type { Timestamp } from 'firebase/firestore';
 
@@ -17,7 +18,7 @@ export interface QuotationRequest {
   imageUrl?: string; // URL a la imagen del problema adjuntada por el usuario
   professionalId?: string; // ID del profesional si se solicitó a uno específico (opcional)
   professionalName?: string; // Nombre del profesional si se solicitó a uno específico (opcional)
-  status: "Enviada" | "Revisando" | "Cotizada" | "Programada" | "Completada" | "Cancelada";
+  status: "Enviada" | "Revisando" | "Cotizada" | "Aceptada" | "En Progreso" | "Finalizada por Profesional" | "Completada" | "Cancelada";
   requestedAt: Timestamp;
   updatedAt: Timestamp;
 

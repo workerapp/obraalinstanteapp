@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ListChecks, MessageSquarePlus, History, UserCircle, Loader2, Trash2, CheckCircle2, CalendarPlus, Eye, Settings } from 'lucide-react'; // Added Settings icon
+import { ListChecks, MessageSquarePlus, History, UserCircle, Loader2, Trash2, CheckCircle2, CalendarPlus, Eye, Settings, ThumbsUp } from 'lucide-react'; // Added Settings icon
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { useAuth, type AppUser } from '@/hooks/useAuth';
@@ -66,6 +66,10 @@ export default function CustomerDashboardPage() {
   const [isAcceptAlertOpen, setIsAcceptAlertOpen] = useState(false);
   const [requestToAcceptId, setRequestToAcceptId] = useState<string | null>(null);
   const [isAcceptingQuotation, setIsAcceptingQuotation] = useState(false);
+  
+  const [isCompleteAlertOpen, setIsCompleteAlertOpen] = useState(false);
+  const [requestToCompleteId, setRequestToCompleteId] = useState<string | null>(null);
+  const [isCompletingRequest, setIsCompletingRequest] = useState(false);
 
   const { data: quotationRequests, isLoading: requestsLoading, error: requestsError } = useQuery<QuotationRequest[], Error>({
     queryKey: ['quotationRequests', typedUser?.uid],
@@ -75,20 +79,15 @@ export default function CustomerDashboardPage() {
 
   const getStatusColorClass = (status: QuotationRequest['status']): string => {
      switch (status) {
-      case 'Completada':
-        return 'bg-green-600 text-white';
-      case 'Programada':
-        return 'bg-blue-500 text-white';
-      case 'Enviada':
-        return 'bg-yellow-500 text-black';
-      case 'Revisando':
-        return 'bg-orange-500 text-white';
-      case 'Cotizada':
-        return 'bg-purple-500 text-white';
-      case 'Cancelada':
-        return 'bg-red-600 text-white';
-      default:
-        return 'bg-gray-500 text-white';
+      case 'Completada': return 'bg-green-600 text-white';
+      case 'Finalizada por Profesional': return 'bg-emerald-500 text-white';
+      case 'En Progreso': return 'bg-sky-500 text-white';
+      case 'Aceptada': return 'bg-blue-500 text-white';
+      case 'Enviada': return 'bg-yellow-500 text-black';
+      case 'Revisando': return 'bg-orange-500 text-white';
+      case 'Cotizada': return 'bg-purple-500 text-white';
+      case 'Cancelada': return 'bg-red-600 text-white';
+      default: return 'bg-gray-500 text-white';
     }
   }
 
@@ -138,11 +137,11 @@ export default function CustomerDashboardPage() {
     try {
       const requestDocRef = doc(firestore, "quotationRequests", requestToAcceptId);
       await updateDoc(requestDocRef, {
-        status: "Programada",
+        status: "Aceptada",
         updatedAt: serverTimestamp(),
       });
 
-      toast({ title: "Cotización Aceptada", description: "El servicio ha sido programado. El profesional se pondrá en contacto." });
+      toast({ title: "Cotización Aceptada", description: "El servicio ha sido aceptado. El profesional se pondrá en contacto para coordinar el inicio." });
       queryClient.invalidateQueries({ queryKey: ['quotationRequests', typedUser.uid] });
       setIsAcceptAlertOpen(false);
       setRequestToAcceptId(null);
@@ -151,6 +150,36 @@ export default function CustomerDashboardPage() {
       toast({ title: "Error al Aceptar", description: error.message || "No se pudo aceptar la cotización.", variant: "destructive" });
     } finally {
       setIsAcceptingQuotation(false);
+    }
+  };
+  
+  const openCompleteConfirmDialog = (requestId: string) => {
+    setRequestToCompleteId(requestId);
+    setIsCompleteAlertOpen(true);
+  };
+
+  const handleCompleteRequest = async () => {
+    if (!requestToCompleteId || !typedUser?.uid) {
+      toast({ title: "Error", description: "No se pudo identificar la solicitud.", variant: "destructive" });
+      return;
+    }
+    setIsCompletingRequest(true);
+    try {
+      const requestDocRef = doc(firestore, "quotationRequests", requestToCompleteId);
+      await updateDoc(requestDocRef, {
+        status: "Completada",
+        updatedAt: serverTimestamp(),
+      });
+
+      toast({ title: "¡Servicio Completado!", description: "Has confirmado la finalización del servicio. ¡Gracias por usar la plataforma!" });
+      queryClient.invalidateQueries({ queryKey: ['quotationRequests', typedUser.uid] });
+      setIsCompleteAlertOpen(false);
+      setRequestToCompleteId(null);
+    } catch (error: any) {
+      console.error("Error al completar solicitud:", error);
+      toast({ title: "Error al Completar", description: error.message || "No se pudo completar la solicitud.", variant: "destructive" });
+    } finally {
+      setIsCompletingRequest(false);
     }
   };
 
@@ -246,9 +275,9 @@ export default function CustomerDashboardPage() {
       <AlertDialog open={isAcceptAlertOpen} onOpenChange={setIsAcceptAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Aceptar Cotización y Programar?</AlertDialogTitle>
+            <AlertDialogTitle>¿Aceptar Cotización?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esto confirmará que aceptas la cotización y el servicio se marcará como "Programada". El profesional se pondrá en contacto para coordinar los detalles.
+              Esto confirmará que aceptas la cotización y el servicio se marcará como "Aceptada". El profesional se pondrá en contacto para coordinar los detalles del inicio del trabajo.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -261,7 +290,33 @@ export default function CustomerDashboardPage() {
               {isAcceptingQuotation ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Aceptando...</>
               ) : (
-                <><CalendarPlus className="mr-2 h-4 w-4" /> Aceptar y Programar</>
+                <><CalendarPlus className="mr-2 h-4 w-4" /> Aceptar Cotización</>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Mark as Complete Confirmation Dialog */}
+       <AlertDialog open={isCompleteAlertOpen} onOpenChange={setIsCompleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Confirmar Finalización?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Al confirmar, el servicio se marcará como "Completada". Esto indica que el trabajo se ha realizado a tu satisfacción y permitirá al profesional recibir su pago y a ti dejar una reseña.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {setIsCompleteAlertOpen(false); setRequestToCompleteId(null);}}>Volver</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleCompleteRequest} 
+              disabled={isCompletingRequest}
+              className="bg-green-600 text-white hover:bg-green-700"
+            >
+              {isCompletingRequest ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Confirmando...</>
+              ) : (
+                <><ThumbsUp className="mr-2 h-4 w-4" /> Confirmar y Completar</>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -347,6 +402,18 @@ export default function CustomerDashboardPage() {
                           </Button>
                         </>
                     }
+                     {req.status === 'Finalizada por Profesional' && (
+                        <Button 
+                            variant="link" 
+                            size="sm" 
+                            className="p-0 h-auto text-green-600 hover:text-green-700"
+                            onClick={() => openCompleteConfirmDialog(req.id)}
+                            disabled={isCompletingRequest && requestToCompleteId === req.id}
+                        >
+                           {isCompletingRequest && requestToCompleteId === req.id ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-1.5 h-4 w-4" />}
+                           Confirmar Finalización
+                        </Button>
+                     )}
                 </div>
               </div>
               {index < quotationRequests.length - 1 && <Separator className="my-4" />}

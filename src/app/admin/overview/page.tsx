@@ -47,7 +47,7 @@ const fetchAllCompletedRequests = async (): Promise<QuotationRequest[]> => {
 
 const fetchActiveRequests = async (): Promise<QuotationRequest[]> => {
   const requestsRef = collection(firestore, "quotationRequests");
-  const q = query(requestsRef, where("status", "in", ["Enviada", "Revisando", "Cotizada", "Programada"]));
+  const q = query(requestsRef, where("status", "in", ["Enviada", "Revisando", "Cotizada", "Aceptada", "En Progreso", "Finalizada por Profesional"]));
   
   const querySnapshot = await getDocs(q);
   const requests: QuotationRequest[] = [];
@@ -236,13 +236,15 @@ export default function AdminOverviewPage() {
   
   const getStatusColorClass = (status: QuotationRequest['status']): string => {
     switch (status) {
-     case 'Completada': return 'bg-green-600 text-white';
-     case 'Programada': return 'bg-blue-500 text-white';
-     case 'Enviada': return 'bg-yellow-500 text-black';
-     case 'Revisando': return 'bg-orange-500 text-white';
-     case 'Cotizada': return 'bg-purple-500 text-white';
-     case 'Cancelada': return 'bg-red-600 text-white';
-     default: return 'bg-gray-500 text-white';
+      case 'Completada': return 'bg-green-600 text-white';
+      case 'Finalizada por Profesional': return 'bg-emerald-500 text-white';
+      case 'En Progreso': return 'bg-sky-500 text-white';
+      case 'Aceptada': return 'bg-blue-500 text-white';
+      case 'Enviada': return 'bg-yellow-500 text-black';
+      case 'Revisando': return 'bg-orange-500 text-white';
+      case 'Cotizada': return 'bg-purple-500 text-white';
+      case 'Cancelada': return 'bg-red-600 text-white';
+      default: return 'bg-gray-500 text-white';
    }
  };
 
