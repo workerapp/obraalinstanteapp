@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Supplier } from '@/types/supplier';
-import { Star, MapPin, CalendarDays, Package } from 'lucide-react';
+import { Star, MapPin, CalendarDays, Award } from 'lucide-react';
 
 interface SupplierProfileCardProps {
   supplier: Supplier;
@@ -14,7 +14,15 @@ interface SupplierProfileCardProps {
 export default function SupplierProfileCard({ supplier }: SupplierProfileCardProps) {
   return (
     <Card className="flex flex-col h-full shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg overflow-hidden">
-      <CardHeader className="p-0">
+      <CardHeader className="p-0 relative">
+        {supplier.subscriptionStatus === 'premium' && (
+            <div className="absolute top-2 right-2 z-10">
+                 <Badge className="bg-yellow-400 text-yellow-900 border-yellow-500 shadow-md hover:bg-yellow-400">
+                    <Award className="h-4 w-4 mr-1.5" />
+                    Premium
+                </Badge>
+            </div>
+        )}
         {supplier.logoUrl && (
           <div className="relative w-full h-56 bg-muted p-4">
             <Image

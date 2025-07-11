@@ -41,6 +41,7 @@ const mapFirestoreUserToSupplierList = (uid: string, userData: any): Supplier =>
     about: userData.about || undefined,
     phone: userData.phone || undefined,
     isApproved: userData.isApproved || false,
+    subscriptionStatus: userData.subscriptionStatus || 'free',
   };
 };
 

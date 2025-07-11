@@ -78,6 +78,14 @@ export default function SuppliersPage() {
   const filteredSuppliers = useMemo(() => {
     if (!data?.suppliers) return [];
     return data.suppliers
+      .sort((a, b) => {
+        // Prioritize premium suppliers
+        const aIsPremium = a.subscriptionStatus === 'premium';
+        const bIsPremium = b.subscriptionStatus === 'premium';
+        if (aIsPremium && !bIsPremium) return -1;
+        if (!aIsPremium && bIsPremium) return 1;
+        return 0; // Maintain original order if both are same status
+      })
       .filter(supplier => {
         // Category filter with partial matching
         if (selectedCategory) {

@@ -13,4 +13,5 @@ export interface Supplier {
   phone?: string;
   about?: string;
   isApproved?: boolean;
+  subscriptionStatus?: 'free' | 'premium';
 }
