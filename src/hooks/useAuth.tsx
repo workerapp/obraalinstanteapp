@@ -1,7 +1,7 @@
 // src/hooks/useAuth.tsx
 "use client";
 
-import type React from 'react';
+import React from 'react';
 import { useState, useEffect, createContext, useContext, type PropsWithChildren } from 'react';
 import { type User as FirebaseUser, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, GoogleAuthProvider, signInWithPopup, deleteUser } from 'firebase/auth';
 import { auth, firestore } from '@/firebase/clientApp';
