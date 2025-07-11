@@ -43,13 +43,13 @@ export default function PrivacyPolicyPage() {
           </p>
           <ul className="list-disc list-inside ml-4 space-y-2">
             <li>
-                <strong>Para todos los usuarios (Clientes, Operarios y Proveedores):</strong> Al crear una cuenta, recopilamos tu nombre, correo electrónico y contraseña (la cual se almacena de forma segura y encriptada). Adicionalmente, podemos recopilar datos técnicos como dirección IP, tipo de navegador y datos de uso para el mantenimiento y mejora del servicio.
+                <strong>Para todos los usuarios (Clientes, Profesionales y Proveedores):</strong> Al crear una cuenta, recopilamos tu nombre, correo electrónico y contraseña (la cual se almacena de forma segura y encriptada). Adicionalmente, podemos recopilar datos técnicos como dirección IP, tipo de navegador y datos de uso para el mantenimiento y mejora del servicio.
             </li>
             <li>
                 <strong>Clientes:</strong> Al solicitar una cotización o servicio, recopilamos la información que proporcionas, incluyendo: número de teléfono, dirección física para la prestación del servicio, y la descripción detallada del problema o necesidad. El historial de tus solicitudes y las conversaciones mantenidas a través de nuestro sistema de mensajería también son almacenados.
             </li>
             <li>
-                <strong>Operarios y Proveedores:</strong> Para tu perfil público, recopilamos la información que voluntariamente proporcionas, la cual puede incluir: nombre de la empresa, lema, descripción ("Sobre Mí"), ubicación, teléfono de contacto, fotografía de perfil o logo, y una lista detallada de los servicios, habilidades o categorías de productos que ofreces. Esta información es visible para los Clientes con el fin de facilitar la contratación.
+                <strong>Profesionales y Proveedores:</strong> Para tu perfil público, recopilamos la información que voluntariamente proporcionas, la cual puede incluir: nombre de la empresa o personal, lema, descripción ("Sobre Mí"), ubicación, teléfono de contacto, fotografía de perfil o logo, y una lista detallada de los servicios, habilidades o categorías de productos que ofreces. Para Proveedores, también almacenamos su estado de suscripción (ej. "gratuito" o "premium"). Esta información es visible para los Clientes con el fin de facilitar la contratación.
             </li>
              <li>
                 <strong>Asistente de IA "Obrita":</strong> Las descripciones de problemas que envías al Asistente de IA se procesan para generar análisis y recomendaciones. Utilizamos estas interacciones de forma anónima para mejorar la calidad de nuestro servicio de IA.
@@ -62,8 +62,8 @@ export default function PrivacyPolicyPage() {
           </p>
           <ul className="list-disc list-inside ml-4 space-y-1">
             <li>Crear, verificar y gestionar tu cuenta de usuario en la Plataforma.</li>
-            <li>Actuar como intermediario para facilitar la comunicación y conexión entre Clientes y Profesionales (Operarios/Proveedores). Esto incluye compartir información de contacto y de servicio estrictamente necesaria para la coordinación y ejecución de un trabajo una vez que una cotización ha sido aceptada.</li>
-            <li>Procesar y dar seguimiento a las solicitudes, cotizaciones y estados de los servicios.</li>
+            <li>Actuar como intermediario para facilitar la comunicación y conexión entre Clientes y Profesionales/Proveedores. Esto incluye compartir información de contacto y de servicio estrictamente necesaria para la coordinación y ejecución de un trabajo una vez que una cotización ha sido aceptada.</li>
+            <li>Procesar y dar seguimiento a las solicitudes, cotizaciones y estados de los servicios o ventas.</li>
             <li>Operar, mantener y mejorar la Plataforma, incluyendo las funcionalidades de nuestro Asistente de IA.</li>
             <li>Enviar comunicaciones transaccionales indispensables sobre tus solicitudes o el estado de tu cuenta (ej. notificaciones de nuevos mensajes, cambios de estado de un servicio).</li>
             <li>Prevenir el fraude, garantizar la seguridad de la Plataforma y hacer cumplir nuestros Términos de Servicio.</li>

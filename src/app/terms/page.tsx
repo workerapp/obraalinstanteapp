@@ -36,10 +36,10 @@ export default function TermsOfServicePage() {
 
           <h2 className="text-xl font-semibold font-headline">2. Descripción del Servicio y Rol de la Plataforma</h2>
           <p>
-            Obra al Instante es una plataforma tecnológica que funciona como un <strong>mercado y canal de intermediación</strong>. Nuestro propósito es conectar a usuarios que buscan servicios o productos para el hogar ("Clientes") con profesionales, técnicos y empresas independientes que ofrecen dichos servicios ("Operarios") o productos ("Proveedores") (colectivamente, "Profesionales").
+            Obra al Instante es una plataforma tecnológica que funciona como un <strong>mercado y canal de intermediación</strong>. Nuestro propósito es conectar a usuarios que buscan servicios o productos para el hogar ("Clientes") con profesionales, técnicos y empresas independientes que ofrecen dichos servicios ("Profesionales") o productos ("Proveedores").
           </p>
           <p>
-            <strong>ACLARACIÓN FUNDAMENTAL:</strong> El rol de Obra al Instante se limita exclusivamente a la intermediación. <strong>No somos una empresa constructora, no empleamos a los Profesionales y no somos parte del contrato de servicio que se genera entre un Cliente y un Profesional.</strong> La responsabilidad por la calidad, idoneidad, garantía, seguridad y correcta ejecución de los servicios o la calidad de los productos recae enteramente en el Profesional contratado.
+            <strong>ACLARACIÓN FUNDAMENTAL:</strong> El rol de Obra al Instante se limita exclusivamente a la intermediación. <strong>No somos una empresa constructora, no empleamos a los Profesionales o Proveedores y no somos parte del contrato que se genera entre un Cliente y un Profesional/Proveedor.</strong> La responsabilidad por la calidad, idoneidad, garantía, seguridad y correcta ejecución de los servicios o la calidad de los productos recae enteramente en el Profesional o Proveedor contratado.
           </p>
           
           <h2 className="text-xl font-semibold font-headline">3. Cuentas de Usuario y Roles</h2>
@@ -48,20 +48,24 @@ export default function TermsOfServicePage() {
           </p>
           <ul className="list-disc list-inside ml-4 space-y-1">
             <li><strong>Cliente:</strong> Persona natural o jurídica que busca contratar servicios o adquirir productos.</li>
-            <li><strong>Operario:</strong> Profesional o técnico independiente que ofrece servicios.</li>
-            <li><strong>Proveedor:</strong> Persona natural o jurídica que ofrece productos o materiales.</li>
+            <li><strong>Profesional:</strong> Profesional o técnico independiente que ofrece servicios.</li>
+            <li><strong>Proveedor:</strong> Persona natural o jurídica que ofrece un catálogo de productos o materiales.</li>
           </ul>
-          <p>Los Operarios y Proveedores deben pasar por un proceso de verificación y ser aprobados por el Administrador de la Plataforma para poder ofertar activamente. Nos reservamos el derecho de admisión y permanencia en la Plataforma.</p>
+          <p>Los Profesionales y Proveedores deben pasar por un proceso de verificación y ser aprobados por el Administrador de la Plataforma para poder ofertar activamente. Nos reservamos el derecho de admisión y permanencia en la Plataforma.</p>
 
           <h2 className="text-xl font-semibold font-headline">4. Proceso de Contratación y Cotización</h2>
           <p>
-            El Cliente puede solicitar cotizaciones a través de la Plataforma. El Profesional interesado puede responder a dicha solicitud, comunicarse a través del sistema de mensajería y presentar una cotización formal. La decisión de aceptar o rechazar dicha cotización es exclusiva del Cliente. <strong>La aceptación de una cotización por parte del Cliente perfecciona un acuerdo contractual directo y vinculante entre dicho Cliente y el Profesional correspondiente,</strong> del cual Obra al Instante no es parte.
+            El Cliente puede solicitar cotizaciones a través de la Plataforma. El Profesional o Proveedor interesado puede responder a dicha solicitud, comunicarse a través del sistema de mensajería y presentar una cotización formal. La decisión de aceptar o rechazar dicha cotización es exclusiva del Cliente. <strong>La aceptación de una cotización por parte del Cliente perfecciona un acuerdo contractual directo y vinculante entre dicho Cliente y el Profesional/Proveedor correspondiente,</strong> del cual Obra al Instante no es parte.
           </p>
 
-          <h2 className="text-xl font-semibold font-headline">5. Tarifas y Comisiones</h2>
+          <h2 className="text-xl font-semibold font-headline">5. Tarifas, Comisiones y Suscripciones</h2>
           <p>
-            El uso de la Plataforma es gratuito para los Clientes. Obra al Instante genera ingresos a través de una <strong>tarifa de comisión</strong> que se cobra a los Profesionales por cada servicio o venta completado y pagado a través de la Plataforma. Dicha tarifa corresponde a un porcentaje del valor total de la cotización aceptada. Los Profesionales serán informados de la tasa de comisión vigente y aceptan que esta sea deducida de los montos a recibir.
+            El uso de la Plataforma es gratuito para los Clientes. Obra al Instante genera ingresos a través de dos modelos:
           </p>
+          <ul className="list-disc list-inside ml-4 space-y-1">
+            <li><strong>Comisiones:</strong> Se cobra una tarifa de comisión a los Profesionales y Proveedores por cada servicio o venta completado y pagado a través de la Plataforma. Dicha tarifa corresponde a un porcentaje del valor total de la cotización aceptada.</li>
+            <li><strong>Suscripciones:</strong> Los Proveedores pueden optar por un plan de suscripción "Premium" para acceder a beneficios adicionales, como la capacidad de publicar un número ilimitado de productos y obtener mayor visibilidad en el directorio.</li>
+          </ul>
 
           <h2 className="text-xl font-semibold font-headline">6. Propiedad Intelectual</h2>
           <p>
@@ -70,7 +74,7 @@ export default function TermsOfServicePage() {
 
           <h2 className="text-xl font-semibold font-headline">7. Limitación de Responsabilidad</h2>
           <p>
-            En la máxima medida permitida por la ley, Obra al Instante no será responsable por ningún daño directo, indirecto, incidental, especial o consecuente que resulte del uso o la incapacidad de usar la Plataforma. Dado que actuamos como meros intermediarios, <strong>no asumimos ninguna responsabilidad por la calidad, seguridad, legalidad, puntualidad o cualquier otro aspecto de los servicios prestados o productos vendidos por los Profesionales.</strong> Cualquier disputa, reclamo o daño debe ser resuelto directamente entre el Cliente y el Profesional.
+            En la máxima medida permitida por la ley, Obra al Instante no será responsable por ningún daño directo, indirecto, incidental, especial o consecuente que resulte del uso o la incapacidad de usar la Plataforma. Dado que actuamos como meros intermediarios, <strong>no asumimos ninguna responsabilidad por la calidad, seguridad, legalidad, puntualidad o cualquier otro aspecto de los servicios prestados o productos vendidos por los Profesionales/Proveedores.</strong> Cualquier disputa, reclamo o daño debe ser resuelto directamente entre el Cliente y el Profesional/Proveedor.
           </p>
 
           <h2 className="text-xl font-semibold font-headline">8. Modificaciones a los Términos</h2>
