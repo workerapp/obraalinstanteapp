@@ -157,8 +157,11 @@ export default function ProfessionalDashboardPage() {
   });
   
   const hasPendingCommissions = useMemo(() => {
-    if (!quotationRequests) return false;
-    return quotationRequests.some(req => req.commissionPaymentStatus === 'Pendiente' && req.professionalId === typedUser?.uid);
+    if (!quotationRequests || !typedUser?.uid) return false;
+    return quotationRequests.some(req => 
+        req.commissionPaymentStatus === 'Pendiente' && 
+        (req.professionalId === typedUser.uid || req.handymanId === typedUser.uid)
+    );
   }, [quotationRequests, typedUser?.uid]);
 
 
