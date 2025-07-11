@@ -91,7 +91,7 @@ const fetchProfessionalRequests = async (professionalUid: string | undefined): P
     const [professionalIdSnapshot, handymanIdSnapshot, publicRequestsSnapshot] = await Promise.all([
       getDocs(professionalIdQuery),
       getDocs(handymanIdQuery),
-      getDocs(publicRequestsSnapshot)
+      getDocs(publicRequestsQuery)
     ]);
     
     processSnapshot(professionalIdSnapshot);
