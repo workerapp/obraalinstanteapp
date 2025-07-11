@@ -1,4 +1,3 @@
-
 // src/app/dashboard/supplier/page.tsx
 "use client";
 
@@ -95,6 +94,7 @@ const fetchSupplierRequests = async (supplierUid: string | undefined): Promise<Q
 
   const processSnapshot = (snapshot: typeof assignedSnapshotLegacy) => {
     snapshot.forEach((doc) => {
+       if (requestsMap.has(doc.id)) return; // Avoid duplicates
       const data = doc.data();
       requestsMap.set(doc.id, { 
         id: doc.id, 
@@ -166,8 +166,12 @@ export default function SupplierDashboardPage() {
   const hasReachedCommissionLimit = pendingCommissionsCount >= SUPPLIER_PENDING_COMMISSION_LIMIT;
 
 
-  const completedRequests = quotationRequests?.filter(req => req.status === 'Completada') || [];
-  const totalEarnings = completedRequests.reduce((sum, req) => sum + (req.handymanEarnings || 0), 0);
+  const totalEarnings = useMemo(() => {
+    if (!quotationRequests || !typedUser?.uid) return 0;
+    return quotationRequests
+      .filter(req => req.status === 'Completada' && (req.handymanId === typedUser.uid || req.professionalId === typedUser.uid))
+      .reduce((sum, req) => sum + (req.handymanEarnings || 0), 0);
+  }, [quotationRequests, typedUser?.uid]);
 
   const getStatusColorClass = (status: QuotationRequest['status']): string => {
      switch (status) {
