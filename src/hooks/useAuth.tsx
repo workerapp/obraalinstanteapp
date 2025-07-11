@@ -1,4 +1,3 @@
-
 // src/hooks/useAuth.tsx
 "use client";
 
@@ -7,7 +6,7 @@ import { useState, useEffect, createContext, useContext, type PropsWithChildren 
 import { type User as FirebaseUser, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, GoogleAuthProvider, signInWithPopup, deleteUser } from 'firebase/auth';
 import { auth, firestore } from '@/firebase/clientApp';
 import { doc, setDoc, getDoc, serverTimestamp, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
 export interface AppUser extends FirebaseUser {
@@ -33,10 +32,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Para añadir un admin: 1. Crear una cuenta normal. 2. Obtener su UID. 3. Añadirlo aquí y redesplegar.
 const ADMIN_UIDS = ['Ge7aYGTeHKfIAue6lLZRs7bXZsk2'];
 
-export function AuthProvider({ children }: PropsWithChildren) {
+function AuthProviderInternal({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -105,6 +106,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
+  const getRedirectPath = (role?: string) => {
+    if (redirect) return redirect;
+    if (role === 'admin') return '/admin/overview';
+    if (role === 'professional') return '/dashboard/professional';
+    if (role === 'supplier') return '/dashboard/supplier';
+    return '/dashboard/customer';
+  };
+
   const signUp = async (email: string, pass: string, fullName: string, role: string): Promise<AppUser | null> => {
     setLoading(true);
     try {
@@ -134,7 +143,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         photoURL: null,
       };
 
-      if (finalRole === 'handyman' || finalRole === 'supplier') {
+      if (finalRole === 'professional' || finalRole === 'supplier') {
         userDocData.isApproved = false;
         if (finalRole === 'supplier') {
           userDocData.subscriptionStatus = 'free';
@@ -144,16 +153,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const userDocRef = doc(firestore, "users", userCredential.user.uid);
       await setDoc(userDocRef, userDocData);
       
-      const successMessage = finalRole === 'handyman' || finalRole === 'supplier'
+      const successMessage = finalRole === 'professional' || finalRole === 'supplier'
         ? "Tu cuenta será revisada por un administrador."
         : "¡Bienvenido/a! Te has registrado con éxito.";
 
       toast({ title: "¡Cuenta Creada!", description: successMessage });
       
-      const redirectPath = finalRole === 'handyman' ? '/dashboard/professional'
-                         : finalRole === 'supplier' ? '/dashboard/supplier'
-                         : '/dashboard/customer';
-      router.push(redirectPath);
+      router.push(getRedirectPath(finalRole));
 
       const userDoc = await getDoc(userDocRef);
       return { ...userCredential.user, ...userDoc.data() } as AppUser;
@@ -200,11 +206,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       
       toast({ title: "¡Sesión Iniciada!", description: "¡Bienvenido/a de nuevo!" });
       
-      const redirectPath = finalRole === 'admin' ? '/admin/overview'
-                         : finalRole === 'handyman' ? '/dashboard/professional'
-                         : finalRole === 'supplier' ? '/dashboard/supplier'
-                         : '/dashboard/customer';
-      router.push(redirectPath);
+      router.push(getRedirectPath(finalRole));
       
       setUser(finalUser);
       return finalUser;
@@ -269,11 +271,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         finalUser.isApproved = true;
       }
       
-      const redirectPath = finalRole === 'admin' ? '/admin/overview'
-                         : finalRole === 'handyman' ? '/dashboard/professional'
-                         : finalRole === 'supplier' ? '/dashboard/supplier'
-                         : '/dashboard/customer';
-      router.push(redirectPath);
+      router.push(getRedirectPath(finalRole));
       
       setUser(finalUser);
       return finalUser;
@@ -341,6 +339,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = { user, loading, signUp, signIn, signInWithGoogle, signOutUser, setUser, deleteCurrentUserAccount };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function AuthProvider({ children }: PropsWithChildren) {
+    return (
+        <React.Suspense fallback={<div>Cargando...</div>}>
+            <AuthProviderInternal>{children}</AuthProviderInternal>
+        </React.Suspense>
+    )
 }
 
 export function useAuth() {

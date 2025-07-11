@@ -3,7 +3,7 @@
 
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import SignInForm from '@/components/auth/sign-in-form';
 import AuthCard from '@/components/auth/auth-card';
 import { LogIn, Loader2 } from 'lucide-react';
@@ -11,20 +11,21 @@ import { LogIn, Loader2 } from 'lucide-react';
 export default function SignInPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
 
   useEffect(() => {
     if (!loading && user) {
-      // Redirect to the appropriate dashboard if user is logged in
-      const redirectPath = user.role === 'admin' 
+      const defaultRedirectPath = user.role === 'admin' 
         ? '/admin/overview' 
-        : user.role === 'handyman' 
-        ? '/dashboard/handyman' 
+        : user.role === 'professional' 
+        ? '/dashboard/professional' 
         : user.role === 'supplier'
         ? '/dashboard/supplier'
         : '/dashboard/customer';
-      router.replace(redirectPath);
+      router.replace(redirect || defaultRedirectPath);
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, redirect]);
 
   // Show a loading state while checking auth or redirecting
   if (loading || user) {

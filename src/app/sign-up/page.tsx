@@ -3,7 +3,7 @@
 
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import SignUpForm from '@/components/auth/sign-up-form';
 import AuthCard from '@/components/auth/auth-card';
 import { UserPlus, Loader2 } from 'lucide-react';
@@ -11,20 +11,22 @@ import { UserPlus, Loader2 } from 'lucide-react';
 export default function SignUpPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
 
   useEffect(() => {
     if (!loading && user) {
       // Redirect to the appropriate dashboard if user is logged in
-      const redirectPath = user.role === 'admin' 
+      const defaultRedirectPath = user.role === 'admin' 
         ? '/admin/overview' 
-        : user.role === 'handyman' 
-        ? '/dashboard/handyman' 
+        : user.role === 'professional' 
+        ? '/dashboard/professional' 
         : user.role === 'supplier'
         ? '/dashboard/supplier'
         : '/dashboard/customer';
-      router.replace(redirectPath);
+      router.replace(redirect || defaultRedirectPath);
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, redirect]);
   
   // Show a loading state while checking auth or redirecting
   if (loading || user) {
@@ -40,7 +42,7 @@ export default function SignUpPage() {
     <div className="flex justify-center items-center min-h-[calc(100vh-200px)] py-12">
       <AuthCard
         title="Crea una Cuenta"
-        description="Únete a Obra al Instante como cliente u operario."
+        description="Únete a Obra al Instante como cliente o profesional."
         icon={<UserPlus className="h-8 w-8 text-primary" />}
         footerText="¿Ya tienes una cuenta?"
         footerLink="/sign-in"

@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Send, FileText, Package, Trash2, List } from 'lucide-react';
+import { Loader2, Send, FileText, Package, Trash2, List, UserCheck, UserPlus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -21,6 +21,8 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'fire
 import { useQuery } from '@tanstack/react-query';
 import type { Service } from '@/types/service';
 import { useQuotationCart } from '@/hooks/useQuotationCart';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
 
 const formSchema = z.object({
   contactFullName: z.string().min(2, "El nombre completo es requerido."),
@@ -61,6 +63,7 @@ export default function RequestQuotationPage() {
   const typedUser = user as AppUser | null;
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
 
   const {
     items: cartItems,
@@ -168,12 +171,12 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
   // --- END: REFACTORED LOGIC ---
 
   const onSubmit: SubmitHandler<FormData> = async (data) => {
-    setIsSubmitting(true);
     if (!typedUser?.uid) {
-      toast({ title: "Usuario no Autenticado", description: "Debes iniciar sesión para enviar una solicitud.", variant: "destructive" });
-      setIsSubmitting(false);
+      setShowAuthDialog(true);
       return;
     }
+    
+    setIsSubmitting(true);
 
     const quotationData = {
       userId: typedUser.uid,
@@ -214,6 +217,30 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
 
   return (
     <div className="max-w-2xl mx-auto py-8">
+       <AlertDialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¡Un momento! Necesitas una cuenta</AlertDialogTitle>
+            <AlertDialogDescription>
+              Para enviar tu solicitud y poder comunicarte con los profesionales, necesitas iniciar sesión o crear una cuenta. Es rápido y gratis.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Volver</AlertDialogCancel>
+            <Button asChild variant="outline">
+              <Link href={`/sign-up?redirect=/request-quotation`}>
+                <UserPlus className="mr-2 h-4 w-4" />Crear Cuenta
+              </Link>
+            </Button>
+            <AlertDialogAction asChild>
+              <Link href={`/sign-in?redirect=/request-quotation`}>
+                <UserCheck className="mr-2 h-4 w-4" />Iniciar Sesión
+              </Link>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Card className="shadow-xl">
         <CardHeader className="text-center">
           <FileText className="mx-auto h-16 w-16 text-accent mb-4" />
