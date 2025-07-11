@@ -1,12 +1,14 @@
 // src/components/products/product-card.tsx
 "use client";
 
+import { useState } from 'react';
 import type { Product } from '@/types/product';
 import type { Supplier } from '@/types/supplier';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { PlusCircle, ShoppingCart } from 'lucide-react';
 import { useQuotationCart } from '@/hooks/useQuotationCart';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,13 +20,22 @@ interface ProductCardProps {
 export default function ProductCard({ product, supplier }: ProductCardProps) {
   const { addItem } = useQuotationCart();
   const { toast } = useToast();
+  const [quantity, setQuantity] = useState(1);
 
   const handleAddToCart = () => {
     if (!product.id) return;
-    addItem(product, supplier.id, supplier.companyName);
+    if (quantity <= 0) {
+        toast({
+            title: "Cantidad inválida",
+            description: "Por favor, introduce una cantidad mayor que cero.",
+            variant: "destructive",
+        });
+        return;
+    }
+    addItem(product, quantity, supplier.id, supplier.companyName);
     toast({
         title: "Producto Añadido",
-        description: `"${product.name}" fue añadido a tu lista.`,
+        description: `${quantity} x "${product.name}" fue añadido a tu lista.`,
     });
   };
   
@@ -55,9 +66,17 @@ export default function ProductCard({ product, supplier }: ProductCardProps) {
           <span className="text-sm font-normal text-muted-foreground"> / {product.unit}</span>
         </p>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex flex-col items-stretch gap-2 sm:flex-row">
+        <Input 
+            type="number"
+            value={quantity}
+            onChange={(e) => setQuantity(Number(e.target.value))}
+            min="1"
+            className="w-20 text-center"
+            aria-label="Cantidad"
+        />
         <Button size="sm" className="w-full" onClick={handleAddToCart}>
-            <PlusCircle size={16} className="mr-2"/> Añadir a la Lista
+            <ShoppingCart size={16} className="mr-2"/> Añadir a la Lista
         </Button>
       </CardFooter>
     </Card>

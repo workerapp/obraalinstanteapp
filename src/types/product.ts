@@ -16,3 +16,7 @@ export interface Product {
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
+
+export interface CartItem extends Product {
+    quantity: number;
+}

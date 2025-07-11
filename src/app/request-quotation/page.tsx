@@ -71,7 +71,8 @@ export default function RequestQuotationPage() {
     supplierName: cartSupplierName,
     removeItem,
     clearCart,
-    getCartCount
+    getCartCount,
+    getCartTotal,
   } = useQuotationCart();
 
   const isCartMode = getCartCount() > 0;
@@ -114,7 +115,8 @@ export default function RequestQuotationPage() {
         newValues.serviceId = 'product-quotation';
         newValues.serviceName = `Cotización de productos de ${cartSupplierName}`;
         newValues.problemDescription = `Solicitud de cotización para los siguientes ${cartItems.length} productos:\n` +
-            cartItems.map(item => `- ${item.name} (Unidad: ${item.unit})`).join('\n');
+            cartItems.map(item => `- ${item.quantity} x ${item.name} (Unidad: ${item.unit})`).join('\n') +
+            `\n\nTotal estimado: $${getCartTotal().toLocaleString('es-CO')}`;
     } else {
         if (serviceId) newValues.serviceId = serviceId;
         if (serviceName) newValues.serviceName = serviceName;
@@ -143,7 +145,8 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
     cartItems, 
     cartSupplierId, 
     cartSupplierName, 
-    form
+    form,
+    getCartTotal
   ]);
 
   const watchedServiceId = form.watch("serviceId");
@@ -193,6 +196,8 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
       status: "Enviada" as const, 
       requestedAt: serverTimestamp(), 
       updatedAt: serverTimestamp(),
+      // Include cart total if it's a product quotation
+      quotedAmount: isCartMode ? getCartTotal() : undefined,
     };
 
     try {
@@ -264,17 +269,24 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
                 <CardContent>
                     <ul className="space-y-2">
                         {cartItems.map(item => (
-                            <li key={item.id} className="flex items-center justify-between p-2 bg-background rounded-md border">
+                            <li key={item.id} className="flex items-start justify-between p-2 bg-background rounded-md border">
                                 <div>
-                                <p className="font-medium">{item.name}</p>
-                                <p className="text-sm text-muted-foreground">${(item.price || 0).toLocaleString('es-CO')} / {item.unit}</p>
+                                    <p className="font-medium">{item.quantity} x {item.name}</p>
+                                    <p className="text-sm text-muted-foreground">${(item.price || 0).toLocaleString('es-CO')} c/u</p>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={() => removeItem(item.id!)} aria-label={`Quitar ${item.name} de la lista`}>
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
+                                <div className="text-right">
+                                    <p className="font-semibold text-primary">${((item.price || 0) * item.quantity).toLocaleString('es-CO')}</p>
+                                    <Button variant="ghost" size="sm" className="h-auto p-0 text-destructive hover:bg-transparent hover:text-destructive/80" onClick={() => removeItem(item.id!)} aria-label={`Quitar ${item.name} de la lista`}>
+                                        <Trash2 className="h-4 w-4 mr-1" />Quitar
+                                    </Button>
+                                </div>
                             </li>
                         ))}
                     </ul>
+                    <div className="mt-4 pt-4 border-t flex justify-between items-center font-bold text-lg">
+                        <span>Total Estimado:</span>
+                        <span className="text-primary">${getCartTotal().toLocaleString('es-CO')}</span>
+                    </div>
                 </CardContent>
                 <CardFooter>
                     <Button variant="outline" onClick={clearCart}>Vaciar Lista</Button>
@@ -332,7 +344,7 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
                   <FormItem> 
                     <FormLabel>{isCartMode ? 'Comentarios Adicionales (Opcional)' : 'Descripción del Problema o Productos'}</FormLabel> 
                     <FormControl> 
-                      <Textarea placeholder='Describe el problema en detalle...' rows={8} className={isCartMode ? "bg-muted" : ""} {...field} readOnly={isCartMode && field.value.startsWith('Solicitud de cotización para')} /> 
+                      <Textarea placeholder='Describe el problema en detalle...' rows={8} className={isCartMode ? "bg-muted" : ""} {...field} readOnly={isCartMode} /> 
                     </FormControl>
                     <FormDescription>{isCartMode ? 'La lista de productos ya se ha generado. Usa este campo para cualquier nota adicional para el proveedor.' : 'Si no seleccionaste un servicio específico, describe tu problema o los productos que necesitas.'}</FormDescription>
                     <FormMessage /> 

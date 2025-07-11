@@ -3,11 +3,11 @@
 
 import { useQuotationCart } from '@/hooks/useQuotationCart';
 import { Button } from '@/components/ui/button';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 
 export function QuotationCartBar() {
-    const { getCartCount, supplierName } = useQuotationCart();
+    const { getCartCount, supplierName, getCartTotal } = useQuotationCart();
     const itemCount = getCartCount();
 
     if (itemCount === 0) {
@@ -19,8 +19,8 @@ export function QuotationCartBar() {
             <div className="container mx-auto max-w-2xl p-0">
                 <div className="flex items-center justify-between rounded-lg bg-primary text-primary-foreground p-4 shadow-lg">
                     <div className="flex flex-col">
-                        <span className="font-bold">{itemCount} {itemCount === 1 ? 'producto' : 'productos'} en tu lista</span>
-                        <span className="text-sm opacity-90">de {supplierName}</span>
+                        <span className="font-bold flex items-center gap-2"><ShoppingCart className="h-5 w-5"/> {itemCount} {itemCount === 1 ? 'producto' : 'productos'} en tu lista</span>
+                        <span className="text-sm opacity-90">de {supplierName} - Total: ${getCartTotal().toLocaleString('es-CO')}</span>
                     </div>
                     <Button asChild variant="secondary">
                         <Link href="/request-quotation">
