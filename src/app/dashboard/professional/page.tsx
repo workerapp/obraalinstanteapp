@@ -156,12 +156,20 @@ export default function ProfessionalDashboardPage() {
     enabled: !!typedUser?.uid && typedUser.role === 'handyman' && typedUser.isApproved === true, 
   });
   
-  const hasPendingCommissions = useMemo(() => {
-    if (!quotationRequests || !typedUser?.uid) return false;
-    return quotationRequests.some(req => 
-        req.commissionPaymentStatus === 'Pendiente' && 
-        (req.professionalId === typedUser.uid || req.handymanId === typedUser.uid)
-    );
+  const { hasPendingCommissions, totalPendingCommission } = useMemo(() => {
+    if (!quotationRequests || !typedUser?.uid) return { hasPendingCommissions: false, totalPendingCommission: 0 };
+    
+    let total = 0;
+    const hasPending = quotationRequests.some(req => {
+        const isMyRequest = req.professionalId === typedUser.uid || req.handymanId === typedUser.uid;
+        if (isMyRequest && req.commissionPaymentStatus === 'Pendiente' && req.platformFeeCalculated) {
+            total += req.platformFeeCalculated;
+            return true;
+        }
+        return false;
+    });
+
+    return { hasPendingCommissions: hasPending, totalPendingCommission: total };
   }, [quotationRequests, typedUser?.uid]);
 
 
@@ -377,7 +385,11 @@ export default function ProfessionalDashboardPage() {
             </AlertDescription>
              <div className="mt-4">
                 <Button asChild variant="destructive">
-                    <Link href="/dashboard/professional/earnings">
+                    <Link
+                      href={`https://wa.me/573017412292?text=${encodeURIComponent(`Hola, soy ${typedUser?.displayName || 'un profesional'} (ID: ${typedUser?.uid}). Quiero coordinar el pago de mis comisiones pendientes por $${totalPendingCommission.toLocaleString('es-CO')}.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                         <Phone className="mr-2 h-4 w-4"/> Pagar Comisiones
                     </Link>
                 </Button>

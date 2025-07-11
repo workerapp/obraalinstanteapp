@@ -154,10 +154,22 @@ export default function SupplierDashboardPage() {
     enabled: !!typedUser?.uid && typedUser.role === 'supplier' && typedUser.isApproved === true, 
   });
   
-  const pendingCommissionsCount = useMemo(() => {
-    if (!quotationRequests || !typedUser?.uid) return 0;
-    return quotationRequests.filter(req => req.commissionPaymentStatus === 'Pendiente' && (req.handymanId === typedUser.uid || req.professionalId === typedUser.uid)).length;
+  const { pendingCommissionsCount, totalPendingCommission } = useMemo(() => {
+    if (!quotationRequests || !typedUser?.uid) return { pendingCommissionsCount: 0, totalPendingCommission: 0 };
+    
+    let count = 0;
+    let total = 0;
+    quotationRequests.forEach(req => {
+        const isMyRequest = req.professionalId === typedUser.uid || req.handymanId === typedUser.uid;
+        if (isMyRequest && req.commissionPaymentStatus === 'Pendiente' && req.platformFeeCalculated) {
+            count++;
+            total += req.platformFeeCalculated;
+        }
+    });
+
+    return { pendingCommissionsCount: count, totalPendingCommission: total };
   }, [quotationRequests, typedUser?.uid]);
+
 
   const hasReachedCommissionLimit = pendingCommissionsCount >= SUPPLIER_PENDING_COMMISSION_LIMIT;
 
@@ -374,7 +386,11 @@ export default function SupplierDashboardPage() {
             </AlertDescription>
              <div className="mt-4">
                 <Button asChild variant="destructive">
-                    <Link href="/dashboard/supplier/earnings">
+                     <Link
+                      href={`https://wa.me/573017412292?text=${encodeURIComponent(`Hola, soy ${typedUser?.displayName || 'un proveedor'} (ID: ${typedUser?.uid}). Quiero coordinar el pago de mis comisiones pendientes por $${totalPendingCommission.toLocaleString('es-CO')}.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                         <Phone className="mr-2 h-4 w-4"/> Pagar Comisiones
                     </Link>
                 </Button>
