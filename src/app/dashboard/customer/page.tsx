@@ -1,8 +1,7 @@
-
 // src/app/dashboard/customer/page.tsx
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -78,6 +77,13 @@ export default function CustomerDashboardPage() {
     queryFn: () => fetchQuotationRequests(typedUser?.uid),
     enabled: !!typedUser?.uid, 
   });
+  
+  useEffect(() => {
+    if (!authLoading && typedUser?.role && typedUser.role !== 'customer') {
+      router.replace('/dashboard');
+    }
+  }, [authLoading, typedUser, router]);
+
 
   const getStatusColorClass = (status: QuotationRequest['status']): string => {
      switch (status) {
@@ -186,10 +192,11 @@ export default function CustomerDashboardPage() {
   };
 
 
-  if (authLoading) {
+  if (authLoading || (!authLoading && typedUser?.role !== 'customer')) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-3 text-muted-foreground">Verificando...</p>
       </div>
     );
   }
@@ -203,16 +210,6 @@ export default function CustomerDashboardPage() {
           <Link href="/sign-in">Iniciar Sesión</Link>
         </Button>
       </div>
-    );
-  }
-  
-  if (typedUser.role && typedUser.role !== 'customer') {
-    router.replace('/dashboard');
-    return (
-        <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="ml-3 text-muted-foreground">Redirigiendo a tu panel correcto...</p>
-        </div>
     );
   }
   
