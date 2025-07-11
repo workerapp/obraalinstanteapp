@@ -2,7 +2,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Target, Lightbulb, Users, HeartHandshake, ArrowLeft } from 'lucide-react';
 
 export default function AboutPage() {
@@ -14,19 +13,6 @@ export default function AboutPage() {
           <Link href="/"><ArrowLeft size={16} className="mr-2" />Volver al Inicio</Link>
         </Button>
       </div>
-      
-      <section className="relative w-full h-64 rounded-xl overflow-hidden shadow-lg">
-        <Image 
-          src="https://placehold.co/1200x400.png" 
-          alt="Equipo de operarios colaborando" 
-          layout="fill" 
-          objectFit="cover"
-          data-ai-hint="equipo trabajo"
-        />
-        <div className="absolute inset-0 bg-primary/40 flex items-center justify-center p-4">
-          <p className="text-3xl font-bold text-white text-center shadow-text">Conectando hogares con soluciones, un servicio a la vez.</p>
-        </div>
-      </section>
 
       <Card className="shadow-lg">
         <CardHeader>
