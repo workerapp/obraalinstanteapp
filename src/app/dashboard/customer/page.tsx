@@ -142,7 +142,7 @@ export default function CustomerDashboardPage() {
         updatedAt: serverTimestamp(),
       });
 
-      toast({ title: "Cotización Aceptada", description: "El servicio ha sido programado. El operario se pondrá en contacto." });
+      toast({ title: "Cotización Aceptada", description: "El servicio ha sido programado. El profesional se pondrá en contacto." });
       queryClient.invalidateQueries({ queryKey: ['quotationRequests', typedUser.uid] });
       setIsAcceptAlertOpen(false);
       setRequestToAcceptId(null);
@@ -248,7 +248,7 @@ export default function CustomerDashboardPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Aceptar Cotización y Programar?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esto confirmará que aceptas la cotización y el servicio se marcará como "Programada". El operario se pondrá en contacto para coordinar los detalles.
+              Esto confirmará que aceptas la cotización y el servicio se marcará como "Programada". El profesional se pondrá en contacto para coordinar los detalles.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -297,7 +297,7 @@ export default function CustomerDashboardPage() {
                     <h3 className="font-semibold">{req.serviceName}</h3>
                     <p className="text-sm text-muted-foreground">
                       Solicitado: {req.requestedAt && typeof req.requestedAt.toDate === 'function' ? format(req.requestedAt.toDate(), 'PPPp', { locale: es }) : 'Fecha no disponible'}
-                      {req.handymanName && ` | Operario Solicitado: ${req.handymanName}`}
+                      {req.professionalName && ` | Profesional Solicitado: ${req.professionalName}`}
                     </p>
                     <p className="text-sm text-muted-foreground truncate max-w-md" title={req.problemDescription}>Problema: {req.problemDescription}</p>
                   </div>

@@ -1,9 +1,9 @@
 'use server';
 
 /**
- * @fileOverview AI assistant that analyzes a home maintenance problem and suggests a diagnosis, solutions, relevant handyman skills, and materials.
+ * @fileOverview AI assistant that analyzes a home maintenance problem and suggests a diagnosis, solutions, relevant professional skills, and materials.
  * The flow has been optimized to reduce cost: it now makes a single AI call to get an analysis and a list of skills,
- * then queries for handymen locally instead of using an AI tool.
+ * then queries for professionals locally instead of using an AI tool.
  *
  * - suggestSolutions - A function that handles the analysis process.
  * - SuggestSolutionsInput - The input type for the suggestSolutions function.
@@ -23,29 +23,29 @@ const SuggestSolutionsInputSchema = z.object({
 });
 export type SuggestSolutionsInput = z.infer<typeof SuggestSolutionsInputSchema>;
 
-const HandymanSchema = z.object({
-    id: z.string().describe('The unique ID of the handyman.'),
-    name: z.string().describe('The name of the handyman.'),
-    rating: z.number().describe('The average rating of the handyman.'),
-    reviewsCount: z.number().describe('The number of reviews the handyman has.'),
+const ProfessionalSchema = z.object({
+    id: z.string().describe('The unique ID of the professional.'),
+    name: z.string().describe('The name of the professional.'),
+    rating: z.number().describe('The average rating of the professional.'),
+    reviewsCount: z.number().describe('The number of reviews the professional has.'),
 });
 
 const AISuggestionSchema = z.object({
   analysis: z.string().describe('Un breve análisis y diagnóstico del problema, explicando la posible causa. En ESPAÑOL.'),
   suggestedSolutions: z.array(z.string()).describe('Lista de posibles soluciones al problema, en ESPAÑOL.'),
-  relevantSkills: z.array(z.string()).describe('Lista de habilidades de operario relevantes para las soluciones, en ESPAÑOL.'),
+  relevantSkills: z.array(z.string()).describe('Lista de habilidades de profesional relevantes para las soluciones, en ESPAÑOL.'),
   suggestedMaterials: z.array(z.string()).describe('Lista de posibles materiales y herramientas necesarios para las soluciones, en ESPAÑOL.'),
 });
 
 const SuggestSolutionsOutputSchema = AISuggestionSchema.extend({
-  recommendedHandymen: z.array(HandymanSchema).describe('A list of up to 3 top-rated handymen recommended for the job. In SPANISH.')
+  recommendedProfessionals: z.array(ProfessionalSchema).describe('A list of up to 3 top-rated professionals recommended for the job. In SPANISH.')
 });
 
 export type SuggestSolutionsOutput = z.infer<typeof SuggestSolutionsOutputSchema>;
 
 // This function is no longer a Genkit tool, but a regular async function exported for local use.
-async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof HandymanSchema>[]> {
-  console.log(`[Local Function] findTopRatedHandymen received skills for matching: ${JSON.stringify(skills)}`);
+async function findTopRatedProfessionals(skills: string[]): Promise<z.infer<typeof ProfessionalSchema>[]> {
+  console.log(`[Local Function] findTopRatedProfessionals received skills for matching: ${JSON.stringify(skills)}`);
 
   if (!skills || skills.length === 0) {
     console.log('[Local Function] No skills provided, returning empty array.');
@@ -99,42 +99,42 @@ async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof Ha
   console.log(`[Local Function] Expanded search keywords: ${Array.from(searchKeywords).join(', ')}`);
   
   try {
-    // 1. Fetch all approved handymen and all active services in parallel for efficiency
+    // 1. Fetch all approved professionals and all active services in parallel for efficiency
     const usersRef = collection(firestore, 'users');
-    const handymenQuery = query(usersRef, where('role', '==', 'handyman'), where('isApproved', '==', true));
+    const professionalsQuery = query(usersRef, where('role', '==', 'handyman'), where('isApproved', '==', true));
     
     const servicesRef = collection(firestore, 'handymanServices');
     const servicesQuery = query(servicesRef, where('isActive', '==', true));
 
-    const [handymenSnapshot, servicesSnapshot] = await Promise.all([
-      getDocs(handymenQuery),
+    const [professionalsSnapshot, servicesSnapshot] = await Promise.all([
+      getDocs(professionalsQuery),
       getDocs(servicesQuery)
     ]);
 
-    const allHandymenDocs = handymenSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const allProfessionalsDocs = professionalsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    // 2. Create a map of services grouped by handyman UID for efficient lookup
-    const servicesByHandyman = new Map<string, any[]>();
+    // 2. Create a map of services grouped by professional UID for efficient lookup
+    const servicesByProfessional = new Map<string, any[]>();
     servicesSnapshot.forEach(doc => {
       const service = doc.data();
       if (service.handymanUid) {
-        if (!servicesByHandyman.has(service.handymanUid)) {
-          servicesByHandyman.set(service.handymanUid, []);
+        if (!servicesByProfessional.has(service.handymanUid)) {
+          servicesByProfessional.set(service.handymanUid, []);
         }
-        servicesByHandyman.get(service.handymanUid)!.push(service);
+        servicesByProfessional.get(service.handymanUid)!.push(service);
       }
     });
 
-    // 3. Filter handymen based on a richer, more flexible matching logic
-    const matchedHandymen = allHandymenDocs.filter(handyman => {
-        const handymanSkillsNormalized = (handyman.skills || []).map((s: string) => normalizeString(s.trim()));
-        const offeredServices = servicesByHandyman.get(handyman.id) || [];
+    // 3. Filter professionals based on a richer, more flexible matching logic
+    const matchedProfessionals = allProfessionalsDocs.filter(professional => {
+        const professionalSkillsNormalized = (professional.skills || []).map((s: string) => normalizeString(s.trim()));
+        const offeredServices = servicesByProfessional.get(professional.id) || [];
         const serviceTextNormalized = normalizeString(offeredServices.map(s => `${s.name} ${s.description}`).join(' '));
 
-        // Check if any of the expanded search keywords are found in the handyman's data
+        // Check if any of the expanded search keywords are found in the professional's data
         for (const keyword of searchKeywords) {
-            // Match 1: Check if any handyman skill *includes* the keyword.
-            if (handymanSkillsNormalized.some(skill => skill.includes(keyword))) {
+            // Match 1: Check if any professional skill *includes* the keyword.
+            if (professionalSkillsNormalized.some(skill => skill.includes(keyword))) {
                 return true;
             }
             
@@ -144,29 +144,29 @@ async function findTopRatedHandymen(skills: string[]): Promise<z.infer<typeof Ha
             }
         }
 
-        return false; // No match found for this handyman
+        return false; // No match found for this professional
     });
 
     // 4. Sort by rating and get the top 3
-    matchedHandymen.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    matchedProfessionals.sort((a, b) => (b.rating || 0) - (a.rating || 0));
 
-    const topHandymen = matchedHandymen.slice(0, 3).map(data => ({
+    const topProfessionals = matchedProfessionals.slice(0, 3).map(data => ({
       id: data.id,
       name: data.displayName || 'Nombre no disponible',
       rating: data.rating || 0,
       reviewsCount: data.reviewsCount || 0,
     }));
 
-    console.log(`[Local Function] Returning ${topHandymen.length} top-rated handymen after expanded search.`);
-    return topHandymen;
+    console.log(`[Local Function] Returning ${topProfessionals.length} top-rated professionals after expanded search.`);
+    return topProfessionals;
 
   } catch (e: any) {
-    console.error("[Local Function findTopRatedHandymen] Error:", e.message);
+    console.error("[Local Function findTopRatedProfessionals] Error:", e.message);
     if (e.code === 'failed-precondition' && e.message.includes('index')) {
         console.error("Firestore index missing. Check the console for a creation link.");
-        throw new Error(`Error al buscar operarios: Firestore requiere un índice. Revisa la consola para crearlo.`);
+        throw new Error(`Error al buscar profesionales: Firestore requiere un índice. Revisa la consola para crearlo.`);
     }
-    throw new Error(`Error al buscar operarios: ${e.message}`);
+    throw new Error(`Error al buscar profesionales: ${e.message}`);
   }
 }
 
@@ -189,7 +189,7 @@ Pasos a seguir para generar el contenido del JSON:
 1.  **Análisis:** De forma MUY BREVE (1-2 frases), basándote en la descripción, diagnostica la causa probable del problema.
 2.  **Soluciones:** Lista posibles soluciones al problema.
 3.  **Materiales:** Lista materiales y herramientas necesarios para las soluciones.
-4.  **Habilidades:** Este es el paso más importante. Analiza cuidadosamente la descripción del cliente. Identifica las **palabras clave** que describen la acción principal (ej: 'soldadura', 'tubería rota', 'pintar', 'instalar baldosa'). A partir de estas palabras, deduce la habilidad más directa y relevante.
+4.  **Habilidades:** Este es el paso más importante. Analiza cuidadosamente la descripción del cliente. Identifica las **palabras clave** que describen la acción principal (ej: 'soldadura', 'tubería rota', 'pintar', 'instalar baldosa'). A partir de estas palabras, deduce la habilidad más directa y relevante del profesional.
     - **Ejemplo de Razonamiento:** Si el cliente dice "necesito soldadura para una puerta de metal", la palabra clave es "soldadura". La habilidad principal es "Soldadura", no "Carpintería", aunque se mencione una puerta.
     - Prioriza la habilidad más obvia y directa.
     - Usa habilidades comunes como: Plomería, Carpintería, Electricidad, Albañilería, Pintura, Soldadura.
@@ -216,19 +216,19 @@ const suggestSolutionsFlow = ai.defineFlow(
         throw new Error('La IA no pudo generar una respuesta inicial.');
       }
 
-      // Step 2: Use the skills identified by the AI to search for handymen locally.
-      let recommendedHandymen: z.infer<typeof HandymanSchema>[] = [];
+      // Step 2: Use the skills identified by the AI to search for professionals locally.
+      let recommendedProfessionals: z.infer<typeof ProfessionalSchema>[] = [];
       if (aiSuggestion.relevantSkills && aiSuggestion.relevantSkills.length > 0) {
         console.log(`AI identified skills: ${aiSuggestion.relevantSkills}. Searching locally...`);
-        recommendedHandymen = await findTopRatedHandymen(aiSuggestion.relevantSkills);
+        recommendedProfessionals = await findTopRatedProfessionals(aiSuggestion.relevantSkills);
       } else {
-         console.log('AI did not identify relevant skills. Skipping handyman search.');
+         console.log('AI did not identify relevant skills. Skipping professional search.');
       }
 
-      // Step 3: Combine the AI analysis with the locally-fetched handymen and return.
+      // Step 3: Combine the AI analysis with the locally-fetched professionals and return.
       return {
         ...aiSuggestion,
-        recommendedHandymen,
+        recommendedProfessionals,
       };
 
     } catch (flowError: any) {

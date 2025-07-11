@@ -25,7 +25,7 @@ export default function AboutPage() {
           <p>
             Nuestra misión es simplificar la búsqueda y contratación de servicios para el hogar en Colombia,
             utilizando tecnología innovadora y un enfoque centrado en la confianza. Queremos empoderar tanto a
-            los clientes, dándoles acceso a profesionales calificados, como a los operarios, brindándoles una
+            los clientes, dándoles acceso a profesionales calificados, como a los profesionales y proveedores, brindándoles una
             plataforma para hacer crecer sus negocios.
           </p>
         </CardContent>
@@ -40,7 +40,7 @@ export default function AboutPage() {
           </CardHeader>
           <CardContent>
             <p>
-              ¿Cansado de la incertidumbre al buscar un operario? Con Obra al Instante, obtienes acceso a
+              ¿Cansado de la incertidumbre al buscar un profesional? Con Obra al Instante, obtienes acceso a
               un directorio de profesionales verificados. Usa nuestro asistente de IA "Obrita" para diagnosticar
               problemas, solicita cotizaciones claras y gestiona tus servicios, todo en un solo lugar.
             </p>
@@ -92,7 +92,7 @@ export default function AboutPage() {
             <Link href="/sign-up?role=customer">Soy Cliente</Link>
           </Button>
           <Button size="lg" variant="secondary" asChild className="w-full sm:w-auto">
-            <Link href="/sign-up?role=handyman">Soy Operario o Proveedor</Link>
+            <Link href="/sign-up?role=handyman">Soy Profesional o Proveedor</Link>
           </Button>
         </div>
       </div>

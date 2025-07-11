@@ -51,7 +51,7 @@ export default function Navbar() {
   const dashboardLink = typedUser?.role === 'admin' 
     ? '/admin/overview' 
     : typedUser?.role === 'handyman' 
-    ? '/dashboard/handyman' 
+    ? '/dashboard/professional' 
     : typedUser?.role === 'supplier'
     ? '/dashboard/supplier'
     : '/dashboard/customer';
@@ -65,7 +65,7 @@ export default function Navbar() {
         <Link href="/services" className="flex items-center gap-2"><Briefcase size={18} /> Servicios</Link>
       </Button>
       <Button variant="ghost" asChild size="sm">
-        <Link href="/handymen" className="flex items-center gap-2"><Users size={18} /> Operarios</Link>
+        <Link href="/professionals" className="flex items-center gap-2"><Users size={18} /> Profesionales</Link>
       </Button>
       <Button variant="ghost" asChild size="sm" className="md:flex">
         <Link href="/suppliers" className="flex items-center gap-2"><Package size={18} /> Proveedores</Link>
@@ -128,7 +128,7 @@ export default function Navbar() {
         <nav className="flex flex-col gap-1">
           <SheetClose asChild><Button variant="ghost" asChild size="sm" className="w-full justify-start p-2 text-base"><Link href="/" className="flex items-center gap-2"><Home size={18} /> Inicio</Link></Button></SheetClose>
           <SheetClose asChild><Button variant="ghost" asChild size="sm" className="w-full justify-start p-2 text-base"><Link href="/services" className="flex items-center gap-2"><Briefcase size={18} /> Servicios</Link></Button></SheetClose>
-          <SheetClose asChild><Button variant="ghost" asChild size="sm" className="w-full justify-start p-2 text-base"><Link href="/handymen" className="flex items-center gap-2"><Users size={18} /> Operarios</Link></Button></SheetClose>
+          <SheetClose asChild><Button variant="ghost" asChild size="sm" className="w-full justify-start p-2 text-base"><Link href="/professionals" className="flex items-center gap-2"><Users size={18} /> Profesionales</Link></Button></SheetClose>
           <SheetClose asChild><Button variant="ghost" asChild size="sm" className="w-full justify-start p-2 text-base"><Link href="/suppliers" className="flex items-center gap-2"><Package size={18} /> Proveedores</Link></Button></SheetClose>
           <SheetClose asChild><Button variant="ghost" asChild size="sm" className="w-full justify-start p-2 text-base"><Link href="/ai-assistant" className="flex items-center gap-2"><Sparkles size={18} /> Asistente IA</Link></Button></SheetClose>
         </nav>

@@ -1,4 +1,4 @@
-// src/app/dashboard/handyman/profile/page.tsx
+// src/app/dashboard/professional/profile/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -34,7 +34,7 @@ const profileFormSchema = z.object({
 
 type ProfileFormData = z.infer<typeof profileFormSchema>;
 
-export default function HandymanProfilePage() {
+export default function ProfessionalProfilePage() {
   const { user, loading: authLoading, setUser: setAuthUser, deleteCurrentUserAccount } = useAuth(); 
   const typedUser = user as AppUser | null;
   const router = useRouter();
@@ -199,7 +199,7 @@ export default function HandymanProfilePage() {
     return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
-        <p className="text-muted-foreground">Esta sección es solo para operarios.</p>
+        <p className="text-muted-foreground">Esta sección es solo para profesionales.</p>
         <Button asChild className="mt-4">
           <Link href="/sign-in">Iniciar Sesión</Link>
         </Button>
@@ -212,9 +212,9 @@ export default function HandymanProfilePage() {
   return (
     <div className="max-w-2xl mx-auto py-8 space-y-6">
        <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-headline font-bold text-primary">Editar Mi Perfil de Operario</h1>
+        <h1 className="text-3xl font-headline font-bold text-primary">Editar Mi Perfil de Profesional</h1>
         <Button variant="outline" asChild>
-          <Link href="/dashboard/handyman">
+          <Link href="/dashboard/professional">
             <ArrowLeft size={16} className="mr-2" />
             Volver al Panel
           </Link>

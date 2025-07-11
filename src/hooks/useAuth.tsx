@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface AppUser extends FirebaseUser {
   role?: string;
-  isApproved?: boolean; // Estado de aprobación para operarios
+  isApproved?: boolean; // Estado de aprobación para profesionales
   subscriptionStatus?: 'free' | 'premium';
 }
 
@@ -150,7 +150,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       toast({ title: "¡Cuenta Creada!", description: successMessage });
       
-      const redirectPath = finalRole === 'handyman' ? '/dashboard/handyman'
+      const redirectPath = finalRole === 'handyman' ? '/dashboard/professional'
                          : finalRole === 'supplier' ? '/dashboard/supplier'
                          : '/dashboard/customer';
       router.push(redirectPath);
@@ -201,7 +201,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       toast({ title: "¡Sesión Iniciada!", description: "¡Bienvenido/a de nuevo!" });
       
       const redirectPath = finalRole === 'admin' ? '/admin/overview'
-                         : finalRole === 'handyman' ? '/dashboard/handyman'
+                         : finalRole === 'handyman' ? '/dashboard/professional'
                          : finalRole === 'supplier' ? '/dashboard/supplier'
                          : '/dashboard/customer';
       router.push(redirectPath);
@@ -270,7 +270,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
       
       const redirectPath = finalRole === 'admin' ? '/admin/overview'
-                         : finalRole === 'handyman' ? '/dashboard/handyman'
+                         : finalRole === 'handyman' ? '/dashboard/professional'
                          : finalRole === 'supplier' ? '/dashboard/supplier'
                          : '/dashboard/customer';
       router.push(redirectPath);

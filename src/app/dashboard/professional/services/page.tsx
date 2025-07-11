@@ -1,5 +1,4 @@
-
-// src/app/dashboard/handyman/services/page.tsx
+// src/app/dashboard/professional/services/page.tsx
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -70,10 +69,10 @@ const priceTypeTranslations: Record<PriceType, string> = {
   consultar: "Consultar Cotización",
 };
 
-async function fetchHandymanServices(handymanUid: string): Promise<HandymanService[]> {
-  if (!handymanUid) return [];
+async function fetchProfessionalServices(professionalUid: string): Promise<HandymanService[]> {
+  if (!professionalUid) return [];
   const servicesRef = collection(firestore, "handymanServices");
-  const q = query(servicesRef, where("handymanUid", "==", handymanUid), orderBy("createdAt", "desc"));
+  const q = query(servicesRef, where("handymanUid", "==", professionalUid), orderBy("createdAt", "desc"));
   
   const querySnapshot = await getDocs(q);
   const services: HandymanService[] = [];
@@ -102,7 +101,7 @@ async function fetchActivePlatformServices(): Promise<Service[]> {
 }
 
 
-export default function HandymanServicesPage() {
+export default function ProfessionalServicesPage() {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
@@ -122,8 +121,8 @@ export default function HandymanServicesPage() {
   const [serviceTemplate, setServiceTemplate] = useState<Service | null>(null);
 
   const { data: offeredServices, isLoading: isLoadingOfferedServices, refetch: refetchOfferedServices } = useQuery<HandymanService[], Error>({
-    queryKey: ['handymanServices', typedUser?.uid],
-    queryFn: () => fetchHandymanServices(typedUser!.uid),
+    queryKey: ['professionalServices', typedUser?.uid],
+    queryFn: () => fetchProfessionalServices(typedUser!.uid),
     enabled: !!typedUser?.uid,
   });
   
@@ -298,7 +297,7 @@ export default function HandymanServicesPage() {
      return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
-        <p className="text-muted-foreground">Debes iniciar sesión como operario para gestionar tus servicios.</p>
+        <p className="text-muted-foreground">Debes iniciar sesión como profesional para gestionar tus servicios.</p>
         <Button asChild className="mt-4"><Link href="/sign-in">Iniciar Sesión</Link></Button>
       </div>
     );
@@ -309,7 +308,7 @@ export default function HandymanServicesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-headline font-bold text-primary">Mis Servicios Ofrecidos</h1>
         <Button variant="outline" asChild>
-          <Link href="/dashboard/handyman">
+          <Link href="/dashboard/professional">
             <ArrowLeft size={16} className="mr-2" />
             Volver al Panel
           </Link>
@@ -355,7 +354,7 @@ export default function HandymanServicesPage() {
                       </Button>
                   </div>
                 </FormItem>
-                 <FormField control={form.control} name="dataAiHint" render={({ field }) => ( <FormItem> <FormLabel>Pista para IA (placeholders)</FormLabel> <FormControl><Input placeholder="Ej: 'plomero trabajando', 'cocina renovada'" {...field} value={field.value || ''} /></FormControl> <FormDescription>Si usas un placeholder, escribe 1-2 palabras clave para la imagen real.</FormDescription> <FormMessage /> </FormItem> )}/>
+                 <FormField control={form.control} name="dataAiHint" render={({ field }) => ( <FormItem> <FormLabel>Pista para IA (placeholders)</FormLabel> <FormControl><Input placeholder="Ej: 'profesional trabajando', 'cocina renovada'" {...field} value={field.value || ''} /></FormControl> <FormDescription>Si usas un placeholder, escribe 1-2 palabras clave para la imagen real.</FormDescription> <FormMessage /> </FormItem> )}/>
                 <FormField control={form.control} name="isActive" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"> <div className="space-y-0.5"> <FormLabel>Servicio Activo</FormLabel> <FormDescription>Los clientes podrán ver y solicitar este servicio.</FormDescription> </div> <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl> </FormItem> )}/>
               </form>
             </Form>

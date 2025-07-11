@@ -28,7 +28,7 @@ export default function ProfileRedirectPage() {
       // El admin no tiene una página de perfil pública, lo llevamos a su panel.
       redirectPath = '/admin/overview';
     } else if (user.role === 'handyman') {
-      redirectPath = '/dashboard/handyman/profile';
+      redirectPath = '/dashboard/professional/profile';
     } else if (user.role === 'supplier') {
       redirectPath = '/dashboard/supplier/profile';
     }

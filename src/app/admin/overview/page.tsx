@@ -76,15 +76,15 @@ interface UserAdminView {
   subscriptionStatus?: 'free' | 'premium';
 }
 
-const fetchAllHandymen = async (): Promise<UserAdminView[]> => {
+const fetchAllProfessionals = async (): Promise<UserAdminView[]> => {
   const usersRef = collection(firestore, "users");
   const q = query(usersRef, where("role", "==", "handyman"));
   
   const querySnapshot = await getDocs(q);
-  const handymen: UserAdminView[] = [];
+  const professionals: UserAdminView[] = [];
   querySnapshot.forEach((doc) => {
     const data = doc.data();
-    handymen.push({ 
+    professionals.push({ 
       uid: doc.id,
       displayName: data.displayName || 'Sin Nombre',
       email: data.email || 'Sin Email',
@@ -94,8 +94,8 @@ const fetchAllHandymen = async (): Promise<UserAdminView[]> => {
     });
   });
 
-  handymen.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-  return handymen;
+  professionals.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+  return professionals;
 };
 
 const fetchAllSuppliers = async (): Promise<UserAdminView[]> => {
@@ -155,9 +155,9 @@ export default function AdminOverviewPage() {
     queryFn: fetchActiveRequests,
   });
 
-  const { data: allHandymen, isLoading: handymenLoading, error: handymenError } = useQuery<UserAdminView[], Error>({
-    queryKey: ['allHandymenForAdmin'],
-    queryFn: fetchAllHandymen,
+  const { data: allProfessionals, isLoading: professionalsLoading, error: professionalsError } = useQuery<UserAdminView[], Error>({
+    queryKey: ['allProfessionalsForAdmin'],
+    queryFn: fetchAllProfessionals,
   });
 
   const { data: allSuppliers, isLoading: suppliersLoading, error: suppliersError } = useQuery<UserAdminView[], Error>({
@@ -172,14 +172,14 @@ export default function AdminOverviewPage() {
   const totalPendingCommissions = validCompletedRequests.filter(req => req.commissionPaymentStatus === "Pendiente").reduce((sum, req) => sum + (req.platformFeeCalculated || 0), 0);
 
   const commissionsByUser = validCompletedRequests.reduce((acc, req) => {
-    if (req.handymanId && req.handymanName && req.platformFeeCalculated && req.platformFeeCalculated > 0) {
-      if (!acc[req.handymanId]) {
-        acc[req.handymanId] = { name: req.handymanName, totalPlatformFee: 0, totalPendingPlatformFee: 0, totalPaidPlatformFee: 0, requestCount: 0 };
+    if (req.professionalId && req.professionalName && req.platformFeeCalculated && req.platformFeeCalculated > 0) {
+      if (!acc[req.professionalId]) {
+        acc[req.professionalId] = { name: req.professionalName, totalPlatformFee: 0, totalPendingPlatformFee: 0, totalPaidPlatformFee: 0, requestCount: 0 };
       }
-      acc[req.handymanId].totalPlatformFee += req.platformFeeCalculated;
-      acc[req.handymanId].requestCount += 1;
-      if (req.commissionPaymentStatus === "Pendiente") { acc[req.handymanId].totalPendingPlatformFee += req.platformFeeCalculated; } 
-      else if (req.commissionPaymentStatus === "Pagada") { acc[req.handymanId].totalPaidPlatformFee += req.platformFeeCalculated; }
+      acc[req.professionalId].totalPlatformFee += req.platformFeeCalculated;
+      acc[req.professionalId].requestCount += 1;
+      if (req.commissionPaymentStatus === "Pendiente") { acc[req.professionalId].totalPendingPlatformFee += req.platformFeeCalculated; } 
+      else if (req.commissionPaymentStatus === "Pagada") { acc[req.professionalId].totalPaidPlatformFee += req.platformFeeCalculated; }
     }
     return acc;
   }, {} as CommissionsByUser);
@@ -200,10 +200,10 @@ export default function AdminOverviewPage() {
     }
   };
 
-  const handleToggleApprovalStatus = async (uid: string, currentStatus: boolean, userType: 'operario' | 'proveedor') => {
-    const aId = userType === 'operario' ? setIsUpdatingApprovalId : setIsUpdatingSupplierApprovalId;
-    const queryKey = userType === 'operario' ? ['allHandymenForAdmin'] : ['allSuppliersForAdmin'];
-    const typeName = userType === 'operario' ? 'Operario' : 'Proveedor';
+  const handleToggleApprovalStatus = async (uid: string, currentStatus: boolean, userType: 'profesional' | 'proveedor') => {
+    const aId = userType === 'profesional' ? setIsUpdatingApprovalId : setIsUpdatingSupplierApprovalId;
+    const queryKey = userType === 'profesional' ? ['allProfessionalsForAdmin'] : ['allSuppliersForAdmin'];
+    const typeName = userType === 'profesional' ? 'Profesional' : 'Proveedor';
     
     aId(uid);
     const newStatus = !currentStatus;
@@ -246,7 +246,7 @@ export default function AdminOverviewPage() {
    }
  };
 
-  if (!isClient || requestsLoading || handymenLoading || activeRequestsLoading || suppliersLoading) {
+  if (!isClient || requestsLoading || professionalsLoading || activeRequestsLoading || suppliersLoading) {
     return (
         <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -255,8 +255,8 @@ export default function AdminOverviewPage() {
     );
   }
 
-  if (requestsError || handymenError || activeRequestsError || suppliersError) {
-    const error = requestsError || handymenError || activeRequestsError || suppliersError;
+  if (requestsError || professionalsError || activeRequestsError || suppliersError) {
+    const error = requestsError || professionalsError || activeRequestsError || suppliersError;
     return (
       <div className="max-w-4xl mx-auto py-10">
         <Alert variant="destructive">
@@ -290,12 +290,12 @@ export default function AdminOverviewPage() {
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle className="text-blue-500"/>Comisiones Pagadas</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-blue-600">${totalPaidCommissions.toLocaleString('es-CO')}</p><p className="text-xs text-muted-foreground">Comisiones que los usuarios ya pagaron.</p></CardContent></Card>
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><CreditCard className="text-orange-500"/>Comisiones Pendientes</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-orange-600">${totalPendingCommissions.toLocaleString('es-CO')}</p><p className="text-xs text-muted-foreground">Comisiones por cobrar a los usuarios.</p></CardContent></Card>
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><ListChecks className="text-indigo-500"/>Servicios Gestionados</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-primary">{validCompletedRequests.length || 0}</p><p className="text-xs text-muted-foreground">Total de trabajos y ventas completadas.</p></CardContent></Card>
-        <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Users className="text-purple-500"/>Operarios Aprobados</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-primary">{allHandymen?.filter(h => h.isApproved).length || 0}</p><p className="text-xs text-muted-foreground">Operarios de servicios activos.</p></CardContent></Card>
+        <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Users className="text-purple-500"/>Profesionales Aprobados</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-primary">{allProfessionals?.filter(h => h.isApproved).length || 0}</p><p className="text-xs text-muted-foreground">Profesionales de servicios activos.</p></CardContent></Card>
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Package className="text-cyan-500"/>Proveedores Aprobados</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold text-primary">{allSuppliers?.filter(s => s.isApproved).length || 0}</p><p className="text-xs text-muted-foreground">Proveedores de productos activos.</p></CardContent></Card>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Briefcase className="text-primary"/>Gestión Global de Servicios</CardTitle><CardDescription>Administra el catálogo de servicios que verán los clientes.</CardDescription></CardHeader><CardContent><p>Crea y edita las categorías de servicio que los clientes y operarios seleccionarán.</p></CardContent><CardFooter><Button asChild className="w-full"><Link href="/admin/services">Gestionar Catálogo de Servicios</Link></Button></CardFooter></Card>
+        <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Briefcase className="text-primary"/>Gestión Global de Servicios</CardTitle><CardDescription>Administra el catálogo de servicios que verán los clientes.</CardDescription></CardHeader><CardContent><p>Crea y edita las categorías de servicio que los clientes y profesionales seleccionarán.</p></CardContent><CardFooter><Button asChild className="w-full"><Link href="/admin/services">Gestionar Catálogo de Servicios</Link></Button></CardFooter></Card>
         <Card className="shadow-lg"><CardHeader><CardTitle className="flex items-center gap-2"><Layers className="text-primary"/>Gestión de Categorías de Productos</CardTitle><CardDescription>Administra el catálogo de categorías de productos.</CardDescription></CardHeader><CardContent><p>Define las categorías que los proveedores usarán para clasificar sus productos.</p></CardContent><CardFooter><Button asChild className="w-full"><Link href="/admin/product-categories">Gestionar Categorías de Productos</Link></Button></CardFooter></Card>
       </div>
       
@@ -310,7 +310,7 @@ export default function AdminOverviewPage() {
                   <TableRow key={req.id}>
                     <TableCell className="font-medium">{req.serviceName}</TableCell>
                     <TableCell>{req.contactFullName}</TableCell>
-                    <TableCell>{req.handymanName || <Badge variant="outline">Sin asignar</Badge>}</TableCell>
+                    <TableCell>{req.professionalName || <Badge variant="outline">Sin asignar</Badge>}</TableCell>
                     <TableCell><Badge variant="secondary" className={getStatusColorClass(req.status)}>{req.status}</Badge></TableCell>
                     <TableCell>{req.requestedAt?.toDate ? format(req.requestedAt.toDate(), 'P', { locale: es }) : 'N/A'}</TableCell>
                     <TableCell className="text-right"><Button variant="outline" size="sm" asChild><Link href={`/dashboard/requests/${req.id}`}><Eye className="mr-1.5 h-4 w-4"/>Ver</Link></Button></TableCell>
@@ -326,12 +326,12 @@ export default function AdminOverviewPage() {
         <Card className="shadow-xl"><CardHeader><CardTitle>Estado de Comisiones por Usuario</CardTitle><CardDescription>Basado en servicios/productos completados que generan comisión.</CardDescription></CardHeader><CardContent>{Object.keys(commissionsByUser).length > 0 ? (<Table><TableHeader><TableRow><TableHead>Usuario</TableHead><TableHead className="text-right">Ventas</TableHead><TableHead className="text-right">Comisión Total</TableHead><TableHead className="text-right">Com. Pendiente</TableHead><TableHead className="text-right">Com. Pagada</TableHead></TableRow></TableHeader><TableBody>{Object.entries(commissionsByUser).sort(([, a], [, b]) => b.totalPlatformFee - a.totalPlatformFee).map(([id, data]) => (<TableRow key={id}><TableCell className="font-medium">{data.name} <span className="text-xs text-muted-foreground">({id.substring(0,6)}...)</span></TableCell><TableCell className="text-right">{data.requestCount}</TableCell><TableCell className="text-right font-semibold text-gray-700">${data.totalPlatformFee.toLocaleString('es-CO')}</TableCell><TableCell className="text-right font-semibold text-orange-600">${data.totalPendingPlatformFee.toLocaleString('es-CO')}</TableCell><TableCell className="text-right font-semibold text-green-600">${data.totalPaidPlatformFee.toLocaleString('es-CO')}</TableCell></TableRow>))}</TableBody></Table>) : (<p className="text-muted-foreground text-center py-4">No hay comisiones registradas todavía.</p>)}</CardContent></Card>
       </div>
       
-      <Card className="shadow-xl"><CardHeader><CardTitle className="flex items-center gap-2"><UserCog className="text-primary"/>Gestión de Operarios</CardTitle><CardDescription>Activa o desactiva operarios en la plataforma y visualiza su información de contacto.</CardDescription></CardHeader><CardContent>{allHandymen && allHandymen.length > 0 ? (<Table><TableHeader><TableRow><TableHead>Operario</TableHead><TableHead>Email</TableHead><TableHead>Teléfono</TableHead><TableHead>Fecha de Registro</TableHead><TableHead>Estado</TableHead><TableHead className="text-center">Acción (Activar/Desactivar)</TableHead></TableRow></TableHeader><TableBody>{allHandymen.map((handyman) => (<TableRow key={handyman.uid}><TableCell className="font-medium">{handyman.displayName}</TableCell><TableCell>{handyman.email}</TableCell><TableCell>{handyman.phone}</TableCell><TableCell>{handyman.createdAt?.toDate ? format(handyman.createdAt.toDate(), 'PP', { locale: es }) : 'N/A'}</TableCell><TableCell><Badge variant={handyman.isApproved ? "default" : "destructive"} className={handyman.isApproved ? "bg-green-600 text-white" : ""}>{handyman.isApproved ? <><UserCheck2 className="mr-1.5 h-3 w-3"/>Aprobado</> : <><UserX2 className="mr-1.5 h-3 w-3"/>Pendiente/Inactivo</>}</Badge></TableCell><TableCell className="flex justify-center items-center">{isUpdatingApprovalId === handyman.uid ? (<Loader2 className="h-5 w-5 animate-spin" />) : (<Switch checked={handyman.isApproved} onCheckedChange={() => handleToggleApprovalStatus(handyman.uid, handyman.isApproved, 'operario')} aria-label={`Aprobar a ${handyman.displayName}`}/>)}</TableCell></TableRow>))}</TableBody></Table>) : (<p className="text-muted-foreground text-center py-6">No hay operarios registrados en la plataforma.</p>)}</CardContent></Card>
+      <Card className="shadow-xl"><CardHeader><CardTitle className="flex items-center gap-2"><UserCog className="text-primary"/>Gestión de Profesionales</CardTitle><CardDescription>Activa o desactiva profesionales en la plataforma y visualiza su información de contacto.</CardDescription></CardHeader><CardContent>{allProfessionals && allProfessionals.length > 0 ? (<Table><TableHeader><TableRow><TableHead>Profesional</TableHead><TableHead>Email</TableHead><TableHead>Teléfono</TableHead><TableHead>Fecha de Registro</TableHead><TableHead>Estado</TableHead><TableHead className="text-center">Acción (Activar/Desactivar)</TableHead></TableRow></TableHeader><TableBody>{allProfessionals.map((professional) => (<TableRow key={professional.uid}><TableCell className="font-medium">{professional.displayName}</TableCell><TableCell>{professional.email}</TableCell><TableCell>{professional.phone}</TableCell><TableCell>{professional.createdAt?.toDate ? format(professional.createdAt.toDate(), 'PP', { locale: es }) : 'N/A'}</TableCell><TableCell><Badge variant={professional.isApproved ? "default" : "destructive"} className={professional.isApproved ? "bg-green-600 text-white" : ""}>{professional.isApproved ? <><UserCheck2 className="mr-1.5 h-3 w-3"/>Aprobado</> : <><UserX2 className="mr-1.5 h-3 w-3"/>Pendiente/Inactivo</>}</Badge></TableCell><TableCell className="flex justify-center items-center">{isUpdatingApprovalId === professional.uid ? (<Loader2 className="h-5 w-5 animate-spin" />) : (<Switch checked={professional.isApproved} onCheckedChange={() => handleToggleApprovalStatus(professional.uid, professional.isApproved, 'profesional')} aria-label={`Aprobar a ${professional.displayName}`}/>)}</TableCell></TableRow>))}</TableBody></Table>) : (<p className="text-muted-foreground text-center py-6">No hay profesionales registrados en la plataforma.</p>)}</CardContent></Card>
 
       <Card className="shadow-xl"><CardHeader><CardTitle className="flex items-center gap-2"><Package className="text-primary"/>Gestión de Proveedores</CardTitle><CardDescription>Activa o desactiva proveedores y gestiona su nivel de suscripción.</CardDescription></CardHeader><CardContent>{allSuppliers && allSuppliers.length > 0 ? (<Table><TableHeader><TableRow><TableHead>Proveedor</TableHead><TableHead>Email</TableHead><TableHead>Teléfono</TableHead><TableHead>Fecha de Registro</TableHead><TableHead>Estado</TableHead><TableHead className="text-center">Suscripción</TableHead><TableHead className="text-center">Acción (Activar/Desactivar)</TableHead></TableRow></TableHeader><TableBody>{allSuppliers.map((supplier) => (<TableRow key={supplier.uid}><TableCell className="font-medium">{supplier.displayName}</TableCell><TableCell>{supplier.email}</TableCell><TableCell>{supplier.phone}</TableCell><TableCell>{supplier.createdAt?.toDate ? format(supplier.createdAt.toDate(), 'PP', { locale: es }) : 'N/A'}</TableCell><TableCell><Badge variant={supplier.isApproved ? "default" : "destructive"} className={supplier.isApproved ? "bg-green-600 text-white" : ""}>{supplier.isApproved ? <><UserCheck2 className="mr-1.5 h-3 w-3"/>Aprobado</> : <><UserX2 className="mr-1.5 h-3 w-3"/>Pendiente/Inactivo</>}</Badge></TableCell><TableCell className="text-center">{isUpdatingSubscriptionId === supplier.uid ? (<Loader2 className="h-5 w-5 animate-spin mx-auto" />) : (<div className="flex flex-col items-center gap-1"><Switch id={`sub-${supplier.uid}`} checked={supplier.subscriptionStatus === 'premium'} onCheckedChange={() => handleToggleSubscriptionStatus(supplier.uid, supplier.subscriptionStatus || 'free')} aria-label={`Cambiar suscripción para ${supplier.displayName}`} /><label htmlFor={`sub-${supplier.uid}`} className="text-xs text-muted-foreground flex items-center gap-1">{supplier.subscriptionStatus === 'premium' ? <><Award className="h-3 w-3 text-yellow-500" />Premium</> : 'Gratuito'}</label></div>)}</TableCell><TableCell className="flex justify-center items-center">{isUpdatingSupplierApprovalId === supplier.uid ? (<Loader2 className="h-5 w-5 animate-spin" />) : (<Switch checked={supplier.isApproved} onCheckedChange={() => handleToggleApprovalStatus(supplier.uid, supplier.isApproved, 'proveedor')} aria-label={`Aprobar a ${supplier.displayName}`}/>)}</TableCell></TableRow>))}</TableBody></Table>) : (<p className="text-muted-foreground text-center py-6">No hay proveedores registrados en la plataforma.</p>)}</CardContent></Card>
 
 
-      <Card className="shadow-xl"><CardHeader><CardTitle>Detalle de Ventas Completadas y Comisiones</CardTitle><CardDescription>Lista de todos los servicios y ventas de productos completados que generaron comisión (comisión > 0).</CardDescription></CardHeader><CardContent>{validCompletedRequests && validCompletedRequests.length > 0 ? (<Table><TableHeader><TableRow><TableHead>Servicio/Producto</TableHead><TableHead>Usuario</TableHead><TableHead>Cliente</TableHead><TableHead className="text-right">Monto Cotizado</TableHead><TableHead className="text-right">Tasa Aplicada</TableHead><TableHead className="text-right">Com. Plataforma</TableHead><TableHead className="text-right">G. Usuario</TableHead><TableHead>Estado Comisión</TableHead><TableHead className="text-center">Acción</TableHead><TableHead>Fecha Completado</TableHead></TableRow></TableHeader><TableBody>{validCompletedRequests.map((req) => (<TableRow key={req.id}><TableCell className="font-medium"><Button variant="link" asChild className="p-0 h-auto font-medium"><Link href={`/dashboard/requests/${req.id}`}>{req.serviceName}</Link></Button></TableCell><TableCell>{req.handymanName || 'N/A'}</TableCell><TableCell>{req.contactFullName}</TableCell><TableCell className="text-right">${(req.quotedAmount || 0).toLocaleString('es-CO')}</TableCell><TableCell className="text-right">{((req.platformCommissionRate || 0) * 100).toFixed(0)}%</TableCell><TableCell className="text-right text-red-600">${(req.platformFeeCalculated || 0).toLocaleString('es-CO')}</TableCell><TableCell className="text-right text-green-700">${(req.handymanEarnings || 0).toLocaleString('es-CO')}</TableCell><TableCell><Badge variant={req.commissionPaymentStatus === "Pagada" ? "default" : (req.commissionPaymentStatus === "Pendiente" ? "secondary" : "outline")} className={req.commissionPaymentStatus === "Pagada" ? "bg-green-600 text-white" : (req.commissionPaymentStatus === "Pendiente" ? "bg-orange-500 text-white" : "border-gray-400 text-gray-600")}>{req.commissionPaymentStatus || 'N/A'}</Badge></TableCell><TableCell className="text-center">{req.platformFeeCalculated && req.platformFeeCalculated > 0 && (<Button variant="outline" size="sm" onClick={() => handleToggleCommissionStatus(req.id, req.commissionPaymentStatus)} disabled={isUpdatingCommissionStatusId === req.id} className="w-full max-w-[160px]">{isUpdatingCommissionStatusId === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : req.commissionPaymentStatus === "Pagada" ? <XCircle className="mr-1.5 h-4 w-4"/> : <CheckCircle className="mr-1.5 h-4 w-4"/>}{req.commissionPaymentStatus === "Pagada" ? "Marcar Pendiente" : "Marcar Pagada"}</Button>)}</TableCell><TableCell>{req.updatedAt?.toDate ? format(req.updatedAt.toDate(), 'PP', { locale: es }) : 'N/A'}</TableCell></TableRow>))}</TableBody></Table>) : (<p className="text-muted-foreground text-center py-6">No hay servicios completados que hayan generado comisión todavía.</p>)}</CardContent><CardFooter><p className="text-xs text-muted-foreground">Cálculos basados en tasa vigente y monto cotizado al momento de completar el servicio. El estado de pago de la comisión se actualiza manualmente.</p></CardFooter></Card>
+      <Card className="shadow-xl"><CardHeader><CardTitle>Detalle de Ventas Completadas y Comisiones</CardTitle><CardDescription>Lista de todos los servicios y ventas de productos completados que generaron comisión (comisión > 0).</CardDescription></CardHeader><CardContent>{validCompletedRequests && validCompletedRequests.length > 0 ? (<Table><TableHeader><TableRow><TableHead>Servicio/Producto</TableHead><TableHead>Usuario</TableHead><TableHead>Cliente</TableHead><TableHead className="text-right">Monto Cotizado</TableHead><TableHead className="text-right">Tasa Aplicada</TableHead><TableHead className="text-right">Com. Plataforma</TableHead><TableHead className="text-right">G. Usuario</TableHead><TableHead>Estado Comisión</TableHead><TableHead className="text-center">Acción</TableHead><TableHead>Fecha Completado</TableHead></TableRow></TableHeader><TableBody>{validCompletedRequests.map((req) => (<TableRow key={req.id}><TableCell className="font-medium"><Button variant="link" asChild className="p-0 h-auto font-medium"><Link href={`/dashboard/requests/${req.id}`}>{req.serviceName}</Link></Button></TableCell><TableCell>{req.professionalName || 'N/A'}</TableCell><TableCell>{req.contactFullName}</TableCell><TableCell className="text-right">${(req.quotedAmount || 0).toLocaleString('es-CO')}</TableCell><TableCell className="text-right">{((req.platformCommissionRate || 0) * 100).toFixed(0)}%</TableCell><TableCell className="text-right text-red-600">${(req.platformFeeCalculated || 0).toLocaleString('es-CO')}</TableCell><TableCell className="text-right text-green-700">${(req.handymanEarnings || 0).toLocaleString('es-CO')}</TableCell><TableCell><Badge variant={req.commissionPaymentStatus === "Pagada" ? "default" : (req.commissionPaymentStatus === "Pendiente" ? "secondary" : "outline")} className={req.commissionPaymentStatus === "Pagada" ? "bg-green-600 text-white" : (req.commissionPaymentStatus === "Pendiente" ? "bg-orange-500 text-white" : "border-gray-400 text-gray-600")}>{req.commissionPaymentStatus || 'N/A'}</Badge></TableCell><TableCell className="text-center">{req.platformFeeCalculated && req.platformFeeCalculated > 0 && (<Button variant="outline" size="sm" onClick={() => handleToggleCommissionStatus(req.id, req.commissionPaymentStatus)} disabled={isUpdatingCommissionStatusId === req.id} className="w-full max-w-[160px]">{isUpdatingCommissionStatusId === req.id ? <Loader2 className="h-4 w-4 animate-spin" /> : req.commissionPaymentStatus === "Pagada" ? <XCircle className="mr-1.5 h-4 w-4"/> : <CheckCircle className="mr-1.5 h-4 w-4"/>}{req.commissionPaymentStatus === "Pagada" ? "Marcar Pendiente" : "Marcar Pagada"}</Button>)}</TableCell><TableCell>{req.updatedAt?.toDate ? format(req.updatedAt.toDate(), 'PP', { locale: es }) : 'N/A'}</TableCell></TableRow>))}</TableBody></Table>) : (<p className="text-muted-foreground text-center py-6">No hay servicios completados que hayan generado comisión todavía.</p>)}</CardContent><CardFooter><p className="text-xs text-muted-foreground">Cálculos basados en tasa vigente y monto cotizado al momento de completar el servicio. El estado de pago de la comisión se actualiza manualmente.</p></CardFooter></Card>
     </div>
   );
 }

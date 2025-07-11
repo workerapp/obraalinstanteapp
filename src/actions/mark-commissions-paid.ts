@@ -9,8 +9,8 @@ import { revalidatePath } from 'next/cache';
  * Marks all pending commissions for a specific user as "Pagada".
  * THIS IS AN ADMIN-ONLY ACTION. It should be triggered by a trusted
  * server process or an admin interface after real payment confirmation.
- * Exposing this directly to end-users (handymen/suppliers) is a security risk.
- * @param userId - The UID of the handyman or supplier whose commissions are to be paid.
+ * Exposing this directly to end-users (professionals/suppliers) is a security risk.
+ * @param userId - The UID of the professional or supplier whose commissions are to be paid.
  */
 export async function markCommissionsAsPaid(userId: string): Promise<{ success: boolean; error?: string; count?: number }> {
   if (!userId) {
@@ -28,7 +28,7 @@ export async function markCommissionsAsPaid(userId: string): Promise<{ success: 
   // Query for all completed requests by this user that have a pending commission.
   const q = query(
     requestsRef,
-    where('handymanId', '==', userId),
+    where('professionalId', '==', userId),
     where('status', '==', 'Completada'),
     where('commissionPaymentStatus', '==', 'Pendiente')
   );
@@ -50,7 +50,7 @@ export async function markCommissionsAsPaid(userId: string): Promise<{ success: 
     await batch.commit();
 
     // Revalidate relevant paths to ensure data is fresh on the client-side.
-    revalidatePath(`/dashboard/handyman/earnings`);
+    revalidatePath(`/dashboard/professional/earnings`);
     revalidatePath(`/dashboard/supplier/earnings`);
     revalidatePath(`/admin/overview`);
 

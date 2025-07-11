@@ -23,8 +23,8 @@ export default function ServiceDetailFooter({ service }: ServiceDetailFooterProp
             </Button>
         </div>
         <Button variant="outline" size="lg" asChild className="w-full sm:w-auto shadow-md">
-          <Link href={`/handymen?category=${encodeURIComponent(service.category)}`} className="flex items-center gap-2">
-            <Users size={18} /> Buscar un Operario
+          <Link href={`/professionals?category=${encodeURIComponent(service.category)}`} className="flex items-center gap-2">
+            <Users size={18} /> Buscar un Profesional
           </Link>
         </Button>
       </div>

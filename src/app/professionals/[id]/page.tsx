@@ -1,9 +1,9 @@
-// src/app/handymen/[id]/page.tsx
+// src/app/professionals/[id]/page.tsx
 "use client";
 
 import { useQuery } from '@tanstack/react-query';
 import { useParams, notFound, useRouter } from 'next/navigation';
-import type { Handyman } from '@/types/handyman';
+import type { Professional } from '@/types/professional';
 import type { HandymanService } from '@/types/handymanService';
 import type { Review } from '@/types/review';
 import { firestore } from '@/firebase/clientApp';
@@ -22,7 +22,7 @@ import { es } from 'date-fns/locale';
 import { useMemo } from 'react';
 import { Progress } from '@/components/ui/progress';
 
-const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null => {
+const mapFirestoreUserToProfessional = (uid: string, userData: any): Professional | null => {
   if (!userData || userData.role !== 'handyman' || userData.isApproved !== true) {
     return null;
   }
@@ -45,8 +45,8 @@ const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null
 
   return {
     id: uid,
-    name: userData.displayName || `Operario ${uid.substring(0, 6)}`,
-    tagline: userData.tagline || 'Operario profesional y confiable',
+    name: userData.displayName || `Profesional ${uid.substring(0, 6)}`,
+    tagline: userData.tagline || 'Profesional confiable y de calidad',
     about: userData.about || undefined,
     skills: Array.isArray(userData.skills) && userData.skills.length > 0 ? userData.skills : ['Servicios Generales'],
     rating: typeof userData.rating === 'number' ? userData.rating : 0,
@@ -60,32 +60,32 @@ const mapFirestoreUserToHandyman = (uid: string, userData: any): Handyman | null
   };
 };
 
-const fetchHandymanProfile = async (handymanId: string): Promise<Handyman | null> => {
-  if (!handymanId) return null;
-  const userDocRef = doc(firestore, "users", handymanId);
+const fetchProfessionalProfile = async (professionalId: string): Promise<Professional | null> => {
+  if (!professionalId) return null;
+  const userDocRef = doc(firestore, "users", professionalId);
   const userDocSnap = await getDoc(userDocRef);
   if (!userDocSnap.exists()) {
-    throw new Error("El perfil de este operario no fue encontrado.");
+    throw new Error("El perfil de este profesional no fue encontrado.");
   }
   const userData = userDocSnap.data();
-  const handyman = mapFirestoreUserToHandyman(handymanId, userData);
-  if (!handyman) {
-    throw new Error("Este usuario no es un operario aprobado o su perfil no está disponible.");
+  const professional = mapFirestoreUserToProfessional(professionalId, userData);
+  if (!professional) {
+    throw new Error("Este usuario no es un profesional aprobado o su perfil no está disponible.");
   }
-  return handyman;
+  return professional;
 };
 
 const priceTypeTranslations: Record<HandymanService['priceType'], string> = {
   fijo: "Fijo", porHora: "Por Hora", porProyecto: "Por Proyecto", consultar: "Consultar Cotización",
 };
 
-async function fetchServicesForHandyman(handymanId: string): Promise<HandymanService[]> {
-  if (!handymanId) return [];
+async function fetchServicesForProfessional(professionalId: string): Promise<HandymanService[]> {
+  if (!professionalId) return [];
   
   const servicesRef = collection(firestore, "handymanServices");
   const q = query(
     servicesRef, 
-    where("handymanUid", "==", handymanId), 
+    where("handymanUid", "==", professionalId), 
     where("isActive", "==", true)
   );
   
@@ -109,29 +109,29 @@ async function fetchReviewsForUser(userId: string): Promise<Review[]> {
   return reviews;
 }
 
-export default function HandymanDetailPage() {
+export default function ProfessionalDetailPage() {
   const { toast } = useToast();
   const params = useParams();
   const router = useRouter();
-  const handymanId = typeof params.id === 'string' ? params.id : '';
+  const professionalId = typeof params.id === 'string' ? params.id : '';
 
-  const { data: handyman, isLoading: isLoadingHandyman, error: handymanError } = useQuery({
-    queryKey: ['handymanProfile', handymanId],
-    queryFn: () => fetchHandymanProfile(handymanId),
-    enabled: !!handymanId,
+  const { data: professional, isLoading: isLoadingProfessional, error: professionalError } = useQuery({
+    queryKey: ['professionalProfile', professionalId],
+    queryFn: () => fetchProfessionalProfile(professionalId),
+    enabled: !!professionalId,
     retry: 1,
   });
 
   const { data: offeredServices, isLoading: isLoadingServices, error: servicesError } = useQuery({
-    queryKey: ['handymanServices', handymanId],
-    queryFn: () => fetchServicesForHandyman(handymanId),
-    enabled: !!handymanId,
+    queryKey: ['professionalServices', professionalId],
+    queryFn: () => fetchServicesForProfessional(professionalId),
+    enabled: !!professionalId,
   });
   
   const { data: reviews, isLoading: isLoadingReviews } = useQuery({
-    queryKey: ['handymanReviews', handymanId],
-    queryFn: () => fetchReviewsForUser(handymanId),
-    enabled: !!handymanId,
+    queryKey: ['professionalReviews', professionalId],
+    queryFn: () => fetchReviewsForUser(professionalId),
+    enabled: !!professionalId,
   });
 
   const ratingsSummary = useMemo(() => {
@@ -148,17 +148,17 @@ export default function HandymanDetailPage() {
   }, [reviews]);
 
 
-  if (isLoadingHandyman) {
+  if (isLoadingProfessional) {
     return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
   }
   
-  if (handymanError) {
+  if (professionalError) {
     return (
       <div className="max-w-2xl mx-auto py-10">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Error al Cargar Perfil</AlertTitle>
-          <AlertDescription>{(handymanError as Error).message}</AlertDescription>
+          <AlertDescription>{(professionalError as Error).message}</AlertDescription>
         </Alert>
         <Button variant="outline" onClick={() => router.back()} className="mt-6">
           <ArrowLeft className="mr-2 h-4 w-4" /> Volver
@@ -167,7 +167,7 @@ export default function HandymanDetailPage() {
     );
   }
 
-  if (!handyman) {
+  if (!professional) {
     notFound();
   }
 
@@ -175,7 +175,7 @@ export default function HandymanDetailPage() {
     <div className="max-w-4xl mx-auto py-8 space-y-8">
       <div>
         <Button variant="outline" asChild className="mb-6">
-          <Link href="/handymen" className="flex items-center gap-2">
+          <Link href="/professionals" className="flex items-center gap-2">
             <ArrowLeft size={16} /> Volver al Directorio
           </Link>
         </Button>
@@ -185,10 +185,10 @@ export default function HandymanDetailPage() {
         <div className="grid md:grid-cols-3 gap-6 md:gap-8">
           <div className="md:col-span-1">
             <div className="relative w-full aspect-square rounded-lg overflow-hidden shadow-md mb-4 bg-muted">
-              <Image src={handyman.imageUrl!} alt={handyman.name} layout="fill" objectFit="contain" className="p-2" data-ai-hint={handyman.dataAiHint || "persona profesional"} />
+              <Image src={professional.imageUrl!} alt={professional.name} layout="fill" objectFit="contain" className="p-2" data-ai-hint={professional.dataAiHint || "persona profesional"} />
             </div>
             <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90 mb-2">
-              <Link href={`/request-quotation?handymanId=${handyman.id}&handymanName=${encodeURIComponent(handyman.name)}`}>
+              <Link href={`/request-quotation?professionalId=${professional.id}&professionalName=${encodeURIComponent(professional.name)}`}>
                 <MessageSquare size={18} className="mr-2" /> Solicitar Cotización
               </Link>
             </Button>
@@ -196,30 +196,30 @@ export default function HandymanDetailPage() {
           </div>
 
           <div className="md:col-span-2">
-            <h1 className="text-3xl sm:text-4xl font-headline font-bold text-primary mb-1">{handyman.name}</h1>
-            <p className="text-lg text-muted-foreground mb-4">{handyman.tagline}</p>
+            <h1 className="text-3xl sm:text-4xl font-headline font-bold text-primary mb-1">{professional.name}</h1>
+            <p className="text-lg text-muted-foreground mb-4">{professional.tagline}</p>
 
             <div className="flex items-center gap-2 mb-4">
               <Star className="h-6 w-6 text-yellow-400 fill-yellow-400" />
-              <span className="text-xl font-semibold">{handyman.rating?.toFixed(1) || 'N/A'}</span>
-              <span className="text-sm text-muted-foreground">({handyman.reviewsCount || 0} reseñas)</span>
+              <span className="text-xl font-semibold">{professional.rating?.toFixed(1) || 'N/A'}</span>
+              <span className="text-sm text-muted-foreground">({professional.reviewsCount || 0} reseñas)</span>
             </div>
 
             <div className="space-y-2 text-foreground/90 mb-6">
-              {handyman.location && <p className="flex items-center gap-2"><MapPin size={18} className="text-accent" /> {handyman.location}</p>}
-              {handyman.memberSince && <p className="flex items-center gap-2"><CalendarDays size={18} className="text-accent" /> {handyman.memberSince}</p>}
+              {professional.location && <p className="flex items-center gap-2"><MapPin size={18} className="text-accent" /> {professional.location}</p>}
+              {professional.memberSince && <p className="flex items-center gap-2"><CalendarDays size={18} className="text-accent" /> {professional.memberSince}</p>}
             </div>
 
             <section className="mb-6">
               <h2 className="text-xl font-semibold font-headline mb-3">Habilidades Generales</h2>
               <div className="flex flex-wrap gap-2">
-                {handyman.skills?.map((skill) => <Badge key={skill} variant="secondary">{skill}</Badge>) || <p>No especificado</p>}
+                {professional.skills?.map((skill) => <Badge key={skill} variant="secondary">{skill}</Badge>) || <p>No especificado</p>}
               </div>
             </section>
             
             <section className="mb-6">
               <h2 className="text-xl font-semibold font-headline mb-3 flex items-center"><UserCircle2 size={22} className="mr-2 text-accent"/> Sobre Mí</h2>
-              <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">{handyman.about || 'No hay descripción disponible.'}</p>
+              <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">{professional.about || 'No hay descripción disponible.'}</p>
             </section>
           </div>
         </div>
@@ -254,7 +254,7 @@ export default function HandymanDetailPage() {
                   <CardFooter className="flex justify-between items-center mt-auto bg-muted/50 p-4">
                     <Badge variant="outline" className="border-primary text-primary">{priceTypeTranslations[service.priceType]}{service.priceType !== 'consultar' && service.priceValue && ` - $${Number(service.priceValue).toLocaleString('es-CO')}`}</Badge>
                     <Button asChild size="sm">
-                      <Link href={`/request-quotation?serviceId=${service.id}&handymanId=${handyman.id}&handymanName=${encodeURIComponent(handyman.name)}&serviceName=${encodeURIComponent(service.name)}`}>
+                      <Link href={`/request-quotation?serviceId=${service.id}&professionalId=${professional.id}&professionalName=${encodeURIComponent(professional.name)}&serviceName=${encodeURIComponent(service.name)}`}>
                         <MessageSquare size={16} className="mr-2"/> Cotizar
                       </Link>
                     </Button>
@@ -263,7 +263,7 @@ export default function HandymanDetailPage() {
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground text-center py-6">Este operario no ha publicado servicios específicos.</p>
+            <p className="text-muted-foreground text-center py-6">Este profesional no ha publicado servicios específicos.</p>
           ))}
         </section>
         
@@ -278,20 +278,20 @@ export default function HandymanDetailPage() {
               <CardContent className="p-4 md:p-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                       <div className="flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r pb-4 md:pb-0 md:pr-4">
-                          <p className="text-5xl font-bold text-primary">{handyman.rating?.toFixed(1) || 'N/A'}</p>
+                          <p className="text-5xl font-bold text-primary">{professional.rating?.toFixed(1) || 'N/A'}</p>
                           <div className="flex items-center my-1">
                               {[...Array(5)].map((_, i) => (
-                                <Star key={i} size={20} className={i < Math.round(handyman.rating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'} />
+                                <Star key={i} size={20} className={i < Math.round(professional.rating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'} />
                               ))}
                           </div>
-                          <p className="text-sm text-muted-foreground">({handyman.reviewsCount || 0} reseñas totales)</p>
+                          <p className="text-sm text-muted-foreground">({professional.reviewsCount || 0} reseñas totales)</p>
                       </div>
                       <div className="md:col-span-2 space-y-1">
                           {Object.entries(ratingsSummary).reverse().map(([star, count]) => (
                               <div key={star} className="flex items-center gap-2 text-sm">
                                   <span className="w-2 font-medium">{star}</span>
                                   <Star size={14} className="text-yellow-400 fill-yellow-400"/>
-                                  <Progress value={handyman.reviewsCount ? (count / handyman.reviewsCount) * 100 : 0} className="w-full h-2 bg-primary/20" />
+                                  <Progress value={professional.reviewsCount ? (count / professional.reviewsCount) * 100 : 0} className="w-full h-2 bg-primary/20" />
                                   <span className="w-8 text-right text-muted-foreground">{count}</span>
                               </div>
                           ))}
@@ -326,7 +326,7 @@ export default function HandymanDetailPage() {
               ))}
             </div>
           ) : (
-            !isLoadingReviews && <p className="text-muted-foreground text-center py-6">Este operario aún no tiene reseñas.</p>
+            !isLoadingReviews && <p className="text-muted-foreground text-center py-6">Este profesional aún no tiene reseñas.</p>
           )}
         </section>
       </div>

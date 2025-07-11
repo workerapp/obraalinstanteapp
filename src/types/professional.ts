@@ -1,5 +1,5 @@
-// src/types/handyman.ts
-export interface Handyman {
+// src/types/professional.ts
+export interface Professional {
   id: string; // Firebase UID
   name: string;
   tagline?: string;
@@ -12,5 +12,5 @@ export interface Handyman {
   dataAiHint?: string;
   phone?: string;
   about?: string;
-  isApproved?: boolean; // Estado de aprobación del operario
+  isApproved?: boolean; // Estado de aprobación del profesional
 }

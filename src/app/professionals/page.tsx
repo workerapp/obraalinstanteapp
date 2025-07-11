@@ -1,11 +1,10 @@
-
-// src/app/handymen/page.tsx
+// src/app/professionals/page.tsx
 "use client";
 
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
-import type { Handyman } from '@/types/handyman';
-import HandymanProfileCard from '@/components/handymen/handyman-profile-card';
+import type { Professional } from '@/types/professional';
+import ProfessionalProfileCard from '@/components/professionals/professional-profile-card';
 import { Users, AlertTriangle, SearchX, Loader2, Search } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
@@ -16,16 +15,16 @@ import { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 
 // This function now fetches data from our API route
-async function fetchHandymenFromApi(): Promise<{ handymen: Handyman[]; error?: string }> {
-    const response = await fetch('/api/handymen');
+async function fetchProfessionalsFromApi(): Promise<{ professionals: Professional[]; error?: string }> {
+    const response = await fetch('/api/professionals');
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch handymen');
+        throw new Error(errorData.error || 'Failed to fetch professionals');
     }
     return response.json();
 }
 
-function HandymenGridSkeleton() {
+function ProfessionalsGridSkeleton() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {Array.from({ length: 6 }).map((_, index) => (
@@ -57,7 +56,7 @@ function HandymenGridSkeleton() {
   );
 }
 
-export default function HandymenPage() {
+export default function ProfessionalsPage() {
   const searchParams = useSearchParams();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -72,17 +71,17 @@ export default function HandymenPage() {
   }, [searchParams]);
 
   const { data, isLoading, isError, error: queryError } = useQuery({
-    queryKey: ['allHandymen'],
-    queryFn: fetchHandymenFromApi, // Use the new API fetching function
+    queryKey: ['allProfessionals'],
+    queryFn: fetchProfessionalsFromApi, // Use the new API fetching function
   });
   
   const normalizeString = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
   const allCategories = useMemo(() => {
-    if (!data?.handymen) return [];
+    if (!data?.professionals) return [];
     // Use a Map to store unique categories, ignoring case/accent, but preserving original casing for display.
     const categories = new Map<string, string>();
-    data.handymen.forEach(h => h.skills?.forEach(s => {
+    data.professionals.forEach(h => h.skills?.forEach(s => {
       if (s) {
           const normalized = normalizeString(s);
           if (!categories.has(normalized)) {
@@ -91,10 +90,10 @@ export default function HandymenPage() {
       }
     }));
     return Array.from(categories.values()).sort((a, b) => a.localeCompare(b));
-  }, [data?.handymen]);
+  }, [data?.professionals]);
 
-  const filteredHandymen = useMemo(() => {
-    if (!data?.handymen) return [];
+  const filteredProfessionals = useMemo(() => {
+    if (!data?.professionals) return [];
 
     const skillNormalizationMap: { [key: string]: string } = {
         'plomero': 'plomeria',
@@ -129,12 +128,12 @@ export default function HandymenPage() {
         }
     }
 
-    return data.handymen
-      .filter(handyman => {
+    return data.professionals
+      .filter(professional => {
         // Category filter using the expanded keyword set
         if (selectedCategory) {
             if (categorySearchKeywords.size === 0) return true; // Should not happen if category is selected but as a safeguard.
-            return handyman.skills?.some(skill => {
+            return professional.skills?.some(skill => {
                 const normalizedSkill = normalizeString(skill.trim());
                 for (const keyword of categorySearchKeywords) {
                     if (normalizedSkill.includes(keyword)) {
@@ -146,26 +145,26 @@ export default function HandymenPage() {
         }
         return true;
       })
-      .filter(handyman => {
+      .filter(professional => {
         // General text search filter
         const normalizedTerm = normalizeString(searchTerm.trim());
         if (normalizedTerm === '') return true;
         
         return (
-          normalizeString(handyman.name).includes(normalizedTerm) ||
-          (handyman.tagline && normalizeString(handyman.tagline).includes(normalizedTerm)) ||
-          handyman.skills?.some(skill => normalizeString(skill).includes(normalizedTerm))
+          normalizeString(professional.name).includes(normalizedTerm) ||
+          (professional.tagline && normalizeString(professional.tagline).includes(normalizedTerm)) ||
+          professional.skills?.some(skill => normalizeString(skill).includes(normalizedTerm))
         );
       });
-  }, [data?.handymen, searchTerm, selectedCategory]);
+  }, [data?.professionals, searchTerm, selectedCategory]);
 
 
   const fetchError = data?.error || (isError ? (queryError as Error).message : null);
 
-  const pageTitle = selectedCategory ? `Operarios para ${selectedCategory}` : "Encuentra un Operario";
+  const pageTitle = selectedCategory ? `Profesionales de ${selectedCategory}` : "Encuentra un Profesional";
   const pageDescription = selectedCategory 
-    ? `Explora nuestro directorio de operarios calificados en ${selectedCategory}.`
-    : "Explora nuestro directorio de operarios calificados y de confianza. Usa la búsqueda y los filtros para encontrar al profesional perfecto.";
+    ? `Explora nuestro directorio de profesionales calificados en ${selectedCategory}.`
+    : "Explora nuestro directorio de profesionales calificados y de confianza. Usa la búsqueda y los filtros para encontrar a la persona perfecta.";
 
   return (
     <div className="space-y-8">
@@ -209,25 +208,25 @@ export default function HandymenPage() {
         </div>
       </Card>
 
-      {isLoading && <HandymenGridSkeleton />}
+      {isLoading && <ProfessionalsGridSkeleton />}
 
       {fetchError && (
         <Alert variant="destructive" className="max-w-2xl mx-auto">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Error al Cargar Operarios</AlertTitle>
+          <AlertTitle>Error al Cargar Profesionales</AlertTitle>
           <AlertDescription>{fetchError}</AlertDescription>
         </Alert>
       )}
 
-      {!isLoading && !fetchError && filteredHandymen.length > 0 && (
+      {!isLoading && !fetchError && filteredProfessionals.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredHandymen.map((handyman) => (
-            <HandymanProfileCard key={handyman.id} handyman={handyman} />
+          {filteredProfessionals.map((professional) => (
+            <ProfessionalProfileCard key={professional.id} professional={professional} />
           ))}
         </div>
       )}
 
-      {!isLoading && !fetchError && filteredHandymen.length === 0 && (
+      {!isLoading && !fetchError && filteredProfessionals.length === 0 && (
         <div className="text-center py-10">
           <SearchX className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <p className="text-muted-foreground text-lg font-semibold">

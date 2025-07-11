@@ -15,13 +15,13 @@ export interface QuotationRequest {
   problemDescription: string;
   preferredDate?: string; // Fecha preferida (opcional)
   imageUrl?: string; // URL a la imagen del problema adjuntada por el usuario
-  handymanId?: string; // ID del operario si se solicitó a uno específico (opcional)
-  handymanName?: string; // Nombre del operario si se solicitó a uno específico (opcional)
+  professionalId?: string; // ID del profesional si se solicitó a uno específico (opcional)
+  professionalName?: string; // Nombre del profesional si se solicitó a uno específico (opcional)
   status: "Enviada" | "Revisando" | "Cotizada" | "Programada" | "Completada" | "Cancelada";
   requestedAt: Timestamp;
   updatedAt: Timestamp;
 
-  // Campos para la cotización del operario
+  // Campos para la cotización del profesional
   quotedAmount?: number;
   quotedCurrency?: string; // e.g., "COP"
   quotationDetails?: string; // Notas adicionales de la cotización
@@ -29,7 +29,7 @@ export interface QuotationRequest {
   // Campos para comisiones de la plataforma
   platformCommissionRate?: number; // Tasa de comisión aplicada (ej. 0.15 para 15%)
   platformFeeCalculated?: number; // Monto de la comisión calculada para la plataforma
-  handymanEarnings?: number; // Ganancias netas para el operario (quotedAmount - platformFeeCalculated)
+  handymanEarnings?: number; // Ganancias netas para el profesional (quotedAmount - platformFeeCalculated)
   commissionPaymentStatus?: "Pendiente" | "Pagada"; // Nuevo campo para el estado de pago de la comisión
   isReviewed?: boolean; // Nuevo campo para saber si el cliente ya dejó una reseña
 }

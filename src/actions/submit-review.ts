@@ -65,7 +65,7 @@ export async function submitReview(data: SubmitReviewData) {
     });
 
     // Revalidate paths to show new review data
-    revalidatePath(`/handymen/${targetId}`);
+    revalidatePath(`/professionals/${targetId}`);
     revalidatePath(`/suppliers/${targetId}`);
     revalidatePath(`/dashboard/requests/${requestId}`);
 

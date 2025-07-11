@@ -27,7 +27,7 @@ export default function DashboardRedirectPage() {
     if (user.role === 'admin') {
       redirectPath = '/admin/overview';
     } else if (user.role === 'handyman') {
-      redirectPath = '/dashboard/handyman';
+      redirectPath = '/dashboard/professional';
     } else if (user.role === 'supplier') {
       redirectPath = '/dashboard/supplier';
     }

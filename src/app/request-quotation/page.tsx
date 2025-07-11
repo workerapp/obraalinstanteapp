@@ -31,8 +31,8 @@ const formSchema = z.object({
   serviceName: z.string().optional(),
   problemDescription: z.string().min(20, "Por favor, describe tu problema o los productos que necesitas en al menos 20 caracteres.").max(1000),
   preferredDate: z.string().optional(),
-  handymanId: z.string().optional(),
-  handymanName: z.string().optional(),
+  professionalId: z.string().optional(),
+  professionalName: z.string().optional(),
 }).refine(data => {
     return data.serviceId || data.problemDescription;
 }, {
@@ -82,7 +82,7 @@ export default function RequestQuotationPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       contactFullName: "", contactEmail: "", contactPhone: "", address: "", serviceId: "",
-      serviceName: "", problemDescription: "", preferredDate: "", handymanId: "", handymanName: "",
+      serviceName: "", problemDescription: "", preferredDate: "", professionalId: "", professionalName: "",
     },
   });
 
@@ -94,8 +94,8 @@ export default function RequestQuotationPage() {
   useEffect(() => {
     const serviceId = searchParams.get('serviceId');
     const serviceName = searchParams.get('serviceName') ? decodeURIComponent(searchParams.get('serviceName')!) : '';
-    const handymanId = searchParams.get('handymanId');
-    const handymanName = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')!) : '';
+    const professionalId = searchParams.get('handymanId') || searchParams.get('professionalId');
+    const professionalName = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')!) : (searchParams.get('professionalName') ? decodeURIComponent(searchParams.get('professionalName')!) : '');
     const problem = searchParams.get('problem') ? decodeURIComponent(searchParams.get('problem')!) : '';
 
     const newValues: Partial<FormData> = {};
@@ -106,8 +106,8 @@ export default function RequestQuotationPage() {
     }
 
     if (isCartMode) {
-        newValues.handymanId = cartSupplierId || '';
-        newValues.handymanName = cartSupplierName || '';
+        newValues.professionalId = cartSupplierId || '';
+        newValues.professionalName = cartSupplierName || '';
         newValues.serviceId = 'product-quotation';
         newValues.serviceName = `Cotización de productos de ${cartSupplierName}`;
         newValues.problemDescription = `Solicitud de cotización para los siguientes ${cartItems.length} productos:\n` +
@@ -115,8 +115,8 @@ export default function RequestQuotationPage() {
     } else {
         if (serviceId) newValues.serviceId = serviceId;
         if (serviceName) newValues.serviceName = serviceName;
-        if (handymanId) newValues.handymanId = handymanId;
-        if (handymanName) newValues.handymanName = handymanName;
+        if (professionalId) newValues.professionalId = professionalId;
+        if (professionalName) newValues.professionalName = professionalName;
 
         if (problem) {
             newValues.problemDescription = problem;
@@ -185,8 +185,8 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
       problemDescription: data.problemDescription,
       preferredDate: data.preferredDate || null,
       imageUrl: null, 
-      handymanId: data.handymanId || null, 
-      handymanName: data.handymanName || null,
+      professionalId: data.professionalId || null, 
+      professionalName: data.professionalName || null,
       status: "Enviada" as const, 
       requestedAt: serverTimestamp(), 
       updatedAt: serverTimestamp(),
@@ -209,7 +209,7 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
   };
   
   const serviceNameFromQuery = searchParams.get('serviceName') ? decodeURIComponent(searchParams.get('serviceName')!) : null;
-  const handymanNameFromQuery = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')!) : null;
+  const professionalNameFromQuery = searchParams.get('handymanName') ? decodeURIComponent(searchParams.get('handymanName')!) : (searchParams.get('professionalName') ? decodeURIComponent(searchParams.get('professionalName')!) : null);
   const hasContext = isCartMode || !!serviceNameFromQuery;
 
   return (
@@ -263,8 +263,8 @@ Por favor, describe a continuación los detalles específicos de tu problema o n
                 <CardContent>
                     <div className="space-y-1 text-sm">
                         <p><strong>Servicio:</strong> {serviceNameFromQuery}</p>
-                        {handymanNameFromQuery && (
-                            <p><strong>Operario seleccionado:</strong> {handymanNameFromQuery}</p>
+                        {professionalNameFromQuery && (
+                            <p><strong>Profesional seleccionado:</strong> {professionalNameFromQuery}</p>
                         )}
                     </div>
                 </CardContent>

@@ -76,7 +76,7 @@ export default function AiAssistantPage() {
           <Sparkles className="mx-auto h-16 w-16 text-primary mb-4" />
           <CardTitle className="text-3xl font-headline">Asistente de IA</CardTitle>
           <CardDescription>
-            ¡Hola! Soy Obrita, tu asistente personal. Describe tu problema y te daré un diagnóstico, soluciones, y te recomendaré a los mejores operarios.
+            ¡Hola! Soy Obrita, tu asistente personal. Describe tu problema y te daré un diagnóstico, soluciones, y te recomendaré a los mejores profesionales.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -163,27 +163,27 @@ export default function AiAssistantPage() {
                 <p className="text-foreground/90 bg-muted p-4 rounded-md border">{aiResponse.analysis}</p>
               </div>
               
-              {/* Recommended Handymen or Search CTA */}
+              {/* Recommended Professionals or Search CTA */}
               <div className="space-y-4">
                 <h3 className="text-2xl font-semibold font-headline text-primary flex items-center"><Award className="mr-3 h-6 w-6" />¡Encontremos al Profesional Adecuado!</h3>
-                {aiResponse.recommendedHandymen && aiResponse.recommendedHandymen.length > 0 ? (
+                {aiResponse.recommendedProfessionals && aiResponse.recommendedProfessionals.length > 0 ? (
                   <Card className="border-green-200 bg-green-50/50">
                     <CardHeader>
-                      <CardTitle className="text-xl text-green-800">Operarios Recomendados para ti</CardTitle>
-                      <CardDescription>Basado en tu problema, estos son los operarios mejor calificados que pueden ayudarte.</CardDescription>
+                      <CardTitle className="text-xl text-green-800">Profesionales Recomendados para ti</CardTitle>
+                      <CardDescription>Basado en tu problema, estos son los profesionales mejor calificados que pueden ayudarte.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-4 space-y-3">
-                      {aiResponse.recommendedHandymen.map((handyman) => (
-                        <div key={handyman.id} className="flex justify-between items-center bg-background p-3 rounded-lg border">
+                      {aiResponse.recommendedProfessionals.map((professional) => (
+                        <div key={professional.id} className="flex justify-between items-center bg-background p-3 rounded-lg border">
                           <div>
-                            <p className="font-semibold text-base">{handyman.name}</p>
+                            <p className="font-semibold text-base">{professional.name}</p>
                             <div className="flex items-center text-sm text-muted-foreground">
                               <Star className="w-4 h-4 mr-1 text-yellow-500 fill-yellow-400" />
-                              <span>{handyman.rating.toFixed(1)} ({handyman.reviewsCount} reseñas)</span>
+                              <span>{professional.rating.toFixed(1)} ({professional.reviewsCount} reseñas)</span>
                             </div>
                           </div>
                           <Button asChild size="sm">
-                            <Link href={`/handymen/${handyman.id}`}>
+                            <Link href={`/professionals/${professional.id}`}>
                               <UserCheck className="mr-2 h-4 w-4" /> Ver Perfil
                             </Link>
                           </Button>
@@ -196,8 +196,8 @@ export default function AiAssistantPage() {
                     <CardContent className="p-6">
                       <p className="mb-4 text-foreground/90">No encontramos una recomendación automática específica, ¡pero no te preocupes! Hemos identificado las habilidades que necesitas. Explora el directorio para encontrar al profesional perfecto.</p>
                       <Button asChild size="lg">
-                        <Link href={`/handymen?category=${encodeURIComponent(aiResponse.relevantSkills[0])}`}>
-                          <Search className="mr-2 h-4 w-4" /> Buscar Operarios de {aiResponse.relevantSkills[0]}
+                        <Link href={`/professionals?category=${encodeURIComponent(aiResponse.relevantSkills[0])}`}>
+                          <Search className="mr-2 h-4 w-4" /> Buscar Profesionales de {aiResponse.relevantSkills[0]}
                         </Link>
                       </Button>
                     </CardContent>
@@ -247,7 +247,7 @@ export default function AiAssistantPage() {
                         <div className="flex flex-wrap gap-2">
                           {aiResponse.relevantSkills.map((skill, index) => (
                             <Button key={`skill-${index}`} asChild variant="secondary" size="sm">
-                              <Link href={`/handymen?category=${encodeURIComponent(skill)}`}>
+                              <Link href={`/professionals?category=${encodeURIComponent(skill)}`}>
                                 <Search className="mr-1.5 h-4 w-4" /> Buscar {skill}
                               </Link>
                             </Button>

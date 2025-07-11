@@ -1,4 +1,4 @@
-// src/app/dashboard/handyman/earnings/page.tsx
+// src/app/dashboard/professional/earnings/page.tsx
 "use client";
 
 import { useEffect } from 'react';
@@ -25,7 +25,7 @@ const fetchCompletedRequests = async (userId: string | undefined): Promise<Quota
   // Query is simplified to avoid complex indexing issues. Sorting is done on the client.
   const q = query(
     requestsRef, 
-    where("handymanId", "==", userId),
+    where("professionalId", "==", userId),
     where("status", "==", "Completada")
   );
   
@@ -46,7 +46,7 @@ const fetchCompletedRequests = async (userId: string | undefined): Promise<Quota
   return requests;
 };
 
-export default function HandymanEarningsPage() {
+export default function ProfessionalEarningsPage() {
   const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
   const router = useRouter();
@@ -109,7 +109,7 @@ export default function HandymanEarningsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-headline font-bold text-primary">Mis Ganancias y Comisiones</h1>
         <Button variant="outline" asChild>
-          <Link href="/dashboard/handyman"><ArrowLeft size={16} className="mr-2" />Volver al Panel</Link>
+          <Link href="/dashboard/professional"><ArrowLeft size={16} className="mr-2" />Volver al Panel</Link>
         </Button>
       </div>
       
@@ -132,7 +132,7 @@ export default function HandymanEarningsPage() {
           {totalCommissionPending > 0 ? (
             <Button asChild>
               <Link 
-                href={`https://wa.me/573017412292?text=${encodeURIComponent(`Hola, soy ${typedUser?.displayName || 'un operario'} (ID: ${typedUser?.uid}). Quiero coordinar el pago de mis comisiones pendientes por $${totalCommissionPending.toLocaleString('es-CO')}.`)}`}
+                href={`https://wa.me/573017412292?text=${encodeURIComponent(`Hola, soy ${typedUser?.displayName || 'un profesional'} (ID: ${typedUser?.uid}). Quiero coordinar el pago de mis comisiones pendientes por $${totalCommissionPending.toLocaleString('es-CO')}.`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >

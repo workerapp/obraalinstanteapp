@@ -50,9 +50,9 @@ const fetchRequestDetails = async (requestId: string | undefined, userId: string
   
   // Authorization logic
   const isOwner = requestData.userId === userId;
-  const isAssigned = requestData.handymanId === userId;
+  const isAssigned = requestData.professionalId === userId;
   const isAdmin = userRole === 'admin';
-  const isPublicRequest = !requestData.handymanId;
+  const isPublicRequest = !requestData.professionalId;
   const isProfessional = userRole === 'handyman' || userRole === 'supplier';
   
   const canView = isAdmin || isOwner || isAssigned || (isPublicRequest && isProfessional);
@@ -291,7 +291,7 @@ export default function RequestDetailPage() {
             <h3 className="text-xl font-semibold mb-2 flex items-center"><Wrench className="mr-2 text-accent h-5 w-5"/>Información del Servicio</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <p><strong>Servicio:</strong> {request.serviceName}</p>
-              {request.handymanName && <p><strong>Operario/Proveedor:</strong> {request.handymanName}</p>}
+              {request.professionalName && <p><strong>Profesional/Proveedor:</strong> {request.professionalName}</p>}
             </div>
             <p className="text-sm mt-2"><strong>Descripción del Problema/Necesidad:</strong></p>
             <p className="text-sm text-muted-foreground bg-muted p-3 rounded-md whitespace-pre-wrap">{request.problemDescription}</p>
@@ -349,12 +349,12 @@ export default function RequestDetailPage() {
         </CardContent>
       </Card>
       
-      {typedUser?.role === 'customer' && request.status === 'Completada' && !request.isReviewed && request.handymanId && (
+      {typedUser?.role === 'customer' && request.status === 'Completada' && !request.isReviewed && request.professionalId && (
         <Card className="shadow-xl bg-primary/5 border-primary/20">
             <CardHeader>
                 <CardTitle className="flex items-center text-primary"><Star className="mr-2"/>¿Cómo fue tu experiencia?</CardTitle>
                 <CardDescription>
-                    Tu opinión es importante. Ayuda a otros miembros de la comunidad dejando una reseña sobre el trabajo de {request.handymanName}.
+                    Tu opinión es importante. Ayuda a otros miembros de la comunidad dejando una reseña sobre el trabajo de {request.professionalName}.
                 </CardDescription>
             </CardHeader>
             <CardFooter>
@@ -368,10 +368,10 @@ export default function RequestDetailPage() {
                          <DialogHeader>
                             <DialogTitle>Califica el servicio</DialogTitle>
                          </DialogHeader>
-                         {request.handymanId && request.handymanName && typedUser.displayName &&
+                         {request.professionalId && request.professionalName && typedUser.displayName &&
                             <ReviewForm
-                                targetId={request.handymanId}
-                                targetName={request.handymanName}
+                                targetId={request.professionalId}
+                                targetName={request.professionalName}
                                 authorId={typedUser.uid}
                                 authorName={typedUser.displayName}
                                 requestId={request.id}
@@ -391,7 +391,7 @@ export default function RequestDetailPage() {
       <Card className="shadow-xl">
         <CardHeader>
             <CardTitle className="flex items-center"><MessageSquare className="mr-3 h-6 w-6 text-primary"/> Historial de Mensajes</CardTitle>
-            <CardDescription>Comunícate con el cliente o el operario aquí. Puedes adjuntar imágenes.</CardDescription>
+            <CardDescription>Comunícate con el cliente o el profesional aquí. Puedes adjuntar imágenes.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-4 max-h-96 overflow-y-auto p-4 border rounded-md bg-muted/50">

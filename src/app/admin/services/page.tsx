@@ -318,7 +318,7 @@ Instalar calentadores..." rows={4} {...field} /></FormControl><FormDescription>U
                 </FormItem>
                 
                 <FormField control={form.control} name="iconName" render={({ field }) => (<FormItem><FormLabel>Nombre del Ícono (Lucide)</FormLabel><FormControl><Input placeholder="Ej: Wrench" {...field} /></FormControl><FormDescription>Visita lucide.dev para explorar íconos. Copia el nombre exacto (ej: 'Wrench', 'Paintbrush') y pégalo aquí.</FormDescription><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="dataAiHint" render={({ field }) => (<FormItem><FormLabel>Pista para IA (para placeholders)</FormLabel><FormControl><Input placeholder="Ej: 'plomero trabajando'" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="dataAiHint" render={({ field }) => (<FormItem><FormLabel>Pista para IA (para placeholders)</FormLabel><FormControl><Input placeholder="Ej: 'profesional trabajando'" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="isActive" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Servicio Activo</FormLabel><FormDescription>Los clientes podrán ver este servicio.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
               </form>
             </Form>

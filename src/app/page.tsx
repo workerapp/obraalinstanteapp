@@ -23,14 +23,14 @@ export default function HomePage() {
             ¡Bienvenido a Obra al Instante!
           </h1>
           <p className="text-xl text-foreground/80 mb-8 max-w-2xl mx-auto">
-            Tu solución integral para encontrar operarios calificados, proveedores de confianza y asesoramiento experto para tu hogar.
+            Tu solución integral para encontrar profesionales calificados, proveedores de confianza y asesoramiento experto para tu hogar.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Button size="lg" asChild className="shadow-md hover:shadow-lg transition-shadow">
               <Link href="/services">Explorar Servicios</Link>
             </Button>
             <Button size="lg" variant="outline" asChild className="shadow-md hover:shadow-lg transition-shadow">
-              <Link href="/handymen">Buscar un Operario</Link>
+              <Link href="/professionals">Buscar un Profesional</Link>
             </Button>
              <Button size="lg" variant="outline" asChild className="shadow-md hover:shadow-lg transition-shadow">
               <Link href="/suppliers">Buscar un Proveedor</Link>
@@ -46,7 +46,7 @@ export default function HomePage() {
             <Lightbulb className="mx-auto h-12 w-12 text-accent mb-3" />
             <CardTitle className="text-2xl font-headline">¿No sabes por dónde empezar?</CardTitle>
             <CardDescription>
-              Usa nuestro Asistente de IA. Describe tu problema y obtén un diagnóstico, posibles soluciones y los tipos de operarios que necesitas.
+              Usa nuestro Asistente de IA. Describe tu problema y obtén un diagnóstico, posibles soluciones y los tipos de profesionales que necesitas.
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
@@ -81,7 +81,7 @@ export default function HomePage() {
                     <Link href="/services">Explorar Servicios</Link>
                 </Button>
                  <Button asChild variant="link" className="text-accent">
-                    <Link href="/handymen">Buscar un Operario &rarr;</Link>
+                    <Link href="/professionals">Buscar un Profesional &rarr;</Link>
                 </Button>
             </CardFooter>
           </Card>
@@ -91,7 +91,7 @@ export default function HomePage() {
                <div className="p-4 bg-primary/10 rounded-full mb-3">
                 <Wrench className="h-10 w-10 text-primary" />
               </div>
-              <CardTitle className="font-headline">Para Operarios</CardTitle>
+              <CardTitle className="font-headline">Para Profesionales</CardTitle>
               <CardDescription>Ofrece tus servicios y haz crecer tu negocio.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow text-center">
@@ -99,7 +99,7 @@ export default function HomePage() {
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
-                <Link href="/sign-up?role=handyman">Registrarme como Operario</Link>
+                <Link href="/sign-up?role=handyman">Registrarme como Profesional</Link>
               </Button>
             </CardFooter>
           </Card>
@@ -113,7 +113,7 @@ export default function HomePage() {
               <CardDescription>Vende tus productos y materiales.</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow text-center">
-              <p>Expande tu alcance publicando tu catálogo de productos. Conéctate directamente con clientes y operarios que buscan materiales de calidad.</p>
+              <p>Expande tu alcance publicando tu catálogo de productos. Conéctate directamente con clientes y profesionales que buscan materiales de calidad.</p>
             </CardContent>
             <CardFooter>
               <Button asChild className="w-full">
