@@ -109,7 +109,7 @@ function AuthProviderInternal({ children }: PropsWithChildren) {
   const getRedirectPath = (role?: string) => {
     if (redirect) return redirect;
     if (role === 'admin') return '/admin/overview';
-    if (role === 'professional') return '/dashboard/professional';
+    if (role === 'handyman') return '/dashboard/professional';
     if (role === 'supplier') return '/dashboard/supplier';
     return '/dashboard/customer';
   };
@@ -143,7 +143,7 @@ function AuthProviderInternal({ children }: PropsWithChildren) {
         photoURL: null,
       };
 
-      if (finalRole === 'professional' || finalRole === 'supplier') {
+      if (finalRole === 'handyman' || finalRole === 'supplier') {
         userDocData.isApproved = false;
         if (finalRole === 'supplier') {
           userDocData.subscriptionStatus = 'free';
@@ -153,7 +153,7 @@ function AuthProviderInternal({ children }: PropsWithChildren) {
       const userDocRef = doc(firestore, "users", userCredential.user.uid);
       await setDoc(userDocRef, userDocData);
       
-      const successMessage = finalRole === 'professional' || finalRole === 'supplier'
+      const successMessage = finalRole === 'handyman' || finalRole === 'supplier'
         ? "Tu cuenta será revisada por un administrador."
         : "¡Bienvenido/a! Te has registrado con éxito.";
 
@@ -212,11 +212,17 @@ function AuthProviderInternal({ children }: PropsWithChildren) {
       return finalUser;
 
     } catch (error: any) {
-        console.error("Error al iniciar sesión:", error);
+        if (error.code === 'auth/invalid-credential') {
+            console.error("Error de inicio de sesión (auth/invalid-credential): Las credenciales proporcionadas son incorrectas (contraseña inválida o el usuario no existe).", error);
+        } else {
+            console.error("Error al iniciar sesión:", error);
+        }
+        
         let errorMessage = "Ocurrió un error inesperado. Por favor, inténtalo de nuevo.";
         if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
             errorMessage = "El correo electrónico o la contraseña son incorrectos. Por favor, verifica tus credenciales.";
         }
+        
         toast({ title: "Falló el Inicio de Sesión", description: errorMessage, variant: "destructive" });
         setUser(null);
         return null;
