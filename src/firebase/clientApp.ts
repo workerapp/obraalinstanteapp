@@ -16,25 +16,43 @@ const firebaseConfig: FirebaseOptions = {
 };
 
 // =========================================================================
-// PASO FINAL ANTES DE PUBLICAR: CONFIGURACIÓN DE FIREBASE
+// GUÍA DE CONFIGURACIÓN FINAL DE FIREBASE (¡IMPORTANTE!)
 // =========================================================================
-// 1.  **Crea un proyecto en Firebase:** Ve a https://console.firebase.google.com/ y crea un nuevo proyecto.
-// 2.  **Añade una aplicación web:**
-//     - Dentro de tu proyecto, ve a "Project settings" (Configuración del proyecto) -> Pestaña "General".
-//     - En la sección "Your apps" (Tus apps), haz clic en el ícono web (</>) para "Add an app" (Añadir una app).
-//     - Registra tu app y Firebase te dará un objeto `firebaseConfig`.
+// Para que la aplicación funcione, necesitas conectar tu propio proyecto de Firebase.
+// Sigue estos pasos:
+//
+// 1.  **Crea un proyecto en Firebase:**
+//     - Ve a https://console.firebase.google.com/ y crea un nuevo proyecto.
+//
+// 2.  **Añade una aplicación web a tu proyecto:**
+//     - Dentro de tu proyecto, ve a "Project settings" (el ícono de engranaje).
+//     - En la pestaña "General", baja hasta "Your apps" (Tus apps).
+//     - Haz clic en el ícono web `</>` para "Add an app" (Añadir una app).
+//     - Dale un nombre a tu app y regístrala. Firebase te mostrará un objeto `firebaseConfig`.
+//
 // 3.  **Configura las variables de entorno:**
-//     - En este directorio, busca un archivo llamado `.env.local`. Si no existe, créalo.
-//     - Copia los valores de tu `firebaseConfig` a `.env.local`. **IMPORTANTE:** Añade el prefijo `NEXT_PUBLIC_` a cada clave.
-//     - Ejemplo:
-//       NEXT_PUBLIC_FIREBASE_API_KEY="tu-api-key"
-//       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="tu-auth-domain"
-//       ...y así sucesivamente para todas las claves.
-// 4.  **Habilita los servicios de Firebase:**
-//     - **Authentication:** En la consola de Firebase, ve a "Authentication" -> "Sign-in method" y habilita "Email/Password" y "Google".
-//     - **Firestore:** Ve a "Firestore Database" -> "Create database". Empieza en **modo de prueba** por ahora.
-//     - **Storage:** Ve a "Storage" -> "Get started". Sigue los pasos de configuración.
-// 5.  **Reglas de Seguridad (¡CRÍTICO!):** Las reglas en modo de prueba expiran en 30 días. Antes de lanzar a usuarios reales, DEBES configurar reglas de seguridad adecuadas para Firestore y Storage para proteger los datos.
+//     - En el explorador de archivos a la izquierda, busca o crea un archivo llamado `.env.local` en la raíz del proyecto.
+//     - Copia las claves de tu `firebaseConfig` a ese archivo.
+//     - **CRÍTICO:** Añade `NEXT_PUBLIC_` al inicio de cada nombre de clave.
+//
+//     - Ejemplo de cómo debe quedar tu archivo `.env.local`:
+//       NEXT_PUBLIC_FIREBASE_API_KEY="TU_VALOR_DE_API_KEY"
+//       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="TU_VALOR_DE_AUTH_DOMAIN"
+//       NEXT_PUBLIC_FIREBASE_PROJECT_ID="TU_VALOR_DE_PROJECT_ID"
+//       NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="TU_VALOR_DE_STORAGE_BUCKET"
+//       NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="TU_VALOR_DE_MESSAGING_SENDER_ID"
+//       NEXT_PUBLIC_FIREBASE_APP_ID="TU_VALOR_DE_APP_ID"
+//
+// 4.  **Habilita los servicios de Firebase en la consola:**
+//     - **Authentication:** Ve a "Build" -> "Authentication" -> "Sign-in method". Habilita "Email/Password" y "Google".
+//     - **Firestore:** Ve a "Build" -> "Firestore Database" -> "Create database". Empieza en **modo de prueba**.
+//     - **Storage:** Ve a "Build" -> "Storage" -> "Get started". Sigue los pasos y usa la configuración por defecto.
+//
+// 5.  **¡Listo!** Con esto, tu app debería funcionar correctamente.
+//
+// **NOTA DE SEGURIDAD:** El "modo de prueba" de Firestore caduca en 30 días.
+// Antes de que tu app sea usada por personas reales, DEBES configurar reglas de seguridad
+// adecuadas para proteger los datos de tus usuarios.
 // =========================================================================
 
 
