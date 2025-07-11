@@ -45,7 +45,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Image from 'next/image';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 
 const serviceFormSchema = z.object({
@@ -105,6 +105,7 @@ export default function ProfessionalServicesPage() {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const typedUser = user as AppUser | null;
+  const queryClient = useQueryClient();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false); // For add/edit
@@ -256,7 +257,7 @@ export default function ProfessionalServicesPage() {
         toast({ title: "Servicio Añadido", description: `El servicio "${data.name}" ha sido añadido.` });
       }
       
-      refetchOfferedServices();
+      queryClient.invalidateQueries({ queryKey: ['professionalServices', typedUser.uid] });
       setIsDialogOpen(false); 
     } catch (error: any) {
       console.error("onSubmit: Error saving service:", error);
@@ -316,6 +317,12 @@ export default function ProfessionalServicesPage() {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogTrigger asChild>
+          <Button>
+             <PlusCircle size={18} className="mr-2" />
+             Añadir Servicio desde Catálogo
+          </Button>
+        </DialogTrigger>
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
             <DialogTitle>{editingServiceId ? "Editar Servicio" : "Añadir Nuevo Servicio"}</DialogTitle>
