@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 const fetchQuotationRequests = async (userId: string | undefined): Promise<QuotationRequest[]> => {
   if (!userId) return [];
@@ -58,6 +59,7 @@ export default function CustomerDashboardPage() {
   const typedUser = user as AppUser | null;
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const [isCancelAlertOpen, setIsCancelAlertOpen] = useState(false);
   const [requestToCancelId, setRequestToCancelId] = useState<string | null>(null);
@@ -192,7 +194,7 @@ export default function CustomerDashboardPage() {
     );
   }
 
-  if (!typedUser && !authLoading) { 
+  if (!typedUser) { 
      return (
       <div className="text-center py-10">
         <h1 className="text-2xl font-bold">Acceso Denegado</h1>
@@ -201,6 +203,16 @@ export default function CustomerDashboardPage() {
           <Link href="/sign-in">Iniciar Sesión</Link>
         </Button>
       </div>
+    );
+  }
+  
+  if (typedUser.role && typedUser.role !== 'customer') {
+    router.replace('/dashboard');
+    return (
+        <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="ml-3 text-muted-foreground">Redirigiendo a tu panel correcto...</p>
+        </div>
     );
   }
   
