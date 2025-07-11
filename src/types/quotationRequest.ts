@@ -17,6 +17,7 @@ export interface QuotationRequest {
   preferredDate?: string; // Fecha preferida (opcional)
   imageUrl?: string; // URL a la imagen del problema adjuntada por el usuario
   professionalId?: string; // ID del profesional si se solicitó a uno específico (opcional)
+  handymanId?: string; // Legacy field for professional ID, keep for backward compatibility
   professionalName?: string; // Nombre del profesional si se solicitó a uno específico (opcional)
   status: "Enviada" | "Revisando" | "Cotizada" | "Aceptada" | "En Progreso" | "Finalizada por Profesional" | "Completada" | "Cancelada";
   requestedAt: Timestamp;

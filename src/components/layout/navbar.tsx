@@ -48,13 +48,7 @@ export default function Navbar() {
     );
   }
 
-  const dashboardLink = typedUser?.role === 'admin' 
-    ? '/admin/overview' 
-    : typedUser?.role === 'handyman' 
-    ? '/dashboard/professional' 
-    : typedUser?.role === 'supplier'
-    ? '/dashboard/supplier'
-    : '/dashboard/customer';
+  const dashboardLink = '/dashboard'; // Simplified link, redirects in /dashboard/page.tsx
 
   const desktopNav = (
     <nav className="flex items-center gap-1 md:gap-2">

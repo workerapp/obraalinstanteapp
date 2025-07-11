@@ -27,7 +27,7 @@ const oswald = Oswald({
 
 export const metadata: Metadata = {
   title: 'Obra al Instante - Tu Solución de Servicios para el Hogar',
-  description: 'Encuentra operarios calificados u ofrece tus servicios. Obtén soluciones impulsadas por IA para los problemas de tu hogar.',
+  description: 'Encuentra profesionales calificados y proveedores de confianza. Obtén soluciones impulsadas por IA para los problemas de tu hogar.',
   icons: [{ rel: "icon", url: "/images/icon.png" }]
 };
 

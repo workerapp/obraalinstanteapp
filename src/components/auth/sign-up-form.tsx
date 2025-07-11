@@ -165,7 +165,7 @@ export default function SignUpForm() {
                         <RadioGroupItem value="handyman" />
                       </FormControl>
                       <FormLabel className="font-normal">
-                        Operario (Ofreciendo servicios)
+                        Profesional (Ofreciendo servicios)
                       </FormLabel>
                     </FormItem>
                     <FormItem className="flex items-center space-x-3 space-y-0">

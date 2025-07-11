@@ -47,7 +47,7 @@ const mapFirestoreUserToProfessionalList = (uid: string, userData: any): Profess
 export async function GET() {
   try {
     const usersRef = collection(firestore, "users");
-    // The role in the DB remains 'handyman' to avoid data migration
+    // This now correctly uses 'handyman' to match the database role.
     const q = query(usersRef, where("role", "==", "handyman"), where("isApproved", "==", true));
     
     const querySnapshot = await getDocs(q);
