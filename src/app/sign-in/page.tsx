@@ -18,7 +18,7 @@ export default function SignInPage() {
     if (!loading && user) {
       const defaultRedirectPath = user.role === 'admin' 
         ? '/admin/overview' 
-        : user.role === 'professional' 
+        : user.role === 'handyman' 
         ? '/dashboard/professional' 
         : user.role === 'supplier'
         ? '/dashboard/supplier'

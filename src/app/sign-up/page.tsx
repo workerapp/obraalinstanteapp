@@ -19,7 +19,7 @@ export default function SignUpPage() {
       // Redirect to the appropriate dashboard if user is logged in
       const defaultRedirectPath = user.role === 'admin' 
         ? '/admin/overview' 
-        : user.role === 'professional' 
+        : user.role === 'handyman' 
         ? '/dashboard/professional' 
         : user.role === 'supplier'
         ? '/dashboard/supplier'
